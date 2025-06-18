@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/DashboardLayout';
 import { API_URL } from '../../config';
-import '../../styles/pdv.css';
+import '../../styles/Asesor/pdv.css';
 
 export default function Pdvs() {
   const navigate = useNavigate();
@@ -39,7 +39,7 @@ export default function Pdvs() {
 
   // KPI
   const kpis = ['Volumen', 'Precio', 'Frecuencia'];
-  const [kpiSeleccionado, setKpiSeleccionado] = useState('Volumen');
+  const [kpiSeleccionado, setKpiSeleccionado] = useState('');
 
   // Carrusel
   const [carruselInicio, setCarruselInicio] = useState(0);
@@ -116,6 +116,24 @@ export default function Pdvs() {
   // Estado para la tabla de acumulados
   const [acumulados, setAcumulados] = useState([]);
 
+  // Para KPI Precio
+  const [precioSeleccion, setPrecioSeleccion] = useState(''); // '1/4', '1Gal', '55Gal'
+  const [precioValor, setPrecioValor] = useState('');
+
+  // Formatear como COP
+  const formatCOP = (value) => {
+    if (!value) return '';
+    const num = Number(value.toString().replace(/\D/g, ''));
+    if (!num) return '';
+    return num.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+  };
+
+  // Handler para el input de precio (solo números)
+  const handlePrecioInput = (e) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    setPrecioValor(raw);
+  };
+
   // Presentaciones
   const presentaciones = [
     { key: 'cant14', label: '1/4', galones: 0.25 },
@@ -123,7 +141,7 @@ export default function Pdvs() {
     { key: 'cant55', label: '55Gal', galones: 55 }
   ];
 
-  // Handler para cargar cantidades
+  // Handler para cargar cantidades (Volumen)
   const handleCargar = () => {
     const prod = productos[productoActivo];
     if (!prod) return;
@@ -158,6 +176,30 @@ export default function Pdvs() {
     setCant14('');
     setCant1('');
     setCant55('');
+  };
+
+  // Handler para cargar precios (Precio)
+  const handleCargarPrecio = () => {
+    const prod = productos[productoActivo];
+    if (!prod) return;
+    if (!precioSeleccion || !precioValor) return;
+    let nuevosAcumulados = [...acumulados];
+    const idx = nuevosAcumulados.findIndex(
+      a => a.id === prod.id && a.presentacion === precioSeleccion
+    );
+    if (idx >= 0) {
+      nuevosAcumulados[idx].precio = precioValor;
+    } else {
+      nuevosAcumulados.push({
+        id: prod.id,
+        descripcion: prod.descripcion,
+        presentacion: precioSeleccion,
+        precio: precioValor
+      });
+    }
+    setAcumulados(nuevosAcumulados);
+    setPrecioSeleccion('');
+    setPrecioValor('');
   };
 
   // Calcular total general en cantidad de productos (no galones)
@@ -196,13 +238,29 @@ export default function Pdvs() {
     kpi: kpiSeleccionado,
     fecha,
     foto,
-    productos: acumulados.map(a => ({
-      id: a.id,
-      descripcion: a.descripcion,
-      presentacion: a.presentacion,
-      cantidad: a.cantidad,
-      galones: a.galones
-    }))
+    productos: acumulados.map(a => {
+      if (kpiSeleccionado === 'Precio') {
+        return {
+          id: a.id,
+          descripcion: a.descripcion,
+          presentacion: a.presentacion,
+          precio: a.precio
+        };
+      } else if (kpiSeleccionado === 'Volumen') {
+        return {
+          id: a.id,
+          descripcion: a.descripcion,
+          presentacion: a.presentacion,
+          cantidad: a.cantidad,
+          galones: a.galones
+        };
+      }
+      return {
+        id: a.id,
+        descripcion: a.descripcion,
+        presentacion: a.presentacion
+      };
+    })
   };
 
   // Mostrar el array en pantalla (puedes ocultar esto si solo quieres consola)
@@ -222,6 +280,10 @@ export default function Pdvs() {
       alert('Debe ingresar el código PDV.');
       return;
     }
+    if (!kpiSeleccionado) {
+      alert('Debe seleccionar el KPI.');
+      return;
+    }
     if (!fecha) {
       alert('Debe seleccionar la fecha.');
       return;
@@ -230,7 +292,7 @@ export default function Pdvs() {
       alert('Debe adjuntar una foto.');
       return;
     }
-    if (!acumulados.length) {
+    if (kpiSeleccionado !== 'Frecuencia' && !acumulados.length) {
       alert('Debe agregar al menos un producto.');
       return;
     }
@@ -248,13 +310,11 @@ export default function Pdvs() {
       formData.append('fecha', fecha);
       formData.append('userId', userId);
       if (foto) formData.append('foto', foto);
-      formData.append('productos', JSON.stringify(acumulados.map(a => ({
-        id: a.id,
-        descripcion: a.descripcion,
-        presentacion: a.presentacion,
-        cantidad: a.cantidad,
-        galones: a.galones
-      }))));
+      if (kpiSeleccionado !== 'Frecuencia') {
+        formData.append('productos', JSON.stringify(reporteFinal.productos));
+      } else {
+        formData.append('productos', JSON.stringify([]));
+      }
 
       const res = await fetch(`${API_URL}/api/cargar-registro-pdv`, {
         method: 'POST',
@@ -273,6 +333,28 @@ export default function Pdvs() {
       alert('Error al guardar el registro');
     }
   };
+
+  // Transición suave al cambiar KPI
+  const [kpiTransition, setKpiTransition] = useState(false);
+  useEffect(() => {
+    setKpiTransition(true);
+    const t = setTimeout(() => setKpiTransition(false), 350);
+    return () => clearTimeout(t);
+  }, [kpiSeleccionado]);
+
+  // Reiniciar datos al cambiar KPI
+  useEffect(() => {
+    setAcumulados([]);
+    setCant14('');
+    setCant1('');
+    setCant55('');
+    setPrecioSeleccion('');
+    setPrecioValor('');
+    setFecha('');
+    setFoto(null);
+    setMostrarArray(false);
+    // ...otros resets si es necesario...
+  }, [kpiSeleccionado]);
 
   return (
     <DashboardLayout>
@@ -333,279 +415,562 @@ export default function Pdvs() {
           </div>
         </div>
 
-        {/* Sección VENTA PRODUCTOS */}
-        <div className="kpi-section">
-          <div className='venta-productos-label'>
-            VENTA PRODUCTOS</div>
-          {/* Selector de marca */}
-          <div className="productos-selector">
-            <button
-              type="button"
-              className="productos-arrow"
-              onClick={() => setMarcaActiva(marcaActiva > 0 ? marcaActiva - 1 : marcas.length - 1)}
-            >◀</button>
-            <button
-              type="button"
-              className="productos-marca"
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-            >
-              {/* Si tienes imagen, puedes mostrarla aquí */}
-              {/* <img src={marcas[marcaActiva]?.imagen_url || '/img/logo-prueba.png'} ... /> */}
-              <span>
-                {marcas[marcaActiva]?.descripcion || 'Marca'}
-              </span>
-            </button>
-            <button
-              type="button"
-              className="productos-arrow"
-              onClick={() => setMarcaActiva((marcaActiva + 1) % marcas.length)}
-            >▶</button>
-          </div>
-          {/* Carrusel de productos */}
-          <div className="productos-lista-carrusel" style={{ marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0 }}>
-            <button
-              type="button"
-              className="carrusel-arrow"
-              style={{ visibility: productos.length > referenciasVisibles ? 'visible' : 'hidden' }}
-              onClick={() => setCarruselInicio(Math.max(0, carruselInicio - referenciasVisibles))}
-              disabled={carruselInicio === 0}
-            >
-              <span style={{ fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>◀</span>
-            </button>
-            {productos.slice(carruselInicio, carruselInicio + referenciasVisibles).map((prod, idx) => {
-              const realIdx = carruselInicio + idx;
-              return (
-                <div
-                  key={prod.id}
-                  className={`producto-item${productoActivo === realIdx ? ' selected' : ''}`}
-                  onClick={() => setProductoActivo(realIdx)}
-                  style={{
-                    width: 120,
-                    margin: '0 8px',
-                    overflow: 'hidden',
-                    textAlign: 'center',
-                  }}
+        {/* Mostrar solo si hay KPI seleccionado */}
+        {kpiSeleccionado === 'Volumen' && (
+          <div>
+            {/* Sección VENTA PRODUCTOS */}
+            <div className={`kpi-section kpi-transition${kpiTransition ? ' kpi-fade' : ''}`}>
+              <div className='venta-productos-label'>
+                VENTA PRODUCTOS</div>
+              {/* Selector de marca */}
+              <div className="productos-selector">
+                <button
+                  type="button"
+                  className="productos-arrow"
+                  onClick={() => setMarcaActiva(marcaActiva > 0 ? marcaActiva - 1 : marcas.length - 1)}
+                >◀</button>
+                <button
+                  type="button"
+                  className="productos-marca"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                 >
-                  <img src={prod.imagen || '/img/logo-prueba.png'} alt={prod.descripcion} style={{ width: 60, height: 60, objectFit: 'contain' }} />
+                  <span>
+                    {marcas[marcaActiva]?.descripcion || 'Marca'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="productos-arrow"
+                  onClick={() => setMarcaActiva((marcaActiva + 1) % marcas.length)}
+                >▶</button>
+              </div>
+              {/* Carrusel de productos */}
+              <div className="productos-lista-carrusel" style={{ marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0 }}>
+                <button
+                  type="button"
+                  className="carrusel-arrow"
+                  style={{ visibility: productos.length > referenciasVisibles ? 'visible' : 'hidden' }}
+                  onClick={() => setCarruselInicio(Math.max(0, carruselInicio - referenciasVisibles))}
+                  disabled={carruselInicio === 0}
+                >
+                  <span style={{ fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>◀</span>
+                </button>
+                {productos.slice(carruselInicio, carruselInicio + referenciasVisibles).map((prod, idx) => {
+                  const realIdx = carruselInicio + idx;
+                  return (
+                    <div
+                      key={prod.id}
+                      className={`producto-item${productoActivo === realIdx ? ' selected' : ''}`}
+                      onClick={() => setProductoActivo(realIdx)}
+                      style={{
+                        width: 120,
+                        margin: '0 8px',
+                        overflow: 'hidden',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <img src={prod.imagen || '/img/logo-prueba.png'} alt={prod.descripcion} style={{ width: 60, height: 60, objectFit: 'contain' }} />
+                      <div
+                        className="producto-item-label"
+                        style={{
+                          color: productoActivo === realIdx ? '#e30613' : '#222',
+                          fontSize: 11,
+                          marginTop: 4,
+                          whiteSpace: 'normal',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          width: '100%',
+                          minHeight: 20,
+                          wordBreak: 'break-word',
+                          lineHeight: '1.1',
+                          maxHeight: 28,
+                          display: 'block',
+                        }}
+                        title={prod.descripcion}
+                      >
+                        {prod.descripcion}
+                      </div>
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  className="carrusel-arrow"
+                  style={{ visibility: productos.length > referenciasVisibles ? 'visible' : 'hidden' }}
+                  onClick={() => setCarruselInicio(Math.min(productos.length - referenciasVisibles, carruselInicio + referenciasVisibles))}
+                  disabled={carruselInicio >= productos.length - referenciasVisibles}
+                >
+                  <span style={{ fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>▶</span>
+                </button>
+              </div>
+              {/* Inputs de cantidades */}
+              <div className="cantidades-section">
+                <span className="cant-label">1/4</span>
+                <input
+                  type="number"
+                  min="0"
+                  className="cant-input"
+                  value={cant14}
+                  onChange={e => setCant14(e.target.value)}
+                  placeholder="0"
+                />
+                <span className="cant-label">1Gal</span>
+                <input
+                  type="number"
+                  min="0"
+                  className="cant-input"
+                  value={cant1}
+                  onChange={e => setCant1(e.target.value)}
+                  placeholder="0"
+                />
+                <span className="cant-label">55Gal</span>
+                <input
+                  type="number"
+                  min="0"
+                  className="cant-input"
+                  value={cant55}
+                  onChange={e => setCant55(e.target.value)}
+                  placeholder="0"
+                />
+                <span className="cant-label" style={{ marginLeft: 4, marginRight: 2 }}>Total</span>
+                <span className="cant-total">{totalCantidad}</span>
+              </div>
+              <button
+                type="button"
+                className="cargar-btn"
+                style={{ marginLeft: 8 }}
+                onClick={handleCargar}
+              >
+                CARGAR
+              </button>
+              {/* Botón para mostrar el array */}
+              {/* <button
+                type="button"
+                className="cargar-btn"
+                style={{ marginLeft: 8, marginTop: 8, background: '#b9000e' }}
+                onClick={handleVerArray}
+              >
+                VER ARRAY
+              </button> */}
+              {/* Mostrar el array en pantalla */}
+              {/* {mostrarArray && (
+                <pre style={{
+                  background: '#fff6f7',
+                  color: '#e30613',
+                  fontSize: 11,
+                  padding: 8,
+                  borderRadius: 8,
+                  margin: '10px 0',
+                  maxWidth: '100%',
+                  overflowX: 'auto'
+                }}>
+                  {JSON.stringify(reporteFinal, null, 2)}
+                </pre>
+              )} */}
+              {/* Tabla de acumulados */}
+              {acumulados.length > 0 && (
+                <div style={{ marginTop: 10, width: '100%' }}>
+                  <table className="tabla-acumulados">
+                    <thead>
+                      <tr>
+                        <th>Referencia</th>
+                        <th>Presentación</th>
+                        <th>Cantidad</th>
+                        <th>Gal</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {acumulados.map((a, i) => (
+                        <tr key={a.id + a.presentacion}>
+                          <td style={{ fontSize: 10 }}>{a.descripcion}</td>
+                          <td style={{ fontSize: 10 }}>{a.presentacion}</td>
+                          <td style={{ fontSize: 10, textAlign: 'center' }}>{a.cantidad}</td>
+                          <td style={{ fontSize: 10, textAlign: 'center' }}>{a.galones}</td>
+                          <td>
+                            <button
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#e30613',
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                fontSize: 14,
+                                padding: 0
+                              }}
+                              title="Eliminar"
+                              onClick={() => handleEliminar(a.id, a.presentacion)}
+                            >✕</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan={2} style={{ fontWeight: 700, fontSize: 11, textAlign: 'right', color: '#e30613' }}>Totales</td>
+                        <td style={{ fontWeight: 700, fontSize: 11, color: '#e30613', textAlign: 'center' }}>{totalCantidad}</td>
+                        <td style={{ fontWeight: 700, fontSize: 11, color: '#e30613', textAlign: 'center' }}>{totalGalones}</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+              {/* Fecha y foto */}
+              <div className="pdv-row">
+                <label className="pdv-label">
+                  FECHA
+                </label>
+                <div style={{ flex: 1, position: 'relative' }}>
+                  <input
+                    className="pdv-input-date"
+                    type="date"
+                    value={fecha}
+                    onChange={e => setFecha(e.target.value)}
+                    style={{ textAlign: 'center' }}
+                  />
+                  <span className="date-icon" style={{ cursor: 'pointer' }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                      <rect x="3" y="5" width="18" height="16" rx="3" fill="none" stroke="#fff" strokeWidth="2"/>
+                      <rect x="7" y="2" width="2" height="4" rx="1" fill="#fff"/>
+                      <rect x="15" y="2" width="2" height="4" rx="1" fill="#fff"/>
+                      <rect x="3" y="9" width="18" height="2" fill="#fff"/>
+                    </svg>
+                  </span>
+                </div>
+              </div>
+              <div className="pdv-row">
+                <label className="pdv-label">
+                  ADJUNTAR FOTO
+                </label>
+                <div className="adjuntar-foto-box">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id="foto-input"
+                    style={{ display: 'none' }}
+                    onChange={handleFoto}
+                  />
                   <div
-                    className="producto-item-label"
-                    style={{
-                      color: productoActivo === realIdx ? '#e30613' : '#222',
-                      fontSize: 11,
-                      marginTop: 4,
-                      whiteSpace: 'normal',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      width: '100%',
-                      minHeight: 20,
-                      wordBreak: 'break-word',
-                      lineHeight: '1.1',
-                      maxHeight: 28,
-                      display: 'block',
-                    }}
-                    title={prod.descripcion}
+                    className="adjuntar-foto-input"
+                    tabIndex={0}
+                    onClick={() => document.getElementById('foto-input').click()}
+                    style={{ cursor: 'pointer' }}
                   >
-                    {prod.descripcion}
+                    <span className="foto-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="5" width="18" height="14" rx="3" fill="#e30613" stroke="#fff" strokeWidth="1.5"/>
+                        <circle cx="12" cy="12" r="3" fill="#fff"/>
+                        <rect x="7" y="2" width="2" height="4" rx="1" fill="#fff"/>
+                        <rect x="15" y="2" width="2" height="4" rx="1" fill="#fff"/>
+                      </svg>
+                    </span>
+                    <span className="adjuntar-foto-placeholder">
+                      {foto ? foto.name : "Seleccionar foto"}
+                    </span>
                   </div>
                 </div>
-              );
-            })}
-            <button
-              type="button"
-              className="carrusel-arrow"
-              style={{ visibility: productos.length > referenciasVisibles ? 'visible' : 'hidden' }}
-              onClick={() => setCarruselInicio(Math.min(productos.length - referenciasVisibles, carruselInicio + referenciasVisibles))}
-              disabled={carruselInicio >= productos.length - referenciasVisibles}
-            >
-              <span style={{ fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>▶</span>
-            </button>
-          </div>
-          {/* Inputs de cantidades */}
-          <div className="cantidades-section">
-            <span className="cant-label">1/4</span>
-            <input
-              type="number"
-              min="0"
-              className="cant-input"
-              value={cant14}
-              onChange={e => setCant14(e.target.value)}
-              placeholder="0"
-            />
-            <span className="cant-label">1Gal</span>
-            <input
-              type="number"
-              min="0"
-              className="cant-input"
-              value={cant1}
-              onChange={e => setCant1(e.target.value)}
-              placeholder="0"
-            />
-            <span className="cant-label">55Gal</span>
-            <input
-              type="number"
-              min="0"
-              className="cant-input"
-              value={cant55}
-              onChange={e => setCant55(e.target.value)}
-              placeholder="0"
-            />
-            <span className="cant-label" style={{ marginLeft: 4, marginRight: 2 }}>Total</span>
-            <span className="cant-total">{totalCantidad}</span>
-          </div>
-          <button
-            type="button"
-            className="cargar-btn"
-            style={{ marginLeft: 8 }}
-            onClick={handleCargar}
-          >
-            CARGAR
-          </button>
-          {/* Botón para mostrar el array */}
-          <button
-            type="button"
-            className="cargar-btn"
-            style={{ marginLeft: 8, marginTop: 8, background: '#b9000e' }}
-            onClick={handleVerArray}
-          >
-            VER ARRAY
-          </button>
-          {/* Mostrar el array en pantalla */}
-          {mostrarArray && (
-            <pre style={{
-              background: '#fff6f7',
-              color: '#e30613',
-              fontSize: 11,
-              padding: 8,
-              borderRadius: 8,
-              margin: '10px 0',
-              maxWidth: '100%',
-              overflowX: 'auto'
-            }}>
-              {JSON.stringify(reporteFinal, null, 2)}
-            </pre>
-          )}
-          {/* Tabla de acumulados */}
-          {acumulados.length > 0 && (
-            <div style={{ marginTop: 10, width: '100%' }}>
-              <table className="tabla-acumulados">
-                <thead>
-                  <tr>
-                    <th>Referencia</th>
-                    <th>Presentación</th>
-                    <th>Cantidad</th>
-                    <th>Gal</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {acumulados.map((a, i) => (
-                    <tr key={a.id + a.presentacion}>
-                      <td style={{ fontSize: 10 }}>{a.descripcion}</td>
-                      <td style={{ fontSize: 10 }}>{a.presentacion}</td>
-                      <td style={{ fontSize: 10, textAlign: 'center' }}>{a.cantidad}</td>
-                      <td style={{ fontSize: 10, textAlign: 'center' }}>{a.galones}</td>
-                      <td>
-                        <button
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#e30613',
-                            fontWeight: 'bold',
-                            cursor: 'pointer',
-                            fontSize: 14,
-                            padding: 0
-                          }}
-                          title="Eliminar"
-                          onClick={() => handleEliminar(a.id, a.presentacion)}
-                        >✕</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={2} style={{ fontWeight: 700, fontSize: 11, textAlign: 'right', color: '#e30613' }}>Totales</td>
-                    <td style={{ fontWeight: 700, fontSize: 11, color: '#e30613', textAlign: 'center' }}>{totalCantidad}</td>
-                    <td style={{ fontWeight: 700, fontSize: 11, color: '#e30613', textAlign: 'center' }}>{totalGalones}</td>
-                    <td></td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          )}
-        </div>
-
-        <div className="pdv-row">
-          <label className="pdv-label">
-            FECHA
-          </label>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <input
-              className="pdv-input-date"
-              type="date"
-              value={fecha}
-              onChange={e => setFecha(e.target.value)}
-              style={{ textAlign: 'center' }}
-              onClick={() => {
-                // Abre el selector nativo
-                const input = document.createElement('input');
-                input.type = 'date';
-                input.onchange = (e) => setFecha(e.target.value.split('-').reverse().join('/'));
-                input.click();
-              }}
-            />
-            <span className="date-icon" style={{ cursor: 'pointer' }}
-              onClick={() => {
-                const input = document.createElement('input');
-                input.type = 'date';
-                input.onchange = (e) => setFecha(e.target.value.split('-').reverse().join('/'));
-                input.click();
-              }}
-            >
-              {/* Icono calendario blanco */}
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="5" width="18" height="16" rx="3" fill="none" stroke="#fff" strokeWidth="2"/>
-                <rect x="7" y="2" width="2" height="4" rx="1" fill="#fff"/>
-                <rect x="15" y="2" width="2" height="4" rx="1" fill="#fff"/>
-                <rect x="3" y="9" width="18" height="2" fill="#fff"/>
-              </svg>
-            </span>
-          </div>
-        </div>
-
-        <div className="pdv-row">
-          <label className="pdv-label">
-            ADJUNTAR FOTO
-          </label>
-          <div className="adjuntar-foto-box">
-            <input
-              type="file"
-              accept="image/*"
-              id="foto-input"
-              style={{ display: 'none' }}
-              onChange={handleFoto}
-            />
-            <div
-              className="adjuntar-foto-input"
-              tabIndex={0}
-              onClick={() => document.getElementById('foto-input').click()}
-              style={{ cursor: 'pointer' }}
-            >
-              <span className="foto-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <rect x="3" y="5" width="18" height="14" rx="3" fill="#e30613" stroke="#fff" strokeWidth="1.5"/>
-                  <circle cx="12" cy="12" r="3" fill="#fff"/>
-                  <rect x="7" y="2" width="2" height="4" rx="1" fill="#fff"/>
-                  <rect x="15" y="2" width="2" height="4" rx="1" fill="#fff"/>
-                </svg>
-              </span>
-              <span className="adjuntar-foto-placeholder">
-                {foto ? foto.name : "Seleccionar foto"}
-              </span>
+              </div>
+              <button
+                type="button"
+                className="cargar-report-btn"
+                style={{ marginLeft: 8 }}
+                onClick={handleCargarReporte}
+                disabled={subiendo}
+              >
+                CARGAR REPORTE
+              </button>
             </div>
           </div>
-        </div>
+        )}
 
+        {kpiSeleccionado === 'Precio' && (
+          <div>
+            <div className={`kpi-section kpi-transition${kpiTransition ? ' kpi-fade' : ''}`}>
+              <div className='venta-productos-label'>
+                VENTA PRODUCTOS</div>
+              {/* Selector de marca */}
+              <div className="productos-selector">
+                <button
+                  type="button"
+                  className="productos-arrow"
+                  onClick={() => setMarcaActiva(marcaActiva > 0 ? marcaActiva - 1 : marcas.length - 1)}
+                >◀</button>
+                <button
+                  type="button"
+                  className="productos-marca"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                >
+                  <span>
+                    {marcas[marcaActiva]?.descripcion || 'Marca'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="productos-arrow"
+                  onClick={() => setMarcaActiva((marcaActiva + 1) % marcas.length)}
+                >▶</button>
+              </div>
+              {/* Carrusel de productos */}
+              <div className="productos-lista-carrusel" style={{ marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0 }}>
+                <button
+                  type="button"
+                  className="carrusel-arrow"
+                  style={{ visibility: productos.length > referenciasVisibles ? 'visible' : 'hidden' }}
+                  onClick={() => setCarruselInicio(Math.max(0, carruselInicio - referenciasVisibles))}
+                  disabled={carruselInicio === 0}
+                >
+                  <span style={{ fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>◀</span>
+                </button>
+                {productos.slice(carruselInicio, carruselInicio + referenciasVisibles).map((prod, idx) => {
+                  const realIdx = carruselInicio + idx;
+                  return (
+                    <div
+                      key={prod.id}
+                      className={`producto-item${productoActivo === realIdx ? ' selected' : ''}`}
+                      onClick={() => setProductoActivo(realIdx)}
+                      style={{
+                        width: 120,
+                        margin: '0 8px',
+                        overflow: 'hidden',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <img src={prod.imagen || '/img/logo-prueba.png'} alt={prod.descripcion} style={{ width: 60, height: 60, objectFit: 'contain' }} />
+                      <div
+                        className="producto-item-label"
+                        style={{
+                          color: productoActivo === realIdx ? '#e30613' : '#222',
+                          fontSize: 11,
+                          marginTop: 4,
+                          whiteSpace: 'normal',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          width: '100%',
+                          minHeight: 20,
+                          wordBreak: 'break-word',
+                          lineHeight: '1.1',
+                          maxHeight: 28,
+                          display: 'block',
+                        }}
+                        title={prod.descripcion}
+                      >
+                        {prod.descripcion}
+                      </div>
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  className="carrusel-arrow"
+                  style={{ visibility: productos.length > referenciasVisibles ? 'visible' : 'hidden' }}
+                  onClick={() => setCarruselInicio(Math.min(productos.length - referenciasVisibles, carruselInicio + referenciasVisibles))}
+                  disabled={carruselInicio >= productos.length - referenciasVisibles}
+                >
+                  <span style={{ fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>▶</span>
+                </button>
+              </div>
+              {/* Presentaciones y precio */}
+              <div className="precio-section" style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                {['1/4', '1Gal', '55Gal'].map(pres => (
+                  <div key={pres} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <input
+                      type="checkbox"
+                      checked={precioSeleccion === pres}
+                      onChange={() => setPrecioSeleccion(precioSeleccion === pres ? '' : pres)}
+                      id={`check-${pres}`}
+                    />
+                    <label htmlFor={`check-${pres}`} style={{ fontSize: 13 }}>{pres}</label>
+                  </div>
+                ))}
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  className="cant-input"
+                  value={precioValor ? formatCOP(precioValor) : ''}
+                  onChange={handlePrecioInput}
+                  placeholder="$"
+                  style={{ width: 110 }}
+                  disabled={!precioSeleccion}
+                />
+                <span style={{ fontWeight: 700, color: '#222' }}>COP</span>
+              </div>
+              <div style={{ marginTop: 10, marginBottom: 0 }}>
+                <button
+                  type="button"
+                  className="cargar-btn"
+                  style={{ marginLeft: 0 }}
+                  onClick={handleCargarPrecio}
+                  disabled={!precioSeleccion || !precioValor}
+                >
+                  CARGAR
+                </button>
+              </div>
+              {/* Tabla de acumulados */}
+              {acumulados.length > 0 && (
+                <div style={{ marginTop: 10, width: '100%' }}>
+                  <table className="tabla-acumulados">
+                    <thead>
+                      <tr>
+                        <th>Referencia</th>
+                        <th>Presentación</th>
+                        <th>Precio</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {acumulados.map((a, i) => (
+                        <tr key={a.id + a.presentacion}>
+                          <td style={{ fontSize: 10 }}>{a.descripcion}</td>
+                          <td style={{ fontSize: 10 }}>{a.presentacion}</td>
+                          <td style={{ fontSize: 10, textAlign: 'center' }}>{formatCOP(a.precio)}</td>
+                          <td>
+                            <button
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#e30613',
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                fontSize: 14,
+                                padding: 0
+                              }}
+                              title="Eliminar"
+                              onClick={() => handleEliminar(a.id, a.presentacion)}
+                            >✕</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {/* Fecha y foto */}
+              <div className="pdv-row">
+                <label className="pdv-label">
+                  FECHA
+                </label>
+                <div style={{ flex: 1, position: 'relative' }}>
+                  <input
+                    className="pdv-input-date"
+                    type="date"
+                    value={fecha}
+                    onChange={e => setFecha(e.target.value)}
+                    style={{ textAlign: 'center' }}
+                  />
+                  <span className="date-icon" style={{ cursor: 'pointer' }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                      <rect x="3" y="5" width="18" height="16" rx="3" fill="none" stroke="#fff" strokeWidth="2"/>
+                      <rect x="7" y="2" width="2" height="4" rx="1" fill="#fff"/>
+                      <rect x="15" y="2" width="2" height="4" rx="1" fill="#fff"/>
+                      <rect x="3" y="9" width="18" height="2" fill="#fff"/>
+                    </svg>
+                  </span>
+                </div>
+              </div>
+              <div className="pdv-row">
+                <label className="pdv-label">
+                  ADJUNTAR FOTO
+                </label>
+                <div className="adjuntar-foto-box">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id="foto-input"
+                    style={{ display: 'none' }}
+                    onChange={handleFoto}
+                  />
+                  <div
+                    className="adjuntar-foto-input"
+                    tabIndex={0}
+                    onClick={() => document.getElementById('foto-input').click()}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <span className="foto-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="5" width="18" height="14" rx="3" fill="#e30613" stroke="#fff" strokeWidth="1.5"/>
+                        <circle cx="12" cy="12" r="3" fill="#fff"/>
+                        <rect x="7" y="2" width="2" height="4" rx="1" fill="#fff"/>
+                        <rect x="15" y="2" width="2" height="4" rx="1" fill="#fff"/>
+                      </svg>
+                    </span>
+                    <span className="adjuntar-foto-placeholder">
+                      {foto ? foto.name : "Seleccionar foto"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="cargar-report-btn"
+                style={{ marginLeft: 8 }}
+                onClick={handleCargarReporte}
+                disabled={subiendo}
+              >
+                CARGAR REPORTE
+              </button>
+            </div>
+          </div>
+        )}
+
+        {kpiSeleccionado === 'Frecuencia' && (
+          <div>
+            {/* Solo fecha y foto */}
+            <div className="pdv-row">
+              <label className="pdv-label">
+                FECHA
+              </label>
+              <div style={{ flex: 1, position: 'relative' }}>
+                <input
+                  className="pdv-input-date"
+                  type="date"
+                  value={fecha}
+                  onChange={e => setFecha(e.target.value)}
+                  style={{ textAlign: 'center' }}
+                />
+                <span className="date-icon" style={{ cursor: 'pointer' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="5" width="18" height="16" rx="3" fill="none" stroke="#fff" strokeWidth="2"/>
+                    <rect x="7" y="2" width="2" height="4" rx="1" fill="#fff"/>
+                    <rect x="15" y="2" width="2" height="4" rx="1" fill="#fff"/>
+                    <rect x="3" y="9" width="18" height="2" fill="#fff"/>
+                  </svg>
+                </span>
+              </div>
+            </div>
+            <div className="pdv-row">
+              <label className="pdv-label">
+                ADJUNTAR FOTO
+              </label>
+              <div className="adjuntar-foto-box">
+                <input
+                  type="file"
+                  accept="image/*"
+                  id="foto-input"
+                  style={{ display: 'none' }}
+                  onChange={handleFoto}
+                />
+                <div
+                  className="adjuntar-foto-input"
+                  tabIndex={0}
+                  onClick={() => document.getElementById('foto-input').click()}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <span className="foto-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <rect x="3" y="5" width="18" height="14" rx="3" fill="#e30613" stroke="#fff" strokeWidth="1.5"/>
+                      <circle cx="12" cy="12" r="3" fill="#fff"/>
+                      <rect x="7" y="2" width="2" height="4" rx="1" fill="#fff"/>
+                      <rect x="15" y="2" width="2" height="4" rx="1" fill="#fff"/>
+                    </svg>
+                  </span>
+                  <span className="adjuntar-foto-placeholder">
+                    {foto ? foto.name : "Seleccionar foto"}
+                  </span>
+                </div>
+              </div>
+            </div>
             <button
               type="button"
               className="cargar-report-btn"
@@ -615,6 +980,9 @@ export default function Pdvs() {
             >
               CARGAR REPORTE
             </button>
+          </div>
+        )}
+        {/* Si no hay KPI seleccionado, NO mostrar fecha ni foto ni nada más */}
       </div>
     </DashboardLayout>
   );

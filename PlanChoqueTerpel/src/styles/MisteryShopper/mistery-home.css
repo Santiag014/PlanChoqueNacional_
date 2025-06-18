@@ -1,0 +1,80 @@
+.mistery-dashboard-center {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 0;
+  min-width: 0;
+  /* Elimina min-height: 100vh aquí */
+}
+
+.mistery-btn-container {
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 68vh;
+  /* Elimina height: 100% aquí */
+}
+
+.mistery-btn {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+  cursor: pointer;
+  width: 120px;
+  min-height: 140px;
+  margin-bottom: 10px;
+  justify-content: flex-start;
+  user-select: none;
+  transition: box-shadow 0.2s;
+}
+
+.mistery-btn-inner {
+  background: #fff;
+  /* box-shadow: 0 2px 10px 0 rgba(0,0,0,0.10); */
+  border-radius: 22px;
+  width: 95%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.mistery-btn-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mistery-btn-icon img {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+}
+
+.mistery-btn-label {
+  font-weight: 700;
+  color: #e30613;
+  font-size: 12px;
+  text-align: center;
+  letter-spacing: 0.2px;
+  line-height: 1.1;
+  max-width: 100px;
+  word-break: break-word;
+  margin-top: 6px;
+}

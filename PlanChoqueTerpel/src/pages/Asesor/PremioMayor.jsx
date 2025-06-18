@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
 // Reemplaza las rutas de las imágenes por las reales
-import img1 from '../../assets/Img/img_login.png';
-import img2 from '../../assets/Img/img_login.png';
+import img1 from '../../assets/Img/premio_cartagena.jpg';
+import img2 from '../../assets/Iconos/IconosCatalogos/KV_VISIONARIOS-NUEVO.jpg';
 
 const slides = [
   {
@@ -49,7 +49,7 @@ const slides = [
   },
   {
     img: img2,
-    titulo: "Premio Sorpresa",
+    titulo: "Premio Nro..",
     descripcion: "¡Pronto anunciaremos más detalles!",
     recuadro: (
       <>

@@ -1,14 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import headerMobile from '../assets/Img/img_caja_superior_mobil.png';
 
+// ==========================
+// DashboardLayout Component
+// ==========================
+
+/**
+ * Layout principal para el dashboard, adaptativo a escritorio y móvil.
+ * Gestiona menú lateral, navegación, roles y accesos rápidos.
+ * @param {Object} props
+ * @param {Object} props.user - Usuario autenticado (opcional, puede venir de localStorage)
+ * @param {React.ReactNode} props.children - Contenido a renderizar en el layout
+ */
 export default function DashboardLayout({ user, children }) {
-  const [showMenu, setShowMenu] = useState(false);
-  const [waError, setWaError] = useState(''); // Nuevo estado para error WhatsApp
+  // --------------------------
+  // Estados locales
+  // --------------------------
+  const [showMenu, setShowMenu] = useState(false); // Menú móvil desplegable
+  const [waError, setWaError] = useState('');      // Error al abrir WhatsApp
+
+  // --------------------------
+  // Hooks de navegación
+  // --------------------------
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Diccionario de menús por rol
+  // --------------------------
+  // Obtención de usuario y rol
+  // --------------------------
+  // Intenta obtener el usuario desde props o localStorage
+  const userFromStorage = (() => {
+    try {
+      return JSON.parse(window.localStorage.getItem('user'));
+    } catch {
+      return null;
+    }
+  })();
+  const userObj = user || userFromStorage || {};
+  const rol = userObj.rol || 'ASESOR'; // Rol por defecto: ASESOR
+
+  // --------------------------
+  // Definición de menús por rol
+  // --------------------------
   const MENUS = {
     ASESOR: {
       '/asesor/home': 'HOME',
@@ -19,45 +53,50 @@ export default function DashboardLayout({ user, children }) {
       '/asesor/premio-mayor': 'PREMIO MAYOR',
       '/asesor/tyc': 'T&C',
     },
-    DIRECTOR: {
-      '/director/home': 'HOME',
+    MYSTERY_SHOPPER: {
+      '/misteryShopper/home': 'HOME',
+      '/misteryShopper/registrar_visitas': 'REGISTRA TUS VISITAS',
+      // Agrega aquí más rutas si tienes más vistas para este rol
     },
     // ...otros roles
   };
 
-  const userFromStorage = (() => {
-    try {
-      return JSON.parse(window.localStorage.getItem('user'));
-    } catch {
-      return null;
-    }
-  })();
-  const userObj = user || userFromStorage || {};
-  const rol = userObj.rol || 'ASESOR';
+  // Selección de menú y ruta principal según rol
   const TITULOS = MENUS[rol] || MENUS['ASESOR'];
-
-  // Lista de rutas para el menú lateral (sin "Home" si no es la actual)
-  // const menuRoutes = Object.keys(TITULOS).filter(
-  //   (route) => route !== '/asesor/home' || location.pathname === '/asesor/home'
-  // );
-  // Cambia por:
   const menuRoutes = Object.keys(TITULOS);
+  const mainRoute = menuRoutes[0];
 
-  // Obtiene el título según la ruta actual
+  // --------------------------
+  // Redirección automática si la ruta no corresponde al menú del rol
+  // --------------------------
+  useEffect(() => {
+    if (!menuRoutes.includes(location.pathname)) {
+      navigate(mainRoute, { replace: true });
+    }
+    // eslint-disable-next-line
+  }, [rol]);
+
+  // --------------------------
+  // Obtención del título dinámico según la ruta actual
+  // --------------------------
   const titulo = TITULOS[location.pathname] || 'HOME';
 
+  // --------------------------
+  // Funciones de navegación y logout
+  // --------------------------
   const handleLogout = () => {
     navigate('/', { replace: true, state: {} });
   };
 
-  // Navegación lateral
   const handleNav = (route) => {
     if (route !== location.pathname) {
       navigate(route);
     }
   };
 
-  // Nuevo: función para abrir WhatsApp y detectar bloqueo
+  // --------------------------
+  // Función para abrir WhatsApp y detectar bloqueo
+  // --------------------------
   const handleWhatsAppClick = (e) => {
     e.preventDefault();
     setWaError('');
@@ -70,9 +109,14 @@ export default function DashboardLayout({ user, children }) {
     }, 500);
   };
 
+  // ==========================
+  // Renderizado principal
+  // ==========================
   return (
     <div style={{ minHeight: '100vh', width: '100vw', background: '#ececec' }}>
-      {/* Header móvil */}
+      {/* ==========================
+          Header móvil (visible <700px)
+         ========================== */}
       <div
         className="dashboard-mobile-header"
         style={{
@@ -82,6 +126,7 @@ export default function DashboardLayout({ user, children }) {
           minHeight: 50,
         }}
       >
+        {/* Imagen superior */}
         <img
           src={headerMobile}
           alt="Header móvil"
@@ -93,7 +138,7 @@ export default function DashboardLayout({ user, children }) {
             display: 'block',
           }}
         />
-        {/* Franja roja con menú y notificación */}
+        {/* Franja roja con menú, título, notificación y WhatsApp */}
         <div
           style={{
             width: '100%',
@@ -129,7 +174,7 @@ export default function DashboardLayout({ user, children }) {
           <span style={{
             color: '#fff',
             fontWeight: 'bold',
-            fontSize: 15, // Más pequeño
+            fontSize: 15,
             letterSpacing: 0.2,
             flex: 1,
             textAlign: 'center',
@@ -137,14 +182,14 @@ export default function DashboardLayout({ user, children }) {
           }}>
             {titulo}
           </span>
-          {/* Icono WhatsApp */}
-          {/* Notificación */}
+          {/* Icono Notificación */}
           <span style={{ marginLeft: -20, marginRight: 25 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <path d="M12 22c1.1 0 2-.9 2-2h-4a2 2 0 0 0 2 2Zm6-6V11c0-3.07-1.63-5.64-5-6.32V4a1 1 0 1 0-2 0v.68C7.63 5.36 6 7.92 6 11v5l-1.29 1.29A1 1 0 0 0 6 19h12a1 1 0 0 0 .71-1.71L18 16Z" stroke="#fff" strokeWidth="1.5" fill="none"/>
             </svg>
           </span>
-                    <span style={{ marginLeft: -20, marginRight: 25 }}>
+          {/* Icono WhatsApp */}
+          <span style={{ marginLeft: -20, marginRight: 25 }}>
             <a
               href="https://api.whatsapp.com/send/?phone=573142180090&type=phone_number&app_absent=0"
               target="_blank"
@@ -174,7 +219,7 @@ export default function DashboardLayout({ user, children }) {
             flexDirection: 'column',
             alignItems: 'center'
           }}>
-            {/* Mostrar todas las páginas del menú */}
+            {/* Opciones del menú */}
             {menuRoutes.map((route) => (
               <button
                 key={route}
@@ -216,7 +261,7 @@ export default function DashboardLayout({ user, children }) {
             </button>
           </div>
         )}
-        {/* Renderiza el contenido (children) también en móvil, con scroll solo vertical y gráfica de barras más pequeña */}
+        {/* Contenido móvil con scroll vertical */}
         <div
           className="dashboard-mobile-scroll"
           style={{
@@ -225,7 +270,6 @@ export default function DashboardLayout({ user, children }) {
             overflowY: 'auto',
             overflowX: 'hidden',
             background: '#ececec',
-            // padding: 25,
             boxSizing: 'border-box'
           }}
         >
@@ -234,7 +278,9 @@ export default function DashboardLayout({ user, children }) {
           </div>
         </div>
       </div>
-      {/* Layout escritorio */}
+      {/* ==========================
+          Layout escritorio (visible >=700px)
+         ========================== */}
       <div className="dashboard-desktop-layout" style={{ display: 'flex', minHeight: '100vh', width: '100vw' }}>
         {/* Barra lateral roja */}
         <aside style={{
@@ -300,9 +346,10 @@ export default function DashboardLayout({ user, children }) {
               pointerEvents: 'none',
               userSelect: 'none'
             }}>
-              {}
+              {titulo}
             </span>
-            {/* ...iconos y logout igual que antes... */}
+            {/* Iconos y logout */}
+            {/* Notificaciones */}
             <button
               onClick={() => setShowMenu(v => !v)}
               style={{
@@ -343,7 +390,7 @@ export default function DashboardLayout({ user, children }) {
                 boxShadow: '0 1px 2px #e3061322'
               }}>1</span>
             </button>
-            {/* ...otros iconos y botón logout igual que antes... */}
+            {/* Correo */}
             <span style={{
               marginRight: 10,
               display: 'inline-flex',
@@ -354,6 +401,7 @@ export default function DashboardLayout({ user, children }) {
                 <path d="M3 7l9 6 9-6" stroke="#e30613" strokeWidth="1.5" fill="none"/>
               </svg>
             </span>
+            {/* Usuario */}
             <span style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -371,6 +419,7 @@ export default function DashboardLayout({ user, children }) {
                 <path d="M4 20c0-3.31 3.58-6 8-6s8 2.69 8 6" stroke="#b0b0b0" strokeWidth="1.5" fill="none"/>
               </svg>
             </span>
+            {/* Logout */}
             <button
               onClick={handleLogout}
               style={{
@@ -400,7 +449,7 @@ export default function DashboardLayout({ user, children }) {
               alignItems: 'center',
               minHeight: 0,
               background: '#ececec',
-              paddingBottom: 60, // Asegura espacio para el footer (ajusta si tu footer es más alto)
+              paddingBottom: 60,
               boxSizing: 'border-box'
             }}
           >
@@ -454,7 +503,9 @@ export default function DashboardLayout({ user, children }) {
           </a>
         </div>
       </div>
-      {/* CSS para mostrar/ocultar layouts, ajustar gráficos y scroll en móvil */}
+      {/* ==========================
+          CSS responsivo y scroll personalizado
+         ========================== */}
       <style>
         {`
           @media (max-width: 700px) {
@@ -464,7 +515,6 @@ export default function DashboardLayout({ user, children }) {
             .dashboard-mobile-content {
               padding: 0 !important;
             }
-            /* Ajuste de gráficos SVG para móvil: barras más delgadas y scroll horizontal si es necesario */
             .dashboard-bar-graph {
               overflow-x: auto !important;
               -webkit-overflow-scrolling: touch;
@@ -476,7 +526,6 @@ export default function DashboardLayout({ user, children }) {
               height: 180px !important;
               display: block;
             }
-            /* Barras más delgadas en móvil */
             .dashboard-bar-graph svg rect {
               width: 18px !important;
             }
@@ -485,12 +534,11 @@ export default function DashboardLayout({ user, children }) {
               margin-left: auto !important;
               margin-right: auto !important;
             }
-            /* Scroll personalizado solo vertical para móvil */
             .dashboard-mobile-scroll {
               scrollbar-width: thin;
               scrollbar-color: #e30613 transparent;
               background: transparent !important;
-              overflow-x: auto !important; /* Cambiado de hidden a auto */
+              overflow-x: auto !important;
               overflow-y: auto !important;
             }
             .dashboard-mobile-scroll::-webkit-scrollbar {
@@ -504,12 +552,10 @@ export default function DashboardLayout({ user, children }) {
             .dashboard-mobile-scroll::-webkit-scrollbar-track {
               background: transparent;
             }
-            /* Permitir scroll horizontal en la gráfica de barras para no cortar el eje X */
             .dashboard-bar-graph > div {
               overflow-x: auto !important;
               -webkit-overflow-scrolling: touch;
             }
-            /* Quitar scroll horizontal de tablas en móvil */
             .dashboard-table-box {
               overflow-x: hidden !important;
             }
@@ -521,7 +567,9 @@ export default function DashboardLayout({ user, children }) {
           }
         `}
       </style>
-      {/* Footer degradado común para móvil y escritorio */}
+      {/* ==========================
+          Footer degradado común
+         ========================== */}
       <div
         style={{
           width: '100%',
@@ -543,7 +591,7 @@ export default function DashboardLayout({ user, children }) {
             borderRadius: '8px 8px 0 0'
           }}
         />
-        {/* Contenido del footer alineado como en la imagen */}
+        {/* Contenido del footer */}
         <div
           style={{
             display: 'flex',

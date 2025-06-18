@@ -2,8 +2,8 @@ import React from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
 import oiltecImg from '../../assets/Iconos/IconosCatalogos/OILTEC.png';
 import celerityImg from '../../assets/Iconos/IconosCatalogos/CELERITY.png';
-import planpdvImg from '../../assets/Iconos/IconosCatalogos/CELERITY.png';
-import '../../styles/catalogos.css'; // Importa el nuevo CSS
+import planpdvImg from '../../assets/Iconos/IconosCatalogos/KV_VISIONARIOS-NUEVO.jpg';
+import '../../styles/Asesor/catalogos.css'; // Importa el nuevo CSS
 
 const catalogos = [
   {

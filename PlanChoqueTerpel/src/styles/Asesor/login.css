@@ -25,7 +25,7 @@ html, body {
   min-width: 100vw;
   width: 100vw;
   height: 100vh;
-  background: url('../assets/Img/img_login.png') center/cover no-repeat;
+  background: url('../../assets/Img/img_login.png') center/cover no-repeat;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;

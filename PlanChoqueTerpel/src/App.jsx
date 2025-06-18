@@ -10,8 +10,10 @@ import Ranking from './pages/Asesor/Ranking';
 import Catalogos from './pages/Asesor/Catalogos';
 import PremioMayor from './pages/Asesor/PremioMayor';
 import TyC from './pages/Asesor/TyC';
-import PremiosExtras from './pages/Asesor/PremiosExtras';
-import Ayuda from './pages/Asesor/Ayuda';
+
+import HomeMisteryShopper from './pages/Mistery/home';
+import RegistrarVisitas from './pages/Mistery/servicios';
+
 import { useEffect, useState } from 'react';
 
 function App() {
@@ -62,9 +64,10 @@ function App() {
           <Route path="/asesor/catalogos" element={<Catalogos />} />
           <Route path="/asesor/premio-mayor" element={<PremioMayor />} />
           <Route path="/asesor/tyc" element={<TyC />} />
-          <Route path="/asesor/premios-extras" element={<PremiosExtras />} />
-          <Route path="/asesor/ayuda" element={<Ayuda />} />
           <Route path="*" element={<HomePage />} />
+
+          <Route path="/misteryShopper/home" element={<HomeMisteryShopper />} />
+          <Route path="/misteryShopper/registrar_visitas" element={<RegistrarVisitas />} />
         </Routes>
       </BrowserRouter>
       {showInactiveModal && (

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import '../styles/login.css';
+import '../styles/Asesor/login.css';
 import logoTerpel from '../assets/Iconos/IconosPage/logoTerpel.png';
 import { API_URL } from '../config';
 
@@ -9,6 +9,14 @@ function HomePage() {
   const [pass, setPass] = useState('');
   const [error, setError] = useState('');
   const [dataChecked, setDataChecked] = useState(false); // Nuevo estado para el checkbox
+
+  // Mapea el número de rol a string de rol
+  const getRolString = (rolNum) => {
+    if (rolNum === 1) return 'ASESOR';
+    if (rolNum === 2) return 'MYSTERY_SHOPPER';
+    // Agrega más si tienes más roles
+    return 'ASESOR';
+  };
 
   // Navegación manual (sin useNavigate)
   const handleSubmit = async e => {
@@ -27,13 +35,18 @@ function HomePage() {
       const data = await res.json();
       if (data.success) {
         // Guarda el usuario y rol en localStorage/sessionStorage
-        window.localStorage.setItem('user', JSON.stringify(data.user));
+        const userWithRolString = {
+          ...data.user,
+          rol: getRolString(data.user.rol)
+        };
+        window.localStorage.setItem('user', JSON.stringify(userWithRolString));
         // Redirige según el rol
-        if (data.user.rol === 1) {
+        if (userWithRolString.rol === 'ASESOR') {
           window.location.href = '/asesor/home';
-        } else {
-          window.location.href = '/director/home';
+        } else if (userWithRolString.rol === 'MYSTERY_SHOPPER') {
+          window.location.href = '/misteryShopper/home';
         }
+        // ...puedes agregar más roles aquí si es necesario...
       } else {
         setError(data.message || 'Error de autenticación');
       }
