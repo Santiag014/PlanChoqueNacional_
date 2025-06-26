@@ -1,5 +1,6 @@
 import './App.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
 import DashboardPage from './pages/Asesor/Metas';
 import HomeAsesor from './pages/Asesor/Home';
 import HomePage from './pages/HomePage';
@@ -10,6 +11,8 @@ import Ranking from './pages/Asesor/Ranking';
 import Catalogos from './pages/Asesor/Catalogos';
 import PremioMayor from './pages/Asesor/PremioMayor';
 import TyC from './pages/Asesor/TyC';
+import HistorialRegistros from './pages/Asesor/HistorialRegistros';
+import UnauthorizedPage from './pages/UnauthorizedPage';
 
 import HomeMisteryShopper from './pages/Mistery/home';
 import RegistrarVisitas from './pages/Mistery/servicios';
@@ -45,29 +48,37 @@ function App() {
 
   const handleModalClose = () => {
     localStorage.removeItem('user');
+    localStorage.removeItem('authToken');
     setShowInactiveModal(false);
     window.location.href = '/';
   };
 
   return (
-    <>
+    <AuthProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<HomePage />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
+          
+          {/* Rutas del asesor - protegidas */}
           <Route path="/asesor/dashboard" element={<DashboardPage />} />
           <Route path="/asesor/home" element={<HomeAsesor />} />
-          <Route path="/register" element={<Register />} />
           <Route path="/asesor/metas" element={<Metas />} />
           <Route path="/asesor/pdvs" element={<Pdvs />} />
           <Route path="/asesor/ranking" element={<Ranking />} />
           <Route path="/asesor/catalogos" element={<Catalogos />} />
           <Route path="/asesor/premio-mayor" element={<PremioMayor />} />
           <Route path="/asesor/tyc" element={<TyC />} />
-          <Route path="*" element={<HomePage />} />
-
+          <Route path="/asesor/historial-registros" element={<HistorialRegistros />} />
+          
+          {/* Rutas del mystery shopper - protegidas */}
           <Route path="/misteryShopper/home" element={<HomeMisteryShopper />} />
           <Route path="/misteryShopper/registrar_visitas" element={<RegistrarVisitas />} />
+          
+          {/* Ruta por defecto */}
+          <Route path="*" element={<HomePage />} />
         </Routes>
       </BrowserRouter>
       {showInactiveModal && (
@@ -116,7 +127,7 @@ function App() {
           </div>
         </div>
       )}
-    </>
+    </AuthProvider>
   );
 }
 

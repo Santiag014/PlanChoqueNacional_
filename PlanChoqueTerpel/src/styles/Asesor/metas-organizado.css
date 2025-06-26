@@ -1,0 +1,579 @@
+/* =========================================
+   ESTILOS PARA LA PÁGINA METAS DEL ASESOR
+   ========================================= */
+
+/* =====================================
+   1. TARJETA PRINCIPAL KPI
+   ===================================== */
+
+.kpi-main-card {
+  width: 100vw;
+  max-width: 95vw;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  padding: 8px 0 2px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 18px auto;
+  position: relative;
+  min-height: 60px;
+}
+
+.kpi-card-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 22px;
+  background: #e30613;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  clip-path: polygon(0 0, 95% 0, 100% 8px, 100% 100%, 0 100%);
+  border-top-left-radius: 12px;
+}
+
+.kpi-card-title {
+  color: #fff;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 0 12px;
+  line-height: 22px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.kpi-card-spacer {
+  height: 15px;
+}
+
+.kpi-card-value {
+  font-size: 28px;
+  font-weight: 900;
+  color: #888;
+  letter-spacing: 2px;
+  margin: 0;
+  text-align: center;
+}
+
+/* Estados de la tarjeta KPI */
+.kpi-card-error {
+  color: #e30613;
+  font-weight: 700;
+  padding: 10px;
+  text-align: center;
+}
+
+.kpi-card-loading {
+  color: #888;
+  font-weight: 500;
+  padding: 10px;
+  text-align: center;
+}
+
+/* =====================================
+   2. CONTENEDOR DE KPIS
+   ===================================== */
+
+.kpis-container {
+  width: 100%;
+  max-width: 95vw;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  margin: 15px auto 30px auto;
+  padding: 0 0 24px 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.kpis-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 28px;
+  background: linear-gradient(135deg, #e30613, #c20512);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  clip-path: polygon(0 0, 92% 0, 100% 15px, 100% 100%, 0 100%);
+  border-top-left-radius: 12px;
+  box-shadow: 0 2px 8px rgba(227, 6, 19, 0.3);
+}
+
+.kpis-title {
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 0 20px;
+  line-height: 28px;
+  letter-spacing: 1.2px;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.kpis-spacer {
+  height: 35px;
+}
+
+/* =====================================
+   3. GRID Y TARJETAS KPI
+   ===================================== */
+
+.kpis-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 800px;
+  padding: 0 15px;
+}
+
+.kpi-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  width: 110px;
+  height: 130px;
+  padding: 12px 8px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--kpi-color);
+  border-radius: 16px 16px 0 0;
+}
+
+.kpi-card:hover {
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+}
+
+/* Contenido de las tarjetas KPI */
+.kpi-points {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--kpi-color);
+  margin: 8px 0;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.kpi-points-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.kpi-label {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--kpi-color);
+  text-align: center;
+  letter-spacing: 0.8px;
+  padding: 8px 12px;
+  background: rgba(var(--kpi-color-rgb), 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(var(--kpi-color-rgb), 0.2);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* =====================================
+   4. COLORES ESPECÍFICOS PARA CADA KPI
+   ===================================== */
+
+.kpi-volumen {
+  --kpi-color: #e30613;
+  --kpi-color-rgb: 227, 6, 19;
+}
+
+.kpi-precio {
+  --kpi-color: #dc3545;
+  --kpi-color-rgb: 220, 53, 69;
+}
+
+.kpi-frecuencia {
+  --kpi-color: #007bff;
+  --kpi-color-rgb: 0, 123, 255;
+}
+
+.kpi-cobertura {
+  --kpi-color: #28a745;
+  --kpi-color-rgb: 40, 167, 69;
+}
+
+.kpi-profundidad {
+  --kpi-color: #fd7e14;
+  --kpi-color-rgb: 253, 126, 20;
+}
+
+/* =====================================
+   5. GRÁFICO DE METAS
+   ===================================== */
+
+.metas-chart-container {
+  width: 90vw;
+  max-width: 98vw;
+  background: #fff;
+  border-radius: 12px;
+  padding: 0 0 8px 0;
+  margin: 10px auto 15px auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: auto;
+  position: relative;
+}
+
+.metas-chart-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 25px;
+  background: #e30613;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  clip-path: polygon(0 0, 95% 0, 100% 15px, 100% 100%, 0 100%);
+}
+
+.metas-chart-title {
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 0 16px;
+  line-height: 30px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.metas-chart-spacer {
+  height: 30px;
+}
+
+/* Leyenda del gráfico */
+.metas-chart-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 2px 0;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-color {
+  display: inline-block;
+  width: 18px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 3px;
+}
+
+.legend-meta {
+  background: #b0b0b0;
+  border: 1px solid #bbb;
+}
+
+.legend-real {
+  background: #e30613;
+  border: 1px solid #e30613;
+}
+
+.legend-text {
+  font-size: 13px;
+  color: #888;
+  font-weight: 600;
+}
+
+.legend-real-text {
+  color: #e30613;
+}
+
+/* Contenedor del SVG */
+.metas-chart-svg-container {
+  width: 100%;
+  overflow-x: auto;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+}
+
+.metas-chart-svg {
+  margin-bottom: 8px;
+  display: block;
+}
+
+/* Estados del gráfico */
+.metas-chart-hint {
+  font-size: 12px;
+  color: #888;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.metas-chart-error {
+  color: #e30613;
+  font-weight: 700;
+  padding: 16px;
+  text-align: center;
+}
+
+.metas-chart-loading {
+  color: #888;
+  font-weight: 500;
+  padding: 16px;
+  text-align: center;
+}
+
+/* =====================================
+   6. MODAL DE PDV
+   ===================================== */
+
+.pdv-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.35);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pdv-modal-content {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  min-width: 320px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+  position: relative;
+}
+
+.pdv-modal-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: #e30613;
+  cursor: pointer;
+}
+
+.pdv-modal-title {
+  color: #e30613;
+  margin-bottom: 8px;
+}
+
+/* Tabla del modal */
+.pdv-modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.pdv-modal-header-row {
+  background: #ffe5e5;
+}
+
+.pdv-modal-th {
+  font-weight: 700;
+  padding: 8px;
+}
+
+.pdv-modal-th-codigo {
+  color: #888;
+}
+
+.pdv-modal-th-meta {
+  color: #a1000b;
+}
+
+.pdv-modal-th-real {
+  color: #1bb934;
+}
+
+.pdv-modal-th-porcentaje {
+  color: #e30613;
+}
+
+/* Filas de la tabla */
+.pdv-modal-row-even {
+  background: #f4f4f4;
+}
+
+.pdv-modal-row-odd {
+  background: #fff;
+}
+
+.pdv-modal-td {
+  text-align: center;
+  padding: 8px;
+}
+
+.pdv-modal-td-codigo {
+  color: #888;
+  font-weight: 600;
+}
+
+.pdv-modal-td-meta {
+  color: #a1000b;
+  font-weight: 600;
+}
+
+.pdv-modal-td-real {
+  color: #1bb934;
+  font-weight: 600;
+}
+
+.pdv-modal-td-porcentaje {
+  font-weight: 600;
+}
+
+/* =====================================
+   7. RESPONSIVE DESIGN
+   ===================================== */
+
+/* Móviles (máximo 700px) */
+@media (max-width: 700px) {
+  .kpis-container {
+    margin: 12px auto 25px auto;
+    padding: 0 0 20px 0;
+  }
+
+  .kpis-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    padding: 0 12px;
+  }
+
+  .kpi-card {
+    width: 100px;
+    height: 130px;
+    padding: 12px 8px;
+    border-radius: 12px;
+  }
+
+  .kpi-points {
+    font-size: 20px;
+    margin: 4px 0;
+  }
+
+  .kpi-points-label {
+    font-size: 10px;
+    margin-bottom: 6px;
+  }
+
+  .kpi-label {
+    font-size: 10px;
+    padding: 6px 8px;
+    letter-spacing: 0.5px;
+  }
+
+  .kpis-title {
+    font-size: 11px;
+    padding: 0 16px;
+  }
+}
+
+/* Escritorio (mínimo 701px) */
+@media (min-width: 701px) {
+  .kpi-main-card {
+    width: 260px;
+    max-width: 300px;
+    padding: 12px 0 2px 0;
+    margin: 10px 0 6px 0;
+    min-height: 60px;
+  }
+
+  .kpi-card-value {
+    font-size: 38px;
+    margin-top: 4px;
+  }
+
+  .metas-chart-container {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto 12px auto;
+  }
+
+  .metas-chart-svg {
+    height: 200px;
+  }
+
+  .pdv-modal-content {
+    min-width: 500px;
+  }
+
+  .pdv-modal-table {
+    font-size: 16px;
+  }
+}
+
+/* =====================================
+   8. UTILIDADES Y HELPERS
+   ===================================== */
+
+/* Clase para ocultar elementos en móvil */
+@media (max-width: 700px) {
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+/* Clase para ocultar elementos en escritorio */
+@media (min-width: 701px) {
+  .hide-desktop {
+    display: none !important;
+  }
+}
+
+/* Texto centrado */
+.text-center {
+  text-align: center;
+}
+
+/* Margen bottom pequeño */
+.mb-small {
+  margin-bottom: 8px;
+}
+
+/* Margen bottom mediano */
+.mb-medium {
+  margin-bottom: 16px;
+}
+
+/* =====================================
+   FIN DEL ARCHIVO CSS
+   ===================================== */

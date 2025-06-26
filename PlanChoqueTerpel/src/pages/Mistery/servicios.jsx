@@ -183,226 +183,315 @@ export default function Servicios() {
 
         {detalle && (
           <div style={{
-            background: '#fff',
             borderRadius: 14,
-            boxShadow: '0 2px 12px #0001',
-            padding: '28px 18px 24px 18px',
+            padding: '0px 18px 40px 18px', // Aumenta el padding inferior para espacio bajo el botón
             margin: '30px auto 0 auto',
             minHeight: 420,
             position: 'relative'
           }}>
+            {/* Botón de volver minimalista */}
             <button
               onClick={() => setDetalle(null)}
               style={{
                 position: 'absolute',
-                top: 18,
-                left: -10, // Mueve el botón más a la izquierda fuera del contenido
-                background: '#fff',
-                borderRadius: 8,
-                padding: '6px 10px',
-                color: '#e30613',
-                fontWeight: 700,
-                fontSize: 18,
-                cursor: 'pointer',
+                top: -20,
+                left: 8,
+                width: 25,
+                height: 25,
+                background: 'none',
+                border: 'none',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                minWidth: 0,
-                minHeight: 0,
-                zIndex: 2,
-                boxShadow: '0 2px 8px #e3061322'
+                zIndex: 10,
+                cursor: 'pointer',
+                padding: 0
               }}
               aria-label="Volver"
             >
-              <svg width="40" height="22" viewBox="0 0 22 22" fill="none">
+              <svg width="50" height="22" viewBox="0 0 22 22" fill="none">
                 <path d="M14 18L8 11L14 4" stroke="#e30613" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
-            {/* Espacio para que el botón no tape el contenido */}
             <div style={{ height: 10 }} />
             {/* AGENTE COMERCIAL */}
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 18, gap: 10 }}>
-              <label style={{ fontWeight: 700, color: '#888', fontSize: 15, minWidth: 150 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, gap: 20 }}>
+              <label style={{ fontWeight: 600, color: '#888', fontSize: 12, minWidth: 125 }}>
                 AGENTE COMERCIAL
               </label>
-              <div style={{
-                background: '#e30613',
-                color: '#fff',
-                borderRadius: 8,
-                padding: '7px 18px',
-                fontWeight: 700,
-                fontSize: 16,
-                minWidth: 120,
-                textAlign: 'center'
-              }}>
-                {detalle.agente}
-              </div>
+              <input
+                value={detalle.agente}
+                disabled
+                style={{
+                  background: '#e30613',
+                  color: '#fff',
+                  borderRadius: 8,
+                  padding: '7px 12px',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  border: 'none',
+                  width: '100%',
+                  textAlign: 'center',
+                  maxWidth: 220
+                }}
+              />
             </div>
             {/* NOMBRE DEL ASESOR */}
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 18, gap: 10 }}>
-              <label style={{ fontWeight: 700, color: '#888', fontSize: 15, minWidth: 150 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, gap: 20 }}>
+              <label style={{ fontWeight: 600, color: '#888', fontSize: 12, minWidth: 125 }}>
                 NOMBRE DEL ASESOR
               </label>
-              <div style={{
-                background: '#e30613',
-                color: '#fff',
-                borderRadius: 8,
-                padding: '7px 18px',
-                fontWeight: 700,
-                fontSize: 16,
-                minWidth: 120,
-                textAlign: 'center'
-              }}>
-                {detalle.asesor}
-              </div>
+              <input
+                value={detalle.asesor}
+                disabled
+                style={{
+                  background: '#e30613',
+                  color: '#fff',
+                  borderRadius: 8,
+                  padding: '7px 12px',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  border: 'none',
+                  width: '100%',
+                  textAlign: 'center',
+                  maxWidth: 220
+                }}
+              />
             </div>
             {/* DIRECCIÓN DEL PDV */}
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 18, gap: 10 }}>
-              <label style={{ fontWeight: 700, color: '#888', fontSize: 15, minWidth: 150 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, gap: 20 }}>
+              <label style={{ fontWeight: 600, color: '#888', fontSize: 12, minWidth: 125 }}>
                 DIRECCIÓN DEL PDV
               </label>
-              <div style={{
-                background: '#f4f4f4',
-                color: '#222',
-                borderRadius: 8,
-                padding: '7px 18px',
-                fontWeight: 600,
-                fontSize: 15,
-                minWidth: 120,
-                textAlign: 'center'
-              }}>
-                {detalle.direccion}
-              </div>
+              <input
+                value={detalle.direccion}
+                disabled
+                style={{
+                  background: '#fff',
+                  color: '#222',
+                  borderRadius: 8,
+                  padding: '7px 12px',
+                  fontWeight: 300,
+                  fontSize: 13,
+                  border: 'none',
+                  textAlign: 'center',
+                  width: '100%',
+                  maxWidth: 220
+                }}
+              />
             </div>
-            {/* MAPA DEL PDV + Nro. Visita */}
-            <div style={{ marginBottom: 18, position: 'relative' }}>
-              <label style={{ fontWeight: 700, color: '#888', fontSize: 15, display: 'block', marginBottom: 4 }}>MAPA DEL PDV</label>
-              <div style={{ position: 'relative', width: '100%' }}>
+            {/* MAPA DEL PDV */}
+            <div style={{ marginBottom: 0, position: 'relative' }}>
+              <div style={{
+                position: 'relative',
+                width: '95%',
+                margin: '0 auto' // Esto centra el mapa horizontalmente
+              }}>
                 <iframe
                   title="Mapa PDV"
                   width="100%"
                   height="180"
                   frameBorder="0"
-                  style={{ borderRadius: 10, border: '1.5px solid #e30613' }}
-                  src={`https://www.google.com/maps?q=${detalle.lat},${detalle.lng}&z=17&output=embed&markers=color:red%7C${detalle.lat},${detalle.lng}`}
+                  src={`https://www.google.com/maps?q=${detalle.lat},${detalle.lng}&z=15&output=embed&markers=color:red%7C${detalle.lat},${detalle.lng}`}
                   allowFullScreen
                 ></iframe>
-                {/* Nombre PDV abajo a la izquierda */}
+                {/* Pie de mapa: nombre PDV y nro visita */}
                 <div style={{
-                  position: 'absolute',
-                  left: 10,
-                  bottom: 8,
-                  background: 'rgba(255,255,255,0.95)',
-                  color: '#888',
-                  fontSize: 13,
-                  borderRadius: 6,
-                  padding: '2px 10px',
-                  fontWeight: 600,
-                  boxShadow: '0 1px 4px #0001'
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: '#fff',
+                  borderBottomLeftRadius: 10,
+                  borderBottomRightRadius: 10,
+                  boxShadow: '0 1px 4px #0001',
+                  padding: '10px 10px 10px 10px',
+                  marginTop: '-4px'
                 }}>
-                  {detalle.nombrePDV}
-                </div>
-                {/* Nro. Visita badge rojo abajo a la derecha */}
-                {detalle.nro_visita && (
-                  <div style={{
-                    position: 'absolute',
-                    right: 10,
-                    bottom: 8,
-                    background: '#e30613',
-                    color: '#fff',
-                    fontWeight: 900,
-                    fontSize: 18,
-                    borderRadius: '50%',
-                    width: 32,
-                    height: 32,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 2px 8px #e3061322'
+                  {/* Nombre PDV a la izquierda */}
+                  <span style={{
+                    fontWeight: 700,
+                    fontSize: 11,
+                    color: '#222',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    maxWidth: '60%'
                   }}>
-                    {detalle.nro_visita}
-                  </div>
-                )}
+                    {detalle.nombrePDV}
+                  </span>
+                  {/* Nro. visita al PDV a la derecha */}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ color: '#888', fontWeight: 600, fontSize: 11 }}>No. visita al PDV</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={nroVisita || detalle.nro_visita || ''}
+                      onChange={e => setNroVisita(e.target.value)}
+                      style={{
+                        width: 36,
+                        height: 28,
+                        borderRadius: 8,
+                        border: 'none',
+                        background: '#e30613',
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: 14,
+                        textAlign: 'center',
+                        outline: 'none'
+                      }}
+                    />
+                  </span>
+                </div>
               </div>
             </div>
-            {/* CARGA TU REPORTE (textarea y botón rojo abajo) */}
-            <div style={{ marginBottom: 18 }}>
-              <label style={{ fontWeight: 700, color: '#888', fontSize: 15, display: 'block', marginBottom: 4 }}>CARGA TU REPORTE</label>
+            {/* CARGA TU REPORTE (drag & drop y botón de foto) */}
+            <div style={{ marginBottom: 18, marginTop: 18 }}>
+              <label style={{
+                fontWeight: 600,
+                color: '#888',
+                fontSize: 12,
+                minWidth: 125,
+                marginLeft: 2,
+                display: 'block',
+                marginBottom: 10,
+                letterSpacing: 0.2,
+                textAlign: 'left'
+              }}>
+                CARGA TU REPORTE
+              </label>
               <div
                 style={{
-                  background: '#f4f4f4',
-                  borderRadius: 10,
-                  padding: '16px 8px 0 8px',
+                  background: '#fff',
+                  borderRadius: 14,
+                  padding: '12px 8px 10px 8px',
                   marginBottom: 0,
+                  width: '100%',
                   maxWidth: 340,
                   marginLeft: 'auto',
-                  marginRight: 'auto'
+                  marginRight: 'auto',
+                  boxShadow: 'none',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  position: 'relative'
+                }}
+                onDragOver={e => { e.preventDefault(); e.stopPropagation(); }}
+                onDrop={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    setFoto(e.dataTransfer.files[0]);
+                  }
                 }}
               >
-                <textarea
-                  placeholder="Inserte texto aquí"
-                  value={hallazgos}
-                  onChange={e => setHallazgos(e.target.value)}
+                {/* Área drag & drop */}
+                <label
+                  htmlFor="foto-input"
                   style={{
-                    width: '100%',
+                    width: '90%',
                     minHeight: 80,
-                    borderRadius: 8,
+                    borderRadius: 10,
                     border: '2px dashed #e30613',
-                    padding: 12,
-                    fontSize: 15,
-                    background: '#fff',
-                    resize: 'vertical',
-                    marginBottom: 0,
-                    outline: 'none',
-                    color: '#222'
-                  }}
-                />
-                <input
-                  type="file"
-                  accept="image/*"
-                  id="foto-input"
-                  style={{ display: 'none' }}
-                  onChange={handleFoto}
-                />
-                <button
-                  type="button"
-                  style={{
-                    background: '#e30613',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 8,
-                    padding: '10px 0',
-                    fontWeight: 700,
-                    fontSize: 16,
+                    background: '#fafafa',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#888',
+                    fontSize: 14,
                     cursor: 'pointer',
-                    width: '100%',
-                    marginTop: 12,
-                    marginBottom: 0,
-                    letterSpacing: 0.2
+                    marginBottom: 8,
+                    padding: 10,
+                    textAlign: 'center'
                   }}
-                  onClick={() => document.getElementById('foto-input').click()}
                 >
-                  {foto ? foto.name : "Adjuntar archivo"}
-                </button>
+                  {foto
+                    ? (
+                      <>
+                        <span style={{ color: '#e30613', fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Archivo seleccionado:</span>
+                        <span style={{ color: '#222', fontSize: 13, wordBreak: 'break-all' }}>{foto.name}</span>
+                      </>
+                    )
+                    : (
+                      <>
+                        <span style={{ fontSize: 15, color: '#e30613', fontWeight: 600 }}>Selecciona una foto aquí</span>
+                        <span style={{ fontSize: 12, color: '#888', marginTop: 2 }}>o toca para tomar</span>
+                      </>
+                    )
+                  }
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    id="foto-input"
+                    style={{ display: 'none' }}
+                    onChange={e => {
+                      if (e.target.files && e.target.files[0]) setFoto(e.target.files[0]);
+                    }}
+                  />
+                </label>
               </div>
+              {/* Textarea de hallazgos */}
+              <label style={{
+                fontWeight: 600,
+                color: '#888',
+                fontSize: 12,
+                minWidth: 125,
+                marginLeft: 2,
+                display: 'block',
+                margin: '18px 0 4px 2px',
+                textAlign: 'left'
+              }}>
+                HALLAZGOS DEL PDV
+              </label>
+              <textarea
+                placeholder="Describe los hallazgos aquí"
+                value={hallazgos}
+                onChange={e => setHallazgos(e.target.value)}
+                style={{
+                  width: '100%',
+                  minHeight: 90,
+                  borderRadius: 10,
+                  border: '2px solid #e30613',
+                  padding: 12,
+                  fontSize: 15,
+                  background: '#fff',
+                  resize: 'vertical',
+                  marginBottom: 0,
+                  outline: 'none',
+                  color: '#222',
+                  boxSizing: 'border-box',
+                  maxWidth: 340,
+                  marginLeft: 'auto',
+                  marginRight: 'auto',
+                  display: 'block'
+                }}
+              />
+              {/* Botón de cargar reporte */}
+              <button
+                onClick={handleGuardar}
+                style={{
+                  background: '#e30613',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 10,
+                  padding: '12px 0',
+                  fontWeight: 'bold',
+                  fontSize: 17,
+                  cursor: 'pointer',
+                  marginTop: 18,
+                  width: '100%',
+                  maxWidth: 340,
+                  boxShadow: '0 2px 8px #e3061322',
+                  display: 'block',
+                  marginLeft: 'auto',
+                  marginRight: 'auto',
+                  marginBottom: 40 // Espacio extra bajo el botón
+                }}
+              >
+                CARGAR REPORTE
+              </button>
             </div>
-            <button
-              onClick={handleGuardar}
-              style={{
-                background: '#e30613',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 10,
-                padding: '12px 38px',
-                fontWeight: 'bold',
-                fontSize: 18,
-                cursor: 'pointer',
-                marginTop: 10,
-                boxShadow: '0 2px 8px #e3061322'
-              }}
-            >
-              Guardar
-            </button>
           </div>
         )}
       </div>

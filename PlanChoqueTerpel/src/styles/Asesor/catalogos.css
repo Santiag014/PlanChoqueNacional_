@@ -1,11 +1,19 @@
 .catalogos-bg {
   width: 100%;
-  min-height: 95vh;
+  min-height: 60vh;
   background: #ededed;
   padding: 10px 0 0 0;
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+/* Escritorio - Ajustar altura automática */
+@media (min-width: 768px) {
+  .catalogos-bg {
+    min-height: auto;
+    padding: 20px 0;
+  }
 }
 
 .catalogos-list {
@@ -16,21 +24,63 @@
   gap: 10px;
 }
 
+/* Escritorio */
+@media (min-width: 768px) {
+  .catalogos-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 30px;
+    max-width: 1200px;
+    padding: 20px;
+    justify-items: center;
+  }
+}
+
 .catalogo-card {
   border-radius: 16px;
   padding: 22px 0 16px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* min-height: 220px; */
+  /* background: white; */
+  /* box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* .catalogo-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+} */
+
+/* Escritorio */
+@media (min-width: 768px) {
+  .catalogo-card {
+    width: 100%;
+    max-width: 350px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: auto;
+    min-height: 400px;
+    padding: 20px 0 16px 0;
+  }
 }
 
 .catalogo-title {
   color: #888;
   font-weight: 700;
-  font-size: 16px;
+  font-size: 14px;
   margin-bottom: 1.9%;
   text-align: center;
+}
+
+/* Escritorio */
+@media (min-width: 768px) {
+  .catalogo-title {
+    font-size: 18px;
+    margin-bottom: 8px;
+    color: #333;
+  }
 }
 
 .catalogo-img {
@@ -38,6 +88,16 @@
   height: 120px;
   object-fit: cover;
   margin-bottom: 3%;
+  border-radius: 8px;
+}
+
+/* Escritorio */
+@media (min-width: 768px) {
+  .catalogo-img {
+    width: 280px;
+    height: 160px;
+    margin-bottom: 8px;
+  }
 }
 
 .catalogo-link {
@@ -57,11 +117,21 @@
   padding: 8px 38px;
   cursor: pointer;
   margin-bottom: 6px;
-  transition: background 0.2s;
+  transition: background 0.2s, transform 0.2s;
 }
 
 .catalogo-btn:hover {
   background: #b8000a;
+  transform: scale(1.05);
+}
+
+/* Escritorio */
+@media (min-width: 768px) {
+  .catalogo-btn {
+    font-size: 18px;
+    padding: 12px 45px;
+    border-radius: 12px;
+  }
 }
 
 @media (max-width: 600px) {
@@ -77,5 +147,44 @@
     font-size: 13px;
     padding: 6px 15px;
     border-radius: 6px;
+  }
+}
+
+.catalogos-padding-bottom {
+  padding-bottom: 4rem; /* Ajusta el valor según lo necesites */
+}
+
+/* Mejoras para escritorio - Layout Grid */
+@media (min-width: 768px) {
+  .catalogos-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 30px;
+    max-width: 1200px;
+    padding: 20px;
+    justify-items: center;
+  }
+  
+  .catalogo-card {
+    width: 100%;
+    max-width: 350px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: auto;
+    min-height: 300px;
+  }
+}
+
+/* Para pantallas muy grandes */
+@media (min-width: 1200px) {
+  .catalogos-list {
+    grid-template-columns: repeat(3, 1fr);
+    max-width: 1400px;
+    gap: 40px;
+  }
+  
+  .catalogo-card {
+    max-width: 400px;
   }
 }

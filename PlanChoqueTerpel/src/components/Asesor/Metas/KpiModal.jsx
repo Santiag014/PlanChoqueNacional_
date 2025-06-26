@@ -1,0 +1,139 @@
+import React from 'react';
+
+const KpiModal = ({ isOpen, onClose, selectedKpi, kpiPdvData, isLoading, isMobile }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="pdv-modal-overlay" onClick={onClose}>
+      <div 
+        className="pdv-modal-content"
+        onClick={e => e.stopPropagation()}
+      >
+        <button 
+          className="pdv-modal-close"
+          onClick={onClose}
+        >
+          ×
+        </button>
+        
+        <h3 className="pdv-modal-title">
+          KPI: {selectedKpi?.label}
+        </h3>
+
+        {isLoading ? (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: isMobile ? 40 : 60,
+            color: '#666'
+          }}>
+            <div style={{
+              fontSize: isMobile ? 48 : 64,
+              marginBottom: 16,
+              opacity: 0.3
+            }}>
+              ⏳
+            </div>
+            <div style={{
+              fontSize: isMobile ? 16 : 18,
+              fontWeight: 600,
+              marginBottom: 8,
+              textAlign: 'center'
+            }}>
+              Cargando datos del KPI...
+            </div>
+          </div>
+        ) : kpiPdvData.length > 0 ? (
+          <div>
+            <table className="pdv-modal-table">
+              <thead>
+                <tr className="pdv-modal-header-row">
+                  <th className="pdv-modal-th pdv-modal-th-codigo">Código</th>
+                  <th className="pdv-modal-th">Segmento</th>
+                  <th className="pdv-modal-th pdv-modal-th-real">Puntos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {kpiPdvData.map((pdv, i) => (
+                  <tr 
+                    key={pdv.codigo} 
+                    className={i % 2 === 0 ? 'pdv-modal-row-even' : 'pdv-modal-row-odd'}
+                  >
+                    <td className="pdv-modal-td pdv-modal-td-codigo">
+                      {pdv.codigo}
+                    </td>
+                    <td className="pdv-modal-td">
+                      {pdv.segmento || 'N/A'}
+                    </td>
+                    <td className="pdv-modal-td pdv-modal-td-real">
+                      {pdv.puntos_totales}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            
+            <div style={{
+              marginTop: 16,
+              padding: isMobile ? '12px 16px' : '16px 20px',
+              background: '#f8f9fa',
+              borderRadius: 8,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div style={{
+                fontSize: isMobile ? 12 : 14,
+                color: '#666',
+                fontWeight: 600
+              }}>
+                📈 Promedio: <span style={{ color: selectedKpi?.color, fontWeight: 700 }}>
+                  {kpiPdvData.length > 0 ? 
+                    (kpiPdvData.reduce((total, pdv) => total + (Number(pdv.puntos_totales) || 0), 0) / kpiPdvData.length).toFixed(1)
+                    : 0
+                  } puntos por PDV
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: isMobile ? 40 : 60,
+            color: '#666'
+          }}>
+            <div style={{
+              fontSize: isMobile ? 48 : 64,
+              marginBottom: 16,
+              opacity: 0.3
+            }}>
+              📊
+            </div>
+            <div style={{
+              fontSize: isMobile ? 16 : 18,
+              fontWeight: 600,
+              marginBottom: 8,
+              textAlign: 'center'
+            }}>
+              Sin datos disponibles
+            </div>
+            <div style={{
+              fontSize: isMobile ? 12 : 14,
+              color: '#888',
+              textAlign: 'center'
+            }}>
+              No hay puntos registrados para este KPI
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default KpiModal;

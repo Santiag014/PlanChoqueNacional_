@@ -1,47 +1,30 @@
 import React from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
+import { useCatalogos } from '../../hooks/useCatalogos';
+import CatalogList from '../../components/Asesor/Catalogos/CatalogList';
 import oiltecImg from '../../assets/Iconos/IconosCatalogos/OILTEC.png';
 import celerityImg from '../../assets/Iconos/IconosCatalogos/CELERITY.png';
 import planpdvImg from '../../assets/Iconos/IconosCatalogos/KV_VISIONARIOS-NUEVO.jpg';
-import '../../styles/Asesor/catalogos.css'; // Importa el nuevo CSS
+import '../../styles/Asesor/catalogos.css';
 
-const catalogos = [
-  {
-    titulo: 'CATÁLOGO OILTEC',
-    img: oiltecImg,
-    link: '/catalogos/oiltec.pdf'
-  },
-  {
-    titulo: 'CATÁLOGO CELERITY',
-    img: celerityImg,
-    link: '/catalogos/celerity.pdf'
-  },
-  {
-    titulo: 'CATÁLOGO PLAN PDV',
-    img: planpdvImg,
-    link: '/catalogos/planpdv.pdf'
-  }
-];
-
+/**
+ * Página de Catálogos del Asesor
+ */
 export default function Catalogos() {
+  const { catalogos, handleDownload } = useCatalogos();
+
+  // Actualizar las imágenes en el hook
+  const catalogosWithImages = catalogos.map((cat, idx) => {
+    const images = [oiltecImg, celerityImg, planpdvImg];
+    return { ...cat, img: images[idx] };
+  });
+
   return (
     <DashboardLayout>
-      <div className="catalogos-bg">
-        {/* Tarjetas de catálogos */}
-        <div className="catalogos-list">
-          {catalogos.map((cat, idx) => (
-            <div className="catalogo-card" key={idx}>
-              <div className="catalogo-title">{cat.titulo}</div>
-              <img src={cat.img} alt={cat.titulo} className="catalogo-img" />
-              <a href={cat.link} download className="catalogo-link">
-                <button className="catalogo-btn">
-                  DESCARGA
-                </button>
-              </a>
-            </div>
-          ))}
-        </div>
-      </div>
+      <CatalogList 
+        catalogos={catalogosWithImages}
+        onDownload={handleDownload}
+      />
     </DashboardLayout>
   );
 }

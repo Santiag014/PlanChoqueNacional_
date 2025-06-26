@@ -83,33 +83,194 @@ export default function Register() {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: '40px auto', background: '#fff', padding: 24, borderRadius: 10, boxShadow: '0 2px 8px #0002' }}>
-      <h2>Registro de Usuario</h2>
-      <form onSubmit={handleSubmit}>
-        <input name="name" placeholder="Nombre" value={form.name} onChange={handleChange} required style={{width:'100%',margin:'6px 0',padding:8}} />
-        <input name="email" placeholder="Email" value={form.email} onChange={handleChange} required type="email" style={{width:'100%',margin:'6px 0',padding:8}} />
-        <input name="documento" placeholder="Documento" value={form.documento} onChange={handleChange} required type="number" style={{width:'100%',margin:'6px 0',padding:8}} />
-        <input name="password" placeholder="Contraseña" value={form.password} onChange={handleChange} required type="password" autoComplete="new-password" style={{width:'100%',margin:'6px 0',padding:8}} />
-        <select name="rol_id" value={form.rol_id} onChange={handleChange} required style={{width:'100%',margin:'6px 0',padding:8}}>
+    <div style={{
+      maxWidth: 420,
+      margin: '40px auto',
+      background: '#fff',
+      padding: 32,
+      borderRadius: 18,
+      boxShadow: '0 4px 24px #e3061322',
+      fontFamily: 'Segoe UI, Arial, sans-serif'
+    }}>
+      <h2 style={{
+        color: '#e30613',
+        fontWeight: 900,
+        textAlign: 'center',
+        marginBottom: 18,
+        letterSpacing: 1
+      }}>Registro de Usuario</h2>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <input
+          name="name"
+          placeholder="Nombre completo"
+          value={form.name}
+          onChange={handleChange}
+          required
+          style={{
+            border: '1.5px solid #e30613',
+            borderRadius: 8,
+            padding: '12px 14px',
+            fontSize: 15,
+            outline: 'none',
+            marginBottom: 0
+          }}
+        />
+        <input
+          name="email"
+          placeholder="Correo electrónico"
+          value={form.email}
+          onChange={handleChange}
+          required
+          type="email"
+          style={{
+            border: '1.5px solid #e30613',
+            borderRadius: 8,
+            padding: '12px 14px',
+            fontSize: 15,
+            outline: 'none',
+            marginBottom: 0
+          }}
+        />
+        <input
+          name="documento"
+          placeholder="Documento"
+          value={form.documento}
+          onChange={handleChange}
+          required
+          type="number"
+          style={{
+            border: '1.5px solid #e30613',
+            borderRadius: 8,
+            padding: '12px 14px',
+            fontSize: 15,
+            outline: 'none',
+            marginBottom: 0
+          }}
+        />
+        <input
+          name="password"
+          placeholder="Contraseña"
+          value={form.password}
+          onChange={handleChange}
+          required
+          type="password"
+          autoComplete="new-password"
+          style={{
+            border: '1.5px solid #e30613',
+            borderRadius: 8,
+            padding: '12px 14px',
+            fontSize: 15,
+            outline: 'none',
+            marginBottom: 0
+          }}
+        />
+        <select
+          name="rol_id"
+          value={form.rol_id}
+          onChange={handleChange}
+          required
+          style={{
+            border: '1.5px solid #e30613',
+            borderRadius: 8,
+            padding: '12px 14px',
+            fontSize: 15,
+            background: '#fff',
+            color: form.rol_id ? '#222' : '#888',
+            marginBottom: 0
+          }}
+        >
           <option value="">Seleccione Rol</option>
           {roles.map(r => <option key={r.id} value={String(r.id)}>{r.descripcion}</option>)}
         </select>
-        <select name="zona_id" value={form.zona_id} onChange={handleChange} required style={{width:'100%',margin:'6px 0',padding:8}}>
+        <select
+          name="zona_id"
+          value={form.zona_id}
+          onChange={handleChange}
+          required
+          style={{
+            border: '1.5px solid #e30613',
+            borderRadius: 8,
+            padding: '12px 14px',
+            fontSize: 15,
+            background: '#fff',
+            color: form.zona_id ? '#222' : '#888',
+            marginBottom: 0
+          }}
+        >
           <option value="">Seleccione Zona</option>
           {zonas.map(z => <option key={z.id} value={String(z.id)}>{z.descripcion}</option>)}
         </select>
-        <select name="regional_id" value={form.regional_id} onChange={handleChange} required style={{width:'100%',margin:'6px 0',padding:8}}>
+        <select
+          name="regional_id"
+          value={form.regional_id}
+          onChange={handleChange}
+          required
+          style={{
+            border: '1.5px solid #e30613',
+            borderRadius: 8,
+            padding: '12px 14px',
+            fontSize: 15,
+            background: '#fff',
+            color: form.regional_id ? '#222' : '#888',
+            marginBottom: 0
+          }}
+        >
           <option value="">Seleccione Regional</option>
           {regionales.map(r => <option key={r.id} value={String(r.id)}>{r.descripcion}</option>)}
         </select>
-        <select name="agente_id" value={form.agente_id} onChange={handleChange} required style={{width:'100%',margin:'6px 0',padding:8}}>
+        <select
+          name="agente_id"
+          value={form.agente_id}
+          onChange={handleChange}
+          required
+          style={{
+            border: '1.5px solid #e30613',
+            borderRadius: 8,
+            padding: '12px 14px',
+            fontSize: 15,
+            background: '#fff',
+            color: form.agente_id ? '#222' : '#888',
+            marginBottom: 0
+          }}
+        >
           <option value="">Seleccione Agente</option>
           {agentes.map(a => <option key={a.id} value={String(a.id)}>{a.descripcion}</option>)}
         </select>
-        <button type="submit" style={{width:'100%',margin:'12px 0',padding:10,background:'#e30613',color:'#fff',border:'none',borderRadius:6}}>Registrar</button>
+        <button
+          type="submit"
+          style={{
+            width: '100%',
+            margin: '12px 0 0 0',
+            padding: '12px 0',
+            background: 'linear-gradient(90deg, #e30613 60%, #ffa751 100%)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            fontWeight: 700,
+            fontSize: 17,
+            letterSpacing: 1,
+            boxShadow: '0 2px 8px #e3061322',
+            cursor: 'pointer',
+            transition: 'background 0.2s'
+          }}
+        >
+          Registrar
+        </button>
       </form>
-      {msg && <div style={{color:'green',marginTop:8}}>{msg}</div>}
-      {error && <div style={{color:'red',marginTop:8}}>{error}</div>}
+      {msg && <div style={{
+        color: '#1bb934',
+        marginTop: 14,
+        fontWeight: 700,
+        textAlign: 'center',
+        fontSize: 15
+      }}>{msg}</div>}
+      {error && <div style={{
+        color: '#e30613',
+        marginTop: 14,
+        fontWeight: 700,
+        textAlign: 'center',
+        fontSize: 15
+      }}>{error}</div>}
     </div>
   );
 }

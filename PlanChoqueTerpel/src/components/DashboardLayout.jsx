@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import headerMobile from '../assets/Img/img_caja_superior_mobil.png';
+import whatsAppImg from '../assets/Iconos/whatsApp.jpg';
 
 // ==========================
 // DashboardLayout Component
@@ -198,10 +199,16 @@ export default function DashboardLayout({ user, children }) {
               title="WhatsApp"
               onClick={handleWhatsAppClick}
             >
-              <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
-                <circle cx="16" cy="16" r="16" fill="#25D366"/>
-                <path d="M23.5 20.5c-.3-.2-1.7-.8-2-1s-.5-.2-.7.1c-.2.3-.8 1-1 1.2-.2.2-.4.2-.7.1-.3-.2-1.2-.4-2.3-1.3-.9-.8-1.5-1.7-1.7-2-.2-.3 0-.5.1-.7.1-.1.2-.3.3-.5.1-.2.1-.4 0-.6s-.7-1.7-1-2.3c-.2-.5-.4-.5-.7-.5h-.6c-.2 0-.5.1-.7.3-.2.2-.8.8-.8 2 0 1.2.8 2.4 1.1 2.8.3.4 2 3.1 5.1 4.2 1.2.4 2.1.7 2.8.4.6-.3 1.1-1.1 1.2-1.3.1-.2.1-.4 0-.6z" fill="#fff"/>
-              </svg>
+              <img 
+                src={whatsAppImg} 
+                alt="WhatsApp" 
+                style={{ 
+                  width: 22, 
+                  height: 22, 
+                  borderRadius: '50%',
+                  objectFit: 'cover'
+                }} 
+              />
             </a>
           </span>
         </div>
@@ -232,7 +239,7 @@ export default function DashboardLayout({ user, children }) {
                   border: 'none',
                   color: location.pathname === route ? '#e30613' : '#222',
                   fontWeight: location.pathname === route ? 'bold' : 'normal',
-                  fontSize: 16,
+                  fontSize: 13, // <--- Cambia aquí de 16 a 13
                   padding: '6px 0',
                   width: '100%',
                   cursor: location.pathname === route ? 'default' : 'pointer',
@@ -324,7 +331,7 @@ export default function DashboardLayout({ user, children }) {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' }}>
           {/* Barra superior */}
           <header style={{
-            height: 50,
+            height: 40,
             background: '#fff',
             display: 'flex',
             alignItems: 'center',
@@ -346,7 +353,7 @@ export default function DashboardLayout({ user, children }) {
               pointerEvents: 'none',
               userSelect: 'none'
             }}>
-              {titulo}
+              {/* {titulo} */}
             </span>
             {/* Iconos y logout */}
             {/* Notificaciones */}
@@ -455,9 +462,9 @@ export default function DashboardLayout({ user, children }) {
           >
             <div
               style={{
-                background: '#fff',
+                // background: '#fff',
                 borderRadius: 16,
-                boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
+                // boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
                 padding: 18,
                 minHeight: 400,
                 minWidth: 320,
@@ -496,10 +503,16 @@ export default function DashboardLayout({ user, children }) {
             }}
             className="whatsapp-desktop-btn"
           >
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="16" fill="#25D366"/>
-              <path d="M23.5 20.5c-.3-.2-1.7-.8-2-1s-.5-.2-.7.1c-.2.3-.8 1-1 1.2-.2.2-.4.2-.7.1-.3-.2-1.2-.4-2.3-1.3-.9-.8-1.5-1.7-1.7-2-.2-.3 0-.5.1-.7.1-.1.2-.3.3-.5.1-.2.1-.4 0-.6s-.7-1.7-1-2.3c-.2-.5-.4-.5-.7-.5h-.6c-.2 0-.5.1-.7.3-.2.2-.8.8-.8 2 0 1.2.8 2.4 1.1 2.8.3.4 2 3.1 5.1 4.2 1.2.4 2.1.7 2.8.4.6-.3 1.1-1.1 1.2-1.3.1-.2.1-.4 0-.6z" fill="#fff"/>
-            </svg>
+            <img 
+              src={whatsAppImg} 
+              alt="WhatsApp" 
+              style={{ 
+                width: 32, 
+                height: 32, 
+                borderRadius: '50%',
+                objectFit: 'cover'
+              }} 
+            />
           </a>
         </div>
       </div>
