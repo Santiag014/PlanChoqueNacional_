@@ -3,11 +3,17 @@ import React from 'react';
 /**
  * Componente para la gráfica de barras de metas vs real
  */
-const MetasChart = ({ pdvMetas, pdvMetasError, isMobile, onOpenModal }) => {
+const MetasChart = ({ pdvsFiltrados, error, isMobile, onOpenModal }) => {
   const barMaxHeight = isMobile ? 80 : 160;
-  const maxMeta = Math.max(...pdvMetas.map(p => p.meta), 1);
+  
+  // Validar que pdvsFiltrados existe y es un array antes de usar map
+  if (!pdvsFiltrados || !Array.isArray(pdvsFiltrados)) {
+    pdvsFiltrados = [];
+  }
+  
+  const maxMeta = pdvsFiltrados.length > 0 ? Math.max(...pdvsFiltrados.map(p => p.meta || 0), 1) : 1;
 
-  if (pdvMetasError) {
+  if (error) {
     return (
       <div className="metas-chart-container">
         <div className="metas-chart-header">
@@ -15,13 +21,13 @@ const MetasChart = ({ pdvMetas, pdvMetasError, isMobile, onOpenModal }) => {
         </div>
         <div className="metas-chart-spacer" />
         <div className="metas-chart-error">
-          {pdvMetasError}
+          {error}
         </div>
       </div>
     );
   }
 
-  if (pdvMetas.length === 0) {
+  if (pdvsFiltrados.length === 0) {
     return (
       <div className="metas-chart-container">
         <div className="metas-chart-header">
@@ -62,16 +68,16 @@ const MetasChart = ({ pdvMetas, pdvMetasError, isMobile, onOpenModal }) => {
         title="Ver tabla de todos los PDV"
       >
         <svg
-          width={Math.max(220, pdvMetas.length * 60)}
+          width={Math.max(220, pdvsFiltrados.length * 60)}
           height={barMaxHeight + 40}
           className="metas-chart-svg"
         >
           {/* Ejes */}
           <line x1="40" y1={20} x2="40" y2={barMaxHeight + 20} stroke="#b0b0b0" />
-          <line x1="40" y1={barMaxHeight + 20} x2={Math.max(200, pdvMetas.length * 60)} y2={barMaxHeight + 20} stroke="#b0b0b0" />
+          <line x1="40" y1={barMaxHeight + 20} x2={Math.max(200, pdvsFiltrados.length * 60)} y2={barMaxHeight + 20} stroke="#b0b0b0" />
           
           {/* Barras */}
-          {pdvMetas.map((pdv, i) => {
+          {pdvsFiltrados.map((pdv, i) => {
             const metaH = pdv.meta > 0 ? Math.round((pdv.meta / maxMeta) * barMaxHeight) : 0;
             const realH = pdv.real > 0 ? Math.round((pdv.real / maxMeta) * barMaxHeight) : 0;
             

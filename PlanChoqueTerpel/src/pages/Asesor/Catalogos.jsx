@@ -1,6 +1,6 @@
 import React from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
-import { useCatalogos } from '../../hooks/useCatalogos';
+import { useCatalogos } from '../../hooks';
 import CatalogList from '../../components/Asesor/Catalogos/CatalogList';
 import oiltecImg from '../../assets/Iconos/IconosCatalogos/OILTEC.png';
 import celerityImg from '../../assets/Iconos/IconosCatalogos/CELERITY.png';

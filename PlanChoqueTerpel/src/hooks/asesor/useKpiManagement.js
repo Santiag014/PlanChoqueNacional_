@@ -87,17 +87,14 @@ export const useKpiManagement = (productSelection = {}) => {
   }, [cant14, cant1, cant55]);
 
   // Handler para seleccionar KPI con validación
-  const handleSeleccionarKPI = (kpi, puedeSeleccionarKPI) => {
-    if (!puedeSeleccionarKPI()) {
-      alert('Para seleccionar un KPI, primero debe ingresar un código de PDV válido que no sea N/A');
-      return;
-    }
+  const handleSeleccionarKPI = (kpi) => {
+    // La validación ahora se maneja en el componente KpiSelector con el disabled
     setKpiSeleccionado(kpi);
   };
 
   // Resetear KPI seleccionado si el PDV no es válido
   const resetKpiSiInvalido = (puedeSeleccionarKPI) => {
-    if (!puedeSeleccionarKPI() && kpiSeleccionado) {
+    if (!puedeSeleccionarKPI && kpiSeleccionado) {
       setKpiSeleccionado('');
     }
   };

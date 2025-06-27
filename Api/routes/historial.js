@@ -20,31 +20,58 @@ router.get('/historial-registros/:user_id', authenticateToken, requireAsesor, lo
   try {
     conn = await getConnection();
     
-    // Query para obtener registros con información del PDV y agente
+    // Query mejorada para obtener registros con información completa y datos reales
     const query = `
       SELECT 
         r.id,
         r.pdv_id,
         r.user_id,
-        r.tipo_kpi,
+        CASE 
+          WHEN k.descripcion IS NOT NULL THEN k.descripcion
+          WHEN r.tipo_kpi IS NOT NULL THEN r.tipo_kpi
+          ELSE 'N/A'
+        END as tipo_kpi,
         r.fecha_registro,
+        r.created_at,
         r.foto_evidencia,
-        p.codigo as codigo_pdv,
-        p.nombre as nombre_pdv,
-        u.name as nombre_agente
+        r.foto_factura,
+        r.puntos_kpi,
+        r.galonaje,
+        pv.codigo as codigo_pdv,
+        pv.nombre as nombre_pdv,
+        pv.descripcion as descripcion_pdv,
+        pv.direccion as direccion_pdv,
+        u.name as nombre_agente,
+        u.email as email_agente,
+        k.descripcion as kpi_descripcion
       FROM registros_pdv r
-      LEFT JOIN puntos_venta p ON r.pdv_id = p.id
+      LEFT JOIN puntos_venta pv ON r.pdv_id = pv.id
       LEFT JOIN users u ON r.user_id = u.id
+      LEFT JOIN kpi k ON r.kpi_id = k.id
       WHERE r.user_id = ?
-      ORDER BY r.fecha_registro DESC
+      ORDER BY r.created_at DESC, r.fecha_registro DESC
     `;
     
     const [rows] = await conn.execute(query, [user_id]);
     
+    // Procesar datos para enviar respuesta limpia
+    const registrosProcesados = rows.map(row => ({
+      id: row.id,
+      codigo_pdv: row.codigo_pdv,
+      nombre_pdv: row.nombre_pdv || row.descripcion_pdv,
+      nombre_agente: row.nombre_agente,
+      email_agente: row.email_agente,
+      tipo_kpi: row.tipo_kpi,
+      fecha_registro: row.fecha_registro || row.created_at,
+      puntos_kpi: row.puntos_kpi,
+      galonaje: row.galonaje,
+      foto_evidencia: row.foto_evidencia || row.foto_factura
+    }));
+    
     res.json({
       success: true,
-      data: rows,
-      total: rows.length
+      data: registrosProcesados,
+      total: registrosProcesados.length
     });
     
   } catch (err) {
@@ -87,48 +114,90 @@ router.get('/registro-detalles/:registro_id', authenticateToken, requireAsesor, 
       });
     }
     
-    const tipoKpi = registroCheck[0].tipo_kpi;
-    const fotoEvidencia = registroCheck[0].foto_evidencia;
+    // Query completa para obtener todos los detalles del registro
+    const queryDetalles = `
+      SELECT 
+        pv.codigo,
+        pv.descripcion,
+        pv.direccion,
+        r.foto_factura,
+        r.galonaje,
+        r.estado_id,
+        r.estado_agente_id,
+        r.kpi_id,
+        r.puntos_kpi,
+        r.foto_evidencia,
+        r.tipo_kpi,
+        r.fecha_registro,
+        GROUP_CONCAT(DISTINCT ref.descripcion SEPARATOR ', ') AS referencias,
+        GROUP_CONCAT(DISTINCT prp.presentacion SEPARATOR ', ') AS productos,
+        GROUP_CONCAT(prp.cantidad SEPARATOR ', ') AS cantidad,
+        GROUP_CONCAT(prp.precio SEPARATOR ', ') AS precio
+      FROM puntos_venta pv
+      INNER JOIN registros_pdv r ON r.pdv_id = pv.id
+      LEFT JOIN productos_registros_pdv prp ON prp.registro_id = r.id
+      LEFT JOIN referencias ref ON ref.id = prp.referencia_id
+      WHERE r.id = ?
+      GROUP BY 
+        pv.codigo, pv.descripcion, pv.direccion, 
+        r.foto_factura, r.galonaje, r.estado_id, 
+        r.estado_agente_id, r.kpi_id, r.puntos_kpi,
+        r.foto_evidencia, r.tipo_kpi, r.fecha_registro
+    `;
     
+    const [detalles] = await conn.execute(queryDetalles, [registro_id]);
+    
+    if (detalles.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          productos: [],
+          foto: registroCheck[0].foto_evidencia,
+          pdv: {
+            codigo: 'N/A',
+            descripcion: 'N/A', 
+            direccion: 'N/A'
+          }
+        }
+      });
+    }
+    
+    const registro = detalles[0];
+    
+    // Procesar los productos si existen
     let productos = [];
-    
-    // Obtener productos según el tipo de KPI
-    if (tipoKpi && tipoKpi.toLowerCase() !== 'frecuencia') {
-      let queryProductos = '';
+    if (registro.referencias && registro.productos) {
+      const referencias = registro.referencias.split(', ');
+      const presentaciones = registro.productos.split(', ');
+      const cantidades = registro.cantidad ? registro.cantidad.split(', ') : [];
+      const precios = registro.precio ? registro.precio.split(', ') : [];
       
-      if (tipoKpi.toLowerCase() === 'precio') {
-        queryProductos = `
-          SELECT 
-            p.referencia,
-            p.presentacion,
-            rp.precio
-          FROM registro_productos rp
-          JOIN productos p ON rp.producto_id = p.id
-          WHERE rp.registro_id = ?
-        `;
-      } else if (tipoKpi.toLowerCase() === 'volumen') {
-        queryProductos = `
-          SELECT 
-            p.referencia,
-            p.presentacion,
-            rp.volumen
-          FROM registro_productos rp
-          JOIN productos p ON rp.producto_id = p.id
-          WHERE rp.registro_id = ?
-        `;
-      }
-      
-      if (queryProductos) {
-        const [productosRows] = await conn.execute(queryProductos, [registro_id]);
-        productos = productosRows;
-      }
+      productos = referencias.map((ref, index) => ({
+        referencia: ref,
+        presentacion: presentaciones[index] || 'N/A',
+        cantidad: cantidades[index] || 0,
+        precio: precios[index] || 0,
+        volumen: cantidades[index] || 0 // Para compatibilidad
+      }));
     }
     
     res.json({
       success: true,
       data: {
+        pdv: {
+          codigo: registro.codigo,
+          descripcion: registro.descripcion,
+          direccion: registro.direccion
+        },
         productos: productos,
-        foto: fotoEvidencia
+        foto: registro.foto_evidencia || registro.foto_factura,
+        galonaje: registro.galonaje,
+        estado_id: registro.estado_id,
+        estado_agente_id: registro.estado_agente_id,
+        kpi_id: registro.kpi_id,
+        puntos_kpi: registro.puntos_kpi,
+        tipo_kpi: registro.tipo_kpi,
+        fecha_registro: registro.fecha_registro
       }
     });
     

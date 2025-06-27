@@ -9,12 +9,12 @@ const KpiSelector = ({ kpis, kpiSeleccionado, puedeSeleccionarKPI, handleSelecci
       <div className="kpi-label">KPI A REGISTRAR</div>
       <div className="kpi-options">
         {kpis.map(kpi => {
-          const puedeSeleccionar = puedeSeleccionarKPI();
+          const puedeSeleccionar = puedeSeleccionarKPI;
           return (
             <button
               key={kpi}
               className={`kpi-btn${kpiSeleccionado === kpi ? ' active' : ''}${!puedeSeleccionar ? ' disabled' : ''}`}
-              onClick={() => handleSeleccionarKPI(kpi, puedeSeleccionarKPI)}
+              onClick={() => handleSeleccionarKPI(kpi)}
               type="button"
               disabled={!puedeSeleccionar}
               title={!puedeSeleccionar ? 'Primero debe ingresar un código de PDV válido' : ''}

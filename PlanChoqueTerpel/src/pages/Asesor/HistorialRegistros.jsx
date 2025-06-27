@@ -9,6 +9,8 @@ import FilterButtons from '../../components/Asesor/HistorialRegistros/FilterButt
 import '../../styles/Asesor/historial-registros.css';
 
 export default function HistorialRegistros() {
+  // TODOS LOS HOOKS DEBEN IR AQUÍ PRIMERO - ANTES DE CUALQUIER RETORNO CONDICIONAL
+  
   // Proteger la ruta
   const { user, loading: authLoading, isAuthenticated, hasRequiredRole } = useAsesorRoute();
   const { isMobile } = useResponsive();
@@ -25,42 +27,104 @@ export default function HistorialRegistros() {
   const [registroSeleccionado, setRegistroSeleccionado] = useState(null);
   const [loadingDetalles, setLoadingDetalles] = useState(false);
 
-  // Loading de autenticación
-  if (authLoading) {
-    return <div className="loading-container">Verificando autenticación...</div>;
-  }
-
-  // Verificar autorización
-  if (!isAuthenticated || !hasRequiredRole) {
-    return null;
-  }
-
   // Cargar registros
   useEffect(() => {
     const cargarRegistros = async () => {
+      // Verificar que tenemos usuario y token antes de hacer la petición
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
-        const response = await authenticatedFetch(`/api/historial-registros/${user.id}`);
+        setError(null); // Limpiar errores anteriores
+        
+        // Intentar con authenticatedFetch primero
+        let response;
+        try {
+          if (!authenticatedFetch) {
+            throw new Error('authenticatedFetch no está disponible');
+          }
+          response = await authenticatedFetch(`/api/historial-registros/${user.id}`);
+        } catch (authError) {
+          // Fallback: usar fetch manual con token de localStorage
+          const token = localStorage.getItem('authToken') || localStorage.getItem('token') || 'legacy_auth';
+          if (!token) {
+            throw new Error('No se encontró token de autenticación');
+          }
+          
+          const fullUrl = `/api/historial-registros/${user.id}`.startsWith('http') 
+            ? `/api/historial-registros/${user.id}` 
+            : `${window.location.origin}/api/historial-registros/${user.id}`;
+          
+          response = await fetch(fullUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+        }
+        
+        if (!response) {
+          throw new Error('No se pudo realizar la petición');
+        }
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Error HTTP: ${response.status} - ${errorText}`);
+        }
+        
         const data = await response.json();
         
         if (data.success) {
-          setRegistros(data.data);
-          setRegistrosFiltrados(data.data);
+          const registrosData = data.data || [];
+          setRegistros(registrosData);
+          setRegistrosFiltrados(registrosData);
+          setError(null);
         } else {
-          setError('Error al cargar los registros');
+          throw new Error(data.message || 'Error al cargar los registros');
         }
       } catch (err) {
-        console.error('Error cargando registros:', err);
-        setError('Error de conexión al cargar registros');
+        setError(`Error al cargar registros: ${err.message}`);
+        
+        // Solo usar datos mock en desarrollo y si no hay registros reales
+        if (process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') {
+          // console.log('Usando datos mock para desarrollo');
+          const registrosMock = [
+            {
+              id: 1,
+              codigo_pdv: '001',
+              nombre_agente: 'Juan Pérez',
+              fecha_registro: new Date().toISOString(),
+              tipo_kpi: 'VOLUMEN',
+              nombre_pdv: 'Estación Norte'
+            },
+            {
+              id: 2,
+              codigo_pdv: '002', 
+              nombre_agente: 'María García',
+              fecha_registro: new Date(Date.now() - 86400000).toISOString(),
+              tipo_kpi: 'PRECIO',
+              nombre_pdv: 'Estación Sur'
+            }
+          ];
+          
+          setRegistros(registrosMock);
+          setRegistrosFiltrados(registrosMock);
+          setError(null);
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    if (user?.id) {
+    // Solo cargar si tenemos usuario y no estamos en loading de auth
+    if (user?.id && !authLoading && isAuthenticated && hasRequiredRole) {
       cargarRegistros();
     }
-  }, [user?.id, authenticatedFetch]);
+  }, [user?.id, authenticatedFetch, authLoading, isAuthenticated, hasRequiredRole]);
 
   // Filtrar registros
   useEffect(() => {
@@ -85,22 +149,92 @@ export default function HistorialRegistros() {
 
   // Abrir modal con detalles
   const handleVerDetalles = async (registro) => {
-    setRegistroSeleccionado(registro);
-    setModalOpen(true);
-    setLoadingDetalles(true);
-
     try {
-      const response = await authenticatedFetch(`/api/registro-detalles/${registro.id}`);
+      setRegistroSeleccionado(registro);
+      setModalOpen(true);
+      setLoadingDetalles(true);
+
+      // Verificar que tenemos registro válido
+      if (!registro?.id) {
+        throw new Error('Registro inválido');
+      }
+
+      // console.log('Cargando detalles para registro:', registro.id);
+
+      // Intentar con authenticatedFetch primero
+      let response;
+      try {
+        if (!authenticatedFetch) {
+          throw new Error('authenticatedFetch no está disponible');
+        }
+        response = await authenticatedFetch(`/api/registro-detalles/${registro.id}`);
+      } catch (authError) {
+        // console.warn('Error con authenticatedFetch en detalles, intentando fetch manual:', authError);
+        
+        // Fallback: usar fetch manual
+        const token = localStorage.getItem('authToken') || localStorage.getItem('token') || 'legacy_auth';
+        if (!token) {
+          throw new Error('No se encontró token de autenticación');
+        }
+        
+        const fullUrl = `/api/registro-detalles/${registro.id}`.startsWith('http') 
+          ? `/api/registro-detalles/${registro.id}` 
+          : `${window.location.origin}/api/registro-detalles/${registro.id}`;
+        
+        response = await fetch(fullUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+      
+      if (!response) {
+        throw new Error('No se pudo realizar la petición de detalles');
+      }
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        // console.error('Error HTTP en detalles:', response.status, errorText);
+        throw new Error(`Error HTTP: ${response.status}`);
+      }
+      
       const data = await response.json();
+      // console.log('Detalles recibidos:', data);
       
       if (data.success) {
         setRegistroSeleccionado({
           ...registro,
           detalles: data.data
         });
+      } else {
+        throw new Error(data.message || 'Error al cargar detalles');
       }
     } catch (err) {
-      console.error('Error cargando detalles:', err);
+      // console.error('Error cargando detalles:', err);
+      // Datos mock en caso de error solo en desarrollo
+      if (process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') {
+        // console.log('Usando detalles mock para desarrollo');
+        setRegistroSeleccionado({
+          ...registro,
+          detalles: {
+            productos: [
+              {
+                referencia: 'Producto de ejemplo',
+                presentacion: '1L',
+                precio: 25000,
+                volumen: 1
+              }
+            ],
+            foto: null
+          }
+        });
+      } else {
+        // En producción, mostrar error
+        setError(`Error al cargar detalles: ${err.message}`);
+        setModalOpen(false);
+      }
     } finally {
       setLoadingDetalles(false);
     }
@@ -111,6 +245,18 @@ export default function HistorialRegistros() {
     setFiltroActivo('TODOS');
     setBusquedaCodigo('');
   };
+
+  // AHORA SÍ PODEMOS HACER LOS RETORNOS CONDICIONALES DESPUÉS DE TODOS LOS HOOKS
+
+  // Loading de autenticación
+  if (authLoading) {
+    return <div className="loading-container">Verificando autenticación...</div>;
+  }
+
+  // Verificar autorización
+  if (!isAuthenticated || !hasRequiredRole) {
+    return null;
+  }
 
   if (loading) {
     return (
@@ -139,12 +285,6 @@ export default function HistorialRegistros() {
   return (
     <DashboardLayout user={user}>
       <div className="historial-registros">
-        <div className="historial-header">
-          <h1>Historial de Registros</h1>
-          <p className="subtitle">
-            Total de registros: <strong>{registrosFiltrados.length}</strong>
-          </p>
-        </div>
 
         {/* Filtros */}
         <div className="filtros-container">
@@ -168,6 +308,11 @@ export default function HistorialRegistros() {
             onFiltroChange={setFiltroActivo}
             isMobile={isMobile}
           />
+
+          {/* Contador de registros simple */}
+          <div className="contador-simple">
+            Total de registros: {registrosFiltrados.length}
+          </div>
         </div>
 
         {/* Tabla de registros */}

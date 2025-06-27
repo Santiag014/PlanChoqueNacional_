@@ -33,11 +33,57 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+// Alrededor de la línea 40, cambiar el JSON.parse por una función segura
+const parseJSONSafely = (data) => {
+  if (typeof data === 'string') {
+    try {
+      return JSON.parse(data);
+    } catch (error) {
+      console.error('Error parsing JSON:', error);
+      return null;
+    }
+  }
+  // Si ya es un objeto, devolverlo tal como está
+  return data;
+};
+
 router.post('/cargar-registro-pdv', upload.single('foto'), async (req, res) => {
   let conn;
   try {
     const { codigoPDV, correspondeA, kpi, fecha, productos, userId } = req.body;
-    const productosArr = JSON.parse(productos);
+    const productosArr = parseJSONSafely(productos);
+
+    // Validar que los datos de entrada sean correctos
+    if (!productosArr || !Array.isArray(productosArr)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Los productos deben ser un array válido'
+      });
+    }
+
+    // Solo validar productos para KPIs que los requieren (Volumen y Precio)
+    if ((kpi === 'Volumen' || kpi === 'Precio') && productosArr.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Debe seleccionar al menos un producto para este KPI'
+      });
+    }
+
+    // Validar que cada producto tenga los campos necesarios (solo si hay productos)
+    if (productosArr.length > 0) {
+      const productosValidos = productosArr.every(producto => {
+        return producto && 
+               typeof producto.id !== 'undefined' && 
+               typeof producto.cantidad !== 'undefined';
+      });
+
+      if (!productosValidos) {
+        return res.status(400).json({
+          success: false,
+          message: 'Todos los productos deben tener id y cantidad'
+        });
+      }
+    }
 
     // Carpeta del día
     const today = new Date();
@@ -63,7 +109,7 @@ router.post('/cargar-registro-pdv', upload.single('foto'), async (req, res) => {
 
     // Buscar el id y puntos del KPI
     const [kpiRows] = await conn.execute(
-      'SELECT id, puntos FROM kpi WHERE descripcion = ?',
+      'SELECT id FROM kpi WHERE descripcion = ?',
       [kpi]
     );
     if (!kpiRows.length) {
@@ -108,7 +154,7 @@ router.post('/cargar-registro-pdv', upload.single('foto'), async (req, res) => {
       puntos_calculados = 2;
     }
 
-    // Insertar en registros_pdv (tabla maestra) con puntos calculados
+    // Insertar en registros_pdv (tabla maestra) con tipo_kpi y puntos calculados
     const [result] = await conn.execute(
       `INSERT INTO registros_pdv 
         (pdv_id, user_id, foto_factura, galonaje, created_at, update_at, estado_id, estado_agente_id, kpi_id, puntos_kpi) 
@@ -117,29 +163,31 @@ router.post('/cargar-registro-pdv', upload.single('foto'), async (req, res) => {
     );
     const registro_id = result.insertId;
 
-    // Insertar productos en productos_registros_pdv (tabla hijos)
-    for (const prod of productosArr) {
-      // Normaliza los valores para evitar undefined
-      const referencia_id = prod.id ?? null;
-      const presentacion = prod.presentacion ?? null;
-      const cantidad = prod.cantidad ?? null;
-      const galones = prod.galones ?? null;
-      const precio = prod.precio ?? null;
+    // Insertar productos en productos_registros_pdv (tabla hijos) solo si hay productos
+    if (productosArr.length > 0) {
+      for (const prod of productosArr) {
+        // Normaliza los valores para evitar undefined
+        const referencia_id = prod.id ?? null;
+        const presentacion = prod.presentacion ?? null;
+        const cantidad = prod.cantidad ?? null;
+        const galones = prod.galones ?? null;
+        const precio = prod.precio ?? null;
 
-      if (kpi === 'Volumen') {
-        await conn.execute(
-          `INSERT INTO productos_registros_pdv 
-            (registro_id, referencia_id, presentacion, cantidad, conversion_galonaje) 
-            VALUES (?, ?, ?, ?, ?)`,
-          [registro_id, referencia_id, presentacion, cantidad, galones]
-        );
-      } else if (kpi === 'Precio') {
-        await conn.execute(
-          `INSERT INTO productos_registros_pdv 
-            (registro_id, referencia_id, presentacion, cantidad, conversion_galonaje, precio) 
-            VALUES (?, ?, ?, NULL, NULL, ?)`,
-          [registro_id, referencia_id, presentacion, precio]
-        );
+        if (kpi === 'Volumen') {
+          await conn.execute(
+            `INSERT INTO productos_registros_pdv 
+              (registro_id, referencia_id, presentacion, cantidad, conversion_galonaje) 
+              VALUES (?, ?, ?, ?, ?)`,
+            [registro_id, referencia_id, presentacion, cantidad, galones]
+          );
+        } else if (kpi === 'Precio') {
+          await conn.execute(
+            `INSERT INTO productos_registros_pdv 
+              (registro_id, referencia_id, presentacion, cantidad, conversion_galonaje, precio) 
+              VALUES (?, ?, ?, NULL, NULL, ?)`,
+            [registro_id, referencia_id, presentacion, precio]
+          );
+        }
       }
     }
 

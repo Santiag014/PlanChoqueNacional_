@@ -14,11 +14,21 @@ export const useProtectedRoute = (allowedRoles = [], redirectTo = '/') => {
 
   useEffect(() => {
     // Esperar a que termine de cargar la verificación del token
-    if (loading) return;
+    if (loading) {
+      // console.log('useProtectedRoute: Cargando autenticación...');
+      return;
+    }
+
+    // console.log('useProtectedRoute: Estado de autenticación:', {
+    //   isAuthenticated: isAuthenticated(),
+    //   user,
+    //   allowedRoles,
+    //   location: location.pathname
+    // });
 
     // Si no está autenticado, redirigir al login
     if (!isAuthenticated()) {
-      console.log('Usuario no autenticado, redirigiendo al login...');
+      // console.log('Usuario no autenticado, redirigiendo al login...');
       navigate(redirectTo, { 
         state: { from: location.pathname },
         replace: true 
@@ -28,12 +38,12 @@ export const useProtectedRoute = (allowedRoles = [], redirectTo = '/') => {
 
     // Si hay roles específicos requeridos, verificarlos
     if (allowedRoles.length > 0 && !hasRole(allowedRoles)) {
-      console.log(`Usuario sin permisos para acceder a ${location.pathname}. Rol requerido: ${allowedRoles}, Rol actual: ${user?.tipo}`);
+      // console.log(`Usuario sin permisos para acceder a ${location.pathname}. Roles requeridos: ${allowedRoles}, Rol actual: ${user?.tipo || user?.rol}`);
       navigate('/unauthorized', { replace: true });
       return;
     }
 
-    console.log(`Acceso autorizado a ${location.pathname} para usuario ${user?.nombre} (${user?.tipo})`);
+    // console.log(`Acceso autorizado a ${location.pathname} para usuario ${user?.nombre} (${user?.tipo || user?.rol})`);
   }, [
     user, 
     isAuthenticated, 
@@ -64,14 +74,14 @@ export const useAuthRequired = (redirectTo = '/') => {
  * Hook para rutas específicas de asesor
  */
 export const useAsesorRoute = (redirectTo = '/') => {
-  return useProtectedRoute(['asesor'], redirectTo);
+  return useProtectedRoute(['asesor', 'ASESOR', 1], redirectTo);
 };
 
 /**
  * Hook para rutas específicas de Mystery Shopper
  */
 export const useMysteryRoute = (redirectTo = '/') => {
-  return useProtectedRoute(['misteryshopper'], redirectTo);
+  return useProtectedRoute(['misteryshopper', 'mystery_shopper', 'MYSTERY_SHOPPER', 2], redirectTo);
 };
 
 /**

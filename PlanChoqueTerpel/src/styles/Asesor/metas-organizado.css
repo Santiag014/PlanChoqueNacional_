@@ -27,7 +27,7 @@
   left: 0;
   width: 50%;
   height: 22px;
-  background: #e30613;
+  background: linear-gradient(135deg, #6b7280, #4b5563);
   z-index: 2;
   display: flex;
   align-items: center;
@@ -97,7 +97,7 @@
   left: 0;
   width: 50%;
   height: 28px;
-  background: linear-gradient(135deg, #e30613, #c20512);
+  background: linear-gradient(135deg, #6b7280, #4b5563);
   z-index: 2;
   display: flex;
   align-items: center;
@@ -122,110 +122,134 @@
 }
 
 /* =====================================
-   3. GRID Y TARJETAS KPI
+   3. GRID Y TARJETAS KPI - MINIMALISTA Y RESPONSIVE
    ===================================== */
 
 .kpis-grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
+  display: grid;
+  gap: 8px;
   width: 100%;
-  max-width: 800px;
-  padding: 0 15px;
+  max-width: 350px;
+  padding: 0 10px;
+  /* Móvil: 3 arriba, 2 abajo */
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
+/* Escritorio: 5 columnas en una fila */
+@media (min-width: 768px) {
+  .kpis-grid {
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: 1fr;
+    max-width: 600px;
+    gap: 12px;
+  }
 }
 
 .kpi-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  width: 110px;
-  height: 130px;
-  padding: 12px 8px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+  justify-content: center;
+  width: 100%;
+  height: 70px;
+  padding: 6px 4px;
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
-}
-
-.kpi-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: var(--kpi-color);
-  border-radius: 16px 16px 0 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
 .kpi-card:hover {
-  transform: translateY(-8px) scale(1.03);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  border-color: #e2e8f0;
 }
 
-/* Contenido de las tarjetas KPI */
+/* Contenido de las tarjetas KPI - Ultra minimalista */
 .kpi-points {
-  font-size: 32px;
-  font-weight: 800;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--kpi-color);
-  margin: 8px 0;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin: 0;
+  line-height: 1;
 }
 
 .kpi-points-label {
-  font-size: 12px;
-  color: #666;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
+  font-size: 9px;
+  color: #94a3b8;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  margin: 1px 0 2px 0;
+  text-transform: uppercase;
 }
 
 .kpi-label {
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--kpi-color);
+  font-weight: 500;
+  font-size: 9px;
+  color: #475569;
   text-align: center;
-  letter-spacing: 0.8px;
-  padding: 8px 12px;
-  background: rgba(var(--kpi-color-rgb), 0.1);
-  border-radius: 8px;
-  border: 1px solid rgba(var(--kpi-color-rgb), 0.2);
-  width: 100%;
-  box-sizing: border-box;
+  letter-spacing: 0.2px;
+  line-height: 1.1;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+/* Responsive para escritorio */
+@media (min-width: 768px) {
+  .kpi-card {
+    height: 80px;
+    padding: 8px 6px;
+  }
+  
+  .kpi-points {
+    font-size: 20px;
+  }
+  
+  .kpi-points-label {
+    font-size: 10px;
+  }
+  
+  .kpi-label {
+    font-size: 10px;
+  }
+}
+
+/* Estado sin datos */
+.kpi-no-data {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 20px;
+  color: #94a3b8;
+  font-size: 14px;
 }
 
 /* =====================================
-   4. COLORES ESPECÍFICOS PARA CADA KPI
+   4. COLORES ULTRA SUAVES Y MINIMALISTAS
    ===================================== */
 
 .kpi-volumen {
-  --kpi-color: #e30613;
-  --kpi-color-rgb: 227, 6, 19;
+  --kpi-color: #64748b;
 }
 
 .kpi-precio {
-  --kpi-color: #dc3545;
-  --kpi-color-rgb: 220, 53, 69;
+  --kpi-color: #7c3aed;
 }
 
 .kpi-frecuencia {
-  --kpi-color: #007bff;
-  --kpi-color-rgb: 0, 123, 255;
+  --kpi-color: #2563eb;
 }
 
 .kpi-cobertura {
-  --kpi-color: #28a745;
-  --kpi-color-rgb: 40, 167, 69;
+  --kpi-color: #059669;
 }
 
 .kpi-profundidad {
-  --kpi-color: #fd7e14;
-  --kpi-color-rgb: 253, 126, 20;
+  --kpi-color: #d97706;
 }
 
 /* =====================================
@@ -572,6 +596,245 @@
 /* Margen bottom mediano */
 .mb-medium {
   margin-bottom: 16px;
+}
+
+/* =====================================
+   BOTÓN FLOTANTE DE FILTROS - MÓVIL Y ESCRITORIO
+   ===================================== */
+
+.filter-float-button {
+  position: fixed;
+  bottom: 80px; /* Más arriba para no interferir con footer */
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #64748b, #475569);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.filter-float-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.filter-float-button.active {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+
+.filter-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  background: #ef4444;
+  border-radius: 50%;
+}
+
+/* Modal de filtros - Diferentes posiciones */
+.filter-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.filter-modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+  animation: modalSlide 0.3s ease-out;
+}
+
+/* Modal desde abajo en móvil */
+.filter-modal-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 100%;
+  border-radius: 12px 12px 0 0;
+  animation: modalSlideUp 0.3s ease-out;
+}
+
+/* Modal centrado en escritorio */
+.filter-modal-center {
+  position: relative;
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalSlideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes modalFadeIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes modalSlide {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.filter-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #64748b, #475569);
+  color: white;
+  border-radius: 12px 12px 0 0;
+}
+
+.filter-modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.filter-modal-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.filter-modal-close:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.filter-modal-body {
+  padding: 20px;
+}
+
+.filter-group {
+  margin-bottom: 16px;
+}
+
+.filter-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #374151;
+  font-size: 14px;
+}
+
+.filter-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.filter-group input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.filter-modal-footer {
+  padding: 20px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.filter-clear-btn,
+.filter-apply-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-clear-btn {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.filter-clear-btn:hover {
+  background: #e5e7eb;
+}
+
+.filter-apply-btn {
+  background: #3b82f6;
+  color: white;
+}
+
+.filter-apply-btn:hover {
+  background: #2563eb;
+}
+
+/* Mejoras para el modal de PDV - Header menos llamativo */
+.pdv-modal-content h3 {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+  color: white;
+  margin: 0 0 20px 0;
+  padding: 15px 20px;
+  border-radius: 8px 8px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.pdv-modal-no-data {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
 }
 
 /* =====================================

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../../styles/Asesor/navigation-carousel.css';
+import '../../../styles/Asesor/navigation-carousel.css';
 
 export default function NavigationCarousel({ buttonPages, currentPage, onNavigate }) {
   const navigate = useNavigate();
@@ -15,40 +15,65 @@ export default function NavigationCarousel({ buttonPages, currentPage, onNavigat
     navigate(button.to);
   };
 
+  const botones = buttonPages[activePage] || [];
+
   return (
     <div className="navigation-carousel">
-      {/* Botones principales de la página actual */}
-      <div className="carousel-content">
-        <div className="buttons-grid">
-          {buttonPages[activePage]?.map((button, index) => (
-            <button
-              key={index}
-              className="nav-button"
-              onClick={() => handleButtonClick(button)}
-            >
-              <div className="button-icon">
-                <img src={button.icon} alt={button.label} />
+      <div className="asesor-dashboard-root">
+        <div className="asesor-dashboard-center">
+          <div className="asesor-btn-container">
+            {botones.map((btn) => (
+              <div
+                key={btn.label}
+                className="asesor-btn"
+                onClick={() => handleButtonClick(btn)}
+              >
+                <div className="asesor-btn-inner">
+                  <div className="asesor-btn-icon">
+                    <img src={btn.icon} alt={btn.label} />
+                  </div>
+                </div>
+                <span className="asesor-btn-label">{btn.label}</span>
               </div>
-              <span className="button-label">{button.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+            ))}
+          </div>
 
-      {/* Indicadores de página en la parte inferior */}
-      <div className="carousel-indicators">
-        {buttonPages.map((_, pageIndex) => (
-          <button
-            key={pageIndex}
-            className={`indicator ${activePage === pageIndex ? 'active' : ''}`}
-            onClick={() => handlePageChange(pageIndex)}
-          >
-            <span className="indicator-dot"></span>
-            <span className="indicator-label">
-              {pageIndex === 0 ? 'Principal' : 'Más'}
-            </span>
-          </button>
-        ))}
+          {/* Indicadores de página */}
+          <div className="asesor-page-indicators">
+            {buttonPages.map((_, index) => (
+              <div
+                key={index}
+                className={`asesor-page-dot ${index === activePage ? 'active' : ''}`}
+                onClick={() => handlePageChange(index)}
+              />
+            ))}
+          </div>
+
+          {/* Botones de navegación */}
+          <div className="asesor-navigation-buttons">
+            {activePage > 0 && (
+              <button
+                className="asesor-nav-btn asesor-nav-prev"
+                onClick={() => handlePageChange(activePage - 1)}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M15 18L9 12L15 6" stroke="#e30613" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            )}
+            
+            {activePage < buttonPages.length - 1 && (
+              <button
+                className="asesor-nav-btn asesor-nav-next"
+                onClick={() => handlePageChange(activePage + 1)}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 18L15 12L9 6" stroke="#e30613" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

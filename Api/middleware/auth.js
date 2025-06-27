@@ -37,7 +37,18 @@ export const requireRole = (allowedRoles) => {
       });
     }
 
-    const userRole = req.user.tipo;
+    // Mapear IDs de rol a nombres de rol
+    const roleMapping = {
+      1: 'asesor',
+      2: 'pdv', 
+      3: 'misteryshopper',
+      'asesor': 'asesor',
+      'pdv': 'pdv',
+      'misteryshopper': 'misteryshopper'
+    };
+
+    const userRoleId = req.user.tipo;
+    const userRole = roleMapping[userRoleId] || userRoleId;
     
     // Si allowedRoles es un string, convertirlo a array
     const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
@@ -45,7 +56,7 @@ export const requireRole = (allowedRoles) => {
     if (!roles.includes(userRole)) {
       return res.status(403).json({ 
         success: false, 
-        message: `Acceso denegado. Roles permitidos: ${roles.join(', ')}. Rol actual: ${userRole}` 
+        message: `Acceso denegado. Roles permitidos: ${roles.join(', ')}. Rol actual: ${userRole} (ID: ${userRoleId})` 
       });
     }
 
@@ -71,6 +82,6 @@ export const logAccess = (req, res, next) => {
   const user = req.user ? `${req.user.nombre} (${req.user.email})` : 'Usuario no autenticado';
   const route = `${req.method} ${req.originalUrl}`;
   
-  console.log(`[${timestamp}] ${user} - ${route}`);
+  //console.log(`[${timestamp}] ${user} - ${route}`);
   next();
 };

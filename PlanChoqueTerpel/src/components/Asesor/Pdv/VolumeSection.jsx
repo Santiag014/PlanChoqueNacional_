@@ -28,10 +28,25 @@ const VolumeSection = ({
   subiendo,
   productSelection
 }) => {
-  const productoActual = productos[productSelection.productoActivo];
+  // Verificar que productSelection tenga la estructura esperada y obtener el producto actual
+  const productoActual = productos && productos.length > 0 && productSelection?.productoActivo >= 0 
+    ? productos[productSelection.productoActivo] 
+    : null;
+  
+  // console.log('VolumeSection - datos:', {
+  //   productos,
+  //   productSelection,
+  //   productoActual,
+  //   productoActivoIndex: productSelection?.productoActivo
+  // });
   
   // Función para obtener las presentaciones según la marca
   const getPresentaciones = () => {
+    // Verificar que existan las propiedades necesarias
+    if (!productSelection?.marcas || !productSelection?.marcaActiva) {
+      return { labels: ['1/4', '1Gal', '55Gal'], values: ['14', '1', '55'] };
+    }
+    
     const marcaActual = productSelection.marcas[productSelection.marcaActiva];
     
     if (!marcaActual) {
@@ -64,7 +79,19 @@ const VolumeSection = ({
     <div className={`kpi-section kpi-transition${kpiTransition ? ' kpi-fade' : ''}`}>
       <div className='venta-productos-label'>VENTA PRODUCTOS</div>
       
-      <ProductCarousel {...productSelection} />
+      <ProductCarousel 
+        marcas={productSelection.marcas || []}
+        marcaActiva={productSelection.marcaActiva || 0}
+        productos={productos || []}
+        productoActivo={productSelection.productoActivo || 0}
+        setProductoActivo={productSelection.setProductoActivo}
+        carruselInicio={0}
+        referenciasVisibles={productos?.length || 0}
+        navegarMarcaAnterior={productSelection.anteriorMarca}
+        navegarMarcaSiguiente={productSelection.siguienteMarca}
+        navegarCarruselAnterior={productSelection.anteriorProducto}
+        navegarCarruselSiguiente={productSelection.siguienteProducto}
+      />
       
       {/* Inputs de cantidades */}
       <div className="cantidades-section">
@@ -120,6 +147,7 @@ const VolumeSection = ({
         setFecha={setFecha}
         foto={foto}
         setFoto={setFoto}
+        idPrefix="volumen"
       />
       
       <button

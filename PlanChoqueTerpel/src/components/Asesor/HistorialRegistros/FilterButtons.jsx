@@ -2,10 +2,10 @@ import React from 'react';
 
 export default function FilterButtons({ filtroActivo, onFiltroChange, isMobile }) {
   const filtros = [
-    { key: 'TODOS', label: 'TODOS', color: '#6c757d' },
-    { key: 'VOLUMEN', label: 'VOLUMEN', color: '#e30613' },
-    { key: 'PRECIO', label: 'PRECIO', color: '#a1000b' },
-    { key: 'FRECUENCIA', label: 'FRECUENCIA', color: '#007bff' }
+    { key: 'TODOS', label: 'TODOS' },
+    { key: 'VOLUMEN', label: 'VOLUMEN' },
+    { key: 'PRECIO', label: 'PRECIO' },
+    { key: 'FRECUENCIA', label: 'FRECUENCIA' }
   ];
 
   return (
@@ -13,16 +13,12 @@ export default function FilterButtons({ filtroActivo, onFiltroChange, isMobile }
       {filtros.map((filtro) => (
         <button
           key={filtro.key}
-          className={`filter-btn ${filtroActivo === filtro.key ? 'active' : ''}`}
-          style={{
-            '--filter-color': filtro.color,
-            backgroundColor: filtroActivo === filtro.key ? filtro.color : 'transparent',
-            borderColor: filtro.color,
-            color: filtroActivo === filtro.key ? 'white' : filtro.color
-          }}
+          className={`filter-btn ${filtroActivo === filtro.key ? 'active' : ''} ${isMobile ? 'mobile-btn' : ''}`}
           onClick={() => onFiltroChange(filtro.key)}
         >
-          {filtro.label}
+          <span className="filter-text">
+            {isMobile && filtro.key !== 'TODOS' ? filtro.key.substring(0, 3) : filtro.label}
+          </span>
         </button>
       ))}
     </div>

@@ -8,7 +8,7 @@ import { useAuthContext } from '../../contexts/AuthContext';
  * @returns {Object} Estados y funciones para el dashboard
  */
 export const useMetasDashboard = (user) => {
-  const { authenticatedFetch } = useAuthContext();
+  const { authenticatedFetch, token, isAuthenticated } = useAuthContext();
 
   // Estado único para todos los datos del dashboard
   const [dashboardData, setDashboardData] = useState({
@@ -52,7 +52,7 @@ export const useMetasDashboard = (user) => {
 
   // Cargar datos iniciales
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && isAuthenticated && token) {
       setLoading(true);
       Promise.all([
         authenticatedFetch(`${API_URL}/api/visitas-pdv-resumen/${user.id}`).then(res => res.json()).catch(() => null),
@@ -74,11 +74,11 @@ export const useMetasDashboard = (user) => {
         setLoading(false);
       });
     }
-  }, [user?.id, authenticatedFetch]);
+  }, [user?.id, authenticatedFetch, isAuthenticated, token]);
 
   // Función para cargar datos de puntos por KPI
   const cargarPuntosKpiReales = async () => {
-    if (!user?.id) return [];
+    if (!user?.id || !isAuthenticated || !token) return [];
     
     try {
       const kpiPromises = kpiLabels.map(async (kpi) => {
@@ -106,13 +106,18 @@ export const useMetasDashboard = (user) => {
 
   // Cargar automáticamente los puntos reales al inicializar
   useEffect(() => {
-    if (user?.id && !loading) {
+    if (user?.id && !loading && isAuthenticated && token) {
       cargarPuntosKpiReales();
     }
-  }, [user?.id, loading]);
+  }, [user?.id, loading, isAuthenticated, token]);
 
   // Función para abrir modal de KPI específico
   const openKpiModal = async (kpi) => {
+    if (!user?.id || !isAuthenticated || !token) {
+      console.error('No se puede abrir el modal: usuario no autenticado');
+      return;
+    }
+
     setSelectedKpi(kpi);
     setKpiModalOpen(true);
     setLoadingKpiData(true);

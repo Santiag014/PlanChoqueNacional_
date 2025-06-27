@@ -10,6 +10,7 @@ import MetasChart from '../../components/Asesor/Metas/MetasChart';
 import KpisContainer from '../../components/Asesor/Metas/KpisContainer';
 import PdvModal from '../../components/Asesor/Metas/PdvModal';
 import KpiModal from '../../components/Asesor/Metas/KpiModal';
+import FilterButton from '../../components/Asesor/Metas/FilterButton';
 import '../../styles/Asesor/metas-organizado.css';
 
 export default function MetasPage() {
@@ -29,25 +30,13 @@ export default function MetasPage() {
     return u;
   }, [location.state?.user]);
 
-  // Usar el usuario del hook de auth o el fallback
-  const currentUser = user || fallbackUser;
+  // Usar el usuario del hook de auth o el fallback - memo para evitar cambios
+  const currentUser = useMemo(() => user || fallbackUser, [user, fallbackUser]);
 
-  // Si está cargando la autenticación, mostrar loading
-  if (authLoading) {
-    return <div className="loading-container">Verificando autenticación...</div>;
-  }
-
-  // Si no está autenticado o no tiene el rol correcto, el hook ya redirigirá
-  if (!isAuthenticated || !hasRequiredRole) {
-    return null;
-  }
-
-  // Redirect si no hay usuario después de la verificación
-  if (!currentUser) {
-    return <Navigate to="/" replace />;
-  }
-
-  // Hooks personalizados
+  // TODOS LOS HOOKS DEBEN IR AQUÍ - ANTES DE CUALQUIER RETURN
+  const { isMobile } = useResponsive();
+  
+  // Solo usar hooks si tenemos un usuario válido (evitar hooks condicionales)
   const {
     dashboardData,
     loading,
@@ -66,13 +55,27 @@ export default function MetasPage() {
     openKpiModal
   } = useMetasDashboard(currentUser);
 
-  const { isMobile } = useResponsive();
-
   const {
     pdvsFiltrados,
     kpiDashboardFiltrado,
     puntosPorKPIFinal
   } = useKpiCalculations(dashboardData, filters, kpiLabels, puntosPorKpiActualizados);
+
+  // AHORA SÍ PODEMOS HACER LOS CHECKS DE AUTENTICACIÓN
+  // Si está cargando la autenticación, mostrar loading
+  if (authLoading) {
+    return <div className="loading-container">Verificando autenticación...</div>;
+  }
+
+  // Si no está autenticado o no tiene el rol correcto, el hook ya redirigirá
+  if (!isAuthenticated || !hasRequiredRole) {
+    return null;
+  }
+
+  // Redirect si no hay usuario después de la verificación
+  if (!currentUser) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <DashboardLayout user={currentUser}>
@@ -95,11 +98,16 @@ export default function MetasPage() {
 
       {/* Contenedor de KPIs */}
       <KpisContainer
-        kpiPuntos={puntosPorKPIFinal}
-        kpiLabels={kpiLabels}
-        error={errors.kpiPuntos}
+        kpiData={puntosPorKPIFinal}
+        onOpenModal={openKpiModal}
         isMobile={isMobile}
-        onKpiClick={openKpiModal}
+      />
+
+      {/* Botón flotante de filtros para móvil */}
+      <FilterButton 
+        filters={filters}
+        setFilters={setFilters}
+        isMobile={isMobile}
       />
 
       {/* Modales */}

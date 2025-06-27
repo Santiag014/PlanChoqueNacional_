@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuthContext } from '../contexts/AuthContext';
 import headerMobile from '../assets/Img/img_caja_superior_mobil.png';
 import whatsAppImg from '../assets/Iconos/whatsApp.jpg';
 
@@ -20,12 +21,14 @@ export default function DashboardLayout({ user, children }) {
   // --------------------------
   const [showMenu, setShowMenu] = useState(false); // Menú móvil desplegable
   const [waError, setWaError] = useState('');      // Error al abrir WhatsApp
+  const [isLoggingOut, setIsLoggingOut] = useState(false); // Estado de logout
 
   // --------------------------
-  // Hooks de navegación
+  // Hooks de navegación y contexto
   // --------------------------
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuthContext();
 
   // --------------------------
   // Obtención de usuario y rol
@@ -39,7 +42,18 @@ export default function DashboardLayout({ user, children }) {
     }
   })();
   const userObj = user || userFromStorage || {};
-  const rol = userObj.rol || 'ASESOR'; // Rol por defecto: ASESOR
+  
+  // Mejorar la detección del rol
+  let rol = userObj.rol || userObj.tipo || 'ASESOR';
+  
+  // Normalizar el rol a string
+  if (rol === 1) {
+    rol = 'ASESOR';
+  } else if (rol === 2) {
+    rol = 'MYSTERY_SHOPPER';
+  }
+  
+  //console.log('DashboardLayout - Usuario:', userObj, 'Rol detectado:', rol);
 
   // --------------------------
   // Definición de menús por rol
@@ -53,6 +67,8 @@ export default function DashboardLayout({ user, children }) {
       '/asesor/catalogos': 'CATÁLOGOS DEL PLAN',
       '/asesor/premio-mayor': 'PREMIO MAYOR',
       '/asesor/tyc': 'T&C',
+      '/asesor/historial-registros': 'HISTORIAL REGISTROS',
+      '/asesor/ayuda': 'AYUDA',
     },
     MYSTERY_SHOPPER: {
       '/misteryShopper/home': 'HOME',
@@ -71,11 +87,13 @@ export default function DashboardLayout({ user, children }) {
   // Redirección automática si la ruta no corresponde al menú del rol
   // --------------------------
   useEffect(() => {
+    //console.log('Verificando ruta actual:', location.pathname, 'Rutas permitidas:', menuRoutes);
+    
     if (!menuRoutes.includes(location.pathname)) {
+      //console.log('Ruta no permitida, redirigiendo a:', mainRoute);
       navigate(mainRoute, { replace: true });
     }
-    // eslint-disable-next-line
-  }, [rol]);
+  }, [rol, location.pathname, menuRoutes, mainRoute, navigate]);
 
   // --------------------------
   // Obtención del título dinámico según la ruta actual
@@ -85,8 +103,56 @@ export default function DashboardLayout({ user, children }) {
   // --------------------------
   // Funciones de navegación y logout
   // --------------------------
-  const handleLogout = () => {
-    navigate('/', { replace: true, state: {} });
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      
+      // Cerrar menú si está abierto
+      setShowMenu(false);
+      
+      // Esperar un poco para mostrar la transición
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Logout completo del contexto
+      logout();
+      
+      // Limpiar localStorage manualmente (limpieza extra)
+      const keysToRemove = [
+        'user', 'authToken', 'userRole', 'sessionData', 'userData',
+        'lastActivity', 'loginTime', 'userPreferences'
+      ];
+      
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+      });
+      
+      // Limpiar sessionStorage completamente
+      sessionStorage.clear();
+      
+      // Limpiar cualquier cache del navegador relacionado con la app
+      if ('caches' in window) {
+        caches.keys().then(function(names) {
+          for (let name of names) {
+            caches.delete(name);
+          }
+        });
+      }
+      
+      // Navegar al login
+      navigate('/', { replace: true, state: {} });
+      
+      // Forzar recarga completa de la página para limpiar cualquier estado residual
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
+      
+    } catch (error) {
+      console.error('Error en logout:', error);
+      // En caso de error, forzar limpieza de emergencia
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = '/';
+    }
   };
 
   const handleNav = (route) => {
@@ -521,6 +587,27 @@ export default function DashboardLayout({ user, children }) {
          ========================== */}
       <style>
         {`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          
+          @keyframes slideIn {
+            from { 
+              opacity: 0;
+              transform: translateY(-20px) scale(0.95);
+            }
+            to { 
+              opacity: 1;
+              transform: translateY(0) scale(1);
+            }
+          }
+          
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+
           @media (max-width: 700px) {
             .dashboard-mobile-header { display: block !important; }
             .dashboard-desktop-layout { display: none !important; }

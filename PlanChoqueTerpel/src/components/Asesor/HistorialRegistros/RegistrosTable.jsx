@@ -9,53 +9,77 @@ export default function RegistrosTable({ registros, onVerDetalles, isMobile }) {
     });
   };
 
+  const getKpiClass = (kpi) => {
+    switch (kpi?.toUpperCase()) {
+      case 'VOLUMEN': return 'kpi-volumen';
+      case 'PRECIO': return 'kpi-precio';
+      case 'FRECUENCIA': return 'kpi-frecuencia';
+      case 'COBERTURA': return 'kpi-cobertura';
+      case 'PROFUNDIDAD': return 'kpi-profundidad';
+      default: return 'kpi-volumen';
+    }
+  };
+
+  const getKpiNombreCompleto = (kpi) => {
+    switch (kpi?.toUpperCase()) {
+      case 'VOLUMEN': return 'Volumen';
+      case 'PRECIO': return 'Precio';
+      case 'FRECUENCIA': return 'Frecuencia';
+      case 'COBERTURA': return 'Cobertura';
+      case 'PROFUNDIDAD': return 'Profundidad';
+      default: return kpi || 'N/A';
+    }
+  };
+
   if (registros.length === 0) {
     return (
       <div className="no-registros">
-        <p>No se encontraron registros con los filtros aplicados</p>
+        <div className="no-registros-icon">📋</div>
+        <h3>No se encontraron registros</h3>
+        <p>Prueba ajustando los filtros de búsqueda</p>
       </div>
     );
   }
 
   return (
     <div className="registros-table-container">
-      <div className="table-header">
-        <div className="header-cell codigo">Código PDV</div>
-        <div className="header-cell agente">Agente Comercial</div>
-        <div className="header-cell fecha">Fecha</div>
-        <div className="header-cell tipo">Tipo KPI</div>
-        <div className="header-cell acciones">Acciones</div>
-      </div>
-
-      <div className="table-body">
-        {registros.map((registro) => (
-          <div key={registro.id} className="table-row">
-            <div className="table-cell codigo">
-              <span className="codigo-highlight">{registro.codigo_pdv}</span>
-            </div>
-            <div className="table-cell agente">
-              {registro.nombre_agente || 'N/A'}
-            </div>
-            <div className="table-cell fecha">
-              {formatearFecha(registro.fecha_registro)}
-            </div>
-            <div className="table-cell tipo">
-              <span 
-                className={`kpi-badge ${registro.tipo_kpi?.toLowerCase()}`}
-              >
-                {registro.tipo_kpi || 'N/A'}
-              </span>
-            </div>
-            <div className="table-cell acciones">
-              <button
-                className="detalles-btn"
+      <div className="table-wrapper">
+        <table className="registros-table">
+          <thead>
+            <tr>
+              <th className="codigo-header">Código PDV</th>
+              <th className="fecha-header">Fecha</th>
+              <th className="kpi-header">KPI</th>
+            </tr>
+          </thead>
+          <tbody>
+            {registros.map((registro, index) => (
+              <tr 
+                key={registro.id}
                 onClick={() => onVerDetalles(registro)}
+                className="registro-row"
+                title="Clic para ver detalles"
+                style={{ cursor: 'pointer' }}
               >
-                Detalles
-              </button>
-            </div>
-          </div>
-        ))}
+                <td>
+                  <span className="codigo-highlight">
+                    {registro.codigo_pdv}
+                  </span>
+                </td>
+                <td>
+                  <span className="fecha-principal">
+                    {formatearFecha(registro.fecha_registro)}
+                  </span>
+                </td>
+                <td>
+                  <span className={`kpi-badge ${getKpiClass(registro.tipo_kpi)}`}>
+                    {getKpiNombreCompleto(registro.tipo_kpi)}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

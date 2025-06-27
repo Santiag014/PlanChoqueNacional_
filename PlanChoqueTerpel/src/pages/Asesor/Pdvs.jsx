@@ -4,15 +4,16 @@ import DashboardLayout from '../../components/DashboardLayout';
 import '../../styles/Asesor/pdv.css';
 
 // Hooks personalizados
-import { usePdvData } from '../../hooks/usePdvData';
-import { useProductSelection } from '../../hooks/useProductSelection';
-import { useKpiManagement } from '../../hooks/useKpiManagement';
-import { useReportSubmission } from '../../hooks/useReportSubmission';
+import { usePdvData } from '../../hooks';
+import { useProductSelection } from '../../hooks';
+import { useKpiManagement } from '../../hooks';
+import { useReportSubmission } from '../../hooks';
 
 // Componentes
 import KpiSelector from '../../components/Asesor/Pdv/KpiSelector';
 import VolumeSection from '../../components/Asesor/Pdv/VolumeSection';
 import PriceSection from '../../components/Asesor/Pdv/PriceSection';
+import FrequencySection from '../../components/Asesor/Pdv/FrequencySection';
 
 /**
  * Página principal para el registro de información de PDVs (Puntos de Venta) por parte del asesor.
@@ -43,6 +44,13 @@ export default function Pdvs() {
     kpiManagement.resetKpiSiInvalido(pdvData.puedeSeleccionarKPI);
   }, [pdvData.correspondeA, pdvData.codigoPDV]);
 
+  // Efecto para recargar referencias cuando cambie el KPI
+  useEffect(() => {
+    if (kpiManagement.kpiSeleccionado && productSelection.recargarReferenciasActuales) {
+      productSelection.recargarReferenciasActuales();
+    }
+  }, [kpiManagement.kpiSeleccionado]);
+
   // Función para manejar el envío del reporte
   const handleCargarReporte = () => {
     const reporteFinal = reportSubmission.construirReporteFinal(
@@ -68,7 +76,7 @@ export default function Pdvs() {
     <DashboardLayout>
       <div className="pdv-main-box">
         {/* Spinner de carga */}
-        {reportSubmission.subiendo && (
+        {reportSubmission.isSubmitting && (
           <div className="pdv-spinner-overlay">
             <div className="spinner-red small" />
           </div>
@@ -76,8 +84,9 @@ export default function Pdvs() {
 
         {/* Fila: CÓDIGO PDV */}
         <div className="pdv-row">
-          <label className="pdv-label">CÓDIGO PDV</label>
+          <label className="pdv-label" htmlFor="pdv-codigo-input">CÓDIGO PDV</label>
           <input
+            id="pdv-codigo-input"
             className="pdv-input-codigo"
             type="text"
             value={pdvData.codigoPDV}
@@ -89,8 +98,9 @@ export default function Pdvs() {
 
         {/* Fila: CORRESPONDE A */}
         <div className="pdv-row">
-          <label className="pdv-label">CORRESPONDE A</label>
+          <label className="pdv-label" htmlFor="pdv-corresponde-input">CORRESPONDE A</label>
           <input
+            id="pdv-corresponde-input"
             className={`pdv-input-corresponde${pdvData.correspondeA === 'N/A' ? ' corresponde-na' : ''}`}
             type="text"
             value={pdvData.correspondeA}
@@ -128,7 +138,7 @@ export default function Pdvs() {
             foto={kpiManagement.foto}
             setFoto={kpiManagement.setFoto}
             enviarReporte={handleCargarReporte}
-            subiendo={reportSubmission.subiendo}
+            subiendo={reportSubmission.isSubmitting}
             productSelection={productSelection}
           />
         )}
@@ -150,8 +160,20 @@ export default function Pdvs() {
             foto={kpiManagement.foto}
             setFoto={kpiManagement.setFoto}
             enviarReporte={handleCargarReporte}
-            subiendo={reportSubmission.subiendo}
+            subiendo={reportSubmission.isSubmitting}
             productSelection={productSelection}
+          />
+        )}
+
+        {kpiManagement.kpiSeleccionado === 'Frecuencia' && (
+          <FrequencySection 
+            kpiTransition={kpiManagement.kpiTransition}
+            fecha={kpiManagement.fecha}
+            setFecha={kpiManagement.setFecha}
+            foto={kpiManagement.foto}
+            setFoto={kpiManagement.setFoto}
+            enviarReporte={handleCargarReporte}
+            subiendo={reportSubmission.isSubmitting}
           />
         )}
 

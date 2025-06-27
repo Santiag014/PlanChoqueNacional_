@@ -2,18 +2,22 @@ import { useMemo } from 'react';
 
 // Hook para manejar los cálculos complejos de KPIs
 export const useKpiCalculations = (dashboardData, filters, kpiLabels, puntosPorKpiActualizados) => {
-  const { pdvMetas, kpiPuntos } = dashboardData;
+  // Validación defensiva de los datos de entrada
+  const { pdvMetas = [], kpiPuntos = [] } = dashboardData || {};
+  const filtersS = filters || {};
+  const kpiLabelsS = Array.isArray(kpiLabels) ? kpiLabels : [];
+  const puntosPorKpiActualizadosS = Array.isArray(puntosPorKpiActualizados) ? puntosPorKpiActualizados : [];
 
   // Filtrar PDVs según los filtros aplicados
   const pdvsFiltrados = useMemo(() => {
     return pdvMetas.filter(pdv => {
-      const nombreMatch = !filters.nombre || 
-        pdv.descripcion?.toLowerCase().includes(filters.nombre.toLowerCase());
-      const codigoMatch = !filters.codigo || 
-        pdv.codigo?.toString().includes(filters.codigo);
+      const nombreMatch = !filtersS.nombre || 
+        pdv.descripcion?.toLowerCase().includes(filtersS.nombre.toLowerCase());
+      const codigoMatch = !filtersS.codigo || 
+        pdv.codigo?.toString().includes(filtersS.codigo);
       return nombreMatch && codigoMatch;
     });
-  }, [pdvMetas, filters]);
+  }, [pdvMetas, filtersS]);
 
   // KPI Dashboard filtrado
   const kpiDashboardFiltrado = useMemo(() => {
@@ -32,7 +36,7 @@ export const useKpiCalculations = (dashboardData, filters, kpiLabels, puntosPorK
 
   // Cálculo de puntos por KPI
   const puntosPorKPI = useMemo(() => {
-    return kpiLabels.map(kpi => {
+    return kpiLabelsS.map(kpi => {
       // Filtrar kpiPuntos por KPI con múltiples criterios de búsqueda
       const puntosKpiFiltrados = kpiPuntos.filter(p => {
         // Verificar que coincida el KPI usando múltiples campos posibles
@@ -47,7 +51,7 @@ export const useKpiCalculations = (dashboardData, filters, kpiLabels, puntosPorK
                            (p.kpi_nombre && p.kpi_nombre.toLowerCase() === kpi.name.toLowerCase());
         
         // Si no hay filtros aplicados, incluir todos los PDVs
-        if (!filters.nombre && !filters.codigo) {
+        if (!filtersS.nombre && !filtersS.codigo) {
           return coincideKpi;
         }
         
@@ -76,13 +80,13 @@ export const useKpiCalculations = (dashboardData, filters, kpiLabels, puntosPorK
       
       return { ...kpi, puntos: total };
     });
-  }, [kpiLabels, kpiPuntos, filters, pdvsFiltradosCodigos, pdvsFiltrados]);
+  }, [kpiLabelsS, kpiPuntos, filtersS, pdvsFiltradosCodigos, pdvsFiltrados]);
 
   // Usar puntos actualizados si están disponibles, sino usar los calculados
   const puntosPorKPIFinal = useMemo(() => {
-    return puntosPorKpiActualizados.length > 0 ? 
-      puntosPorKpiActualizados : puntosPorKPI;
-  }, [puntosPorKpiActualizados, puntosPorKPI]);
+    return puntosPorKpiActualizadosS.length > 0 ? 
+      puntosPorKpiActualizadosS : puntosPorKPI;
+  }, [puntosPorKpiActualizadosS, puntosPorKPI]);
 
   // Fallback si todos los puntos son 0
   const puntosPorKPIConFallback = useMemo(() => {
@@ -91,7 +95,7 @@ export const useKpiCalculations = (dashboardData, filters, kpiLabels, puntosPorK
     if (resultado.every(kpi => kpi.puntos === 0) && kpiPuntos.length > 0) {
       console.log('🔄 Aplicando método de fallback manual...');
       
-      resultado = kpiLabels.map(kpi => {
+      resultado = kpiLabelsS.map(kpi => {
         const posiblesRegistros = kpiPuntos.filter(p => {
           const texto = (p.tipo || p.kpi_tipo || p.nombre || p.kpi_nombre || '').toLowerCase();
           return texto.includes(kpi.name.toLowerCase()) || 
@@ -119,7 +123,7 @@ export const useKpiCalculations = (dashboardData, filters, kpiLabels, puntosPorK
     }
     
     return resultado;
-  }, [puntosPorKPIFinal, kpiPuntos, kpiLabels]);
+  }, [puntosPorKPIFinal, kpiPuntos, kpiLabelsS]);
 
   return {
     pdvsFiltrados,

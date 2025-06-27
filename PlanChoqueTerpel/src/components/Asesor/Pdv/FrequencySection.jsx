@@ -5,6 +5,7 @@ import DatePhotoSection from './DatePhotoSection';
  * Componente para el KPI de Frecuencia
  */
 const FrequencySection = ({ 
+  kpiTransition,
   fecha,
   setFecha,
   foto,
@@ -13,12 +14,13 @@ const FrequencySection = ({
   subiendo
 }) => {
   return (
-    <div className="frequency-section">
+    <div className={`frequency-section kpi-transition${kpiTransition ? ' kpi-fade' : ''}`}>
       <DatePhotoSection 
         fecha={fecha}
         setFecha={setFecha}
         foto={foto}
         setFoto={setFoto}
+        idPrefix="frecuencia"
       />
       
       <button
