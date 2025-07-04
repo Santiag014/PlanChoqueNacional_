@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
+import '../../styles/Asesor/Ranking.css';
 
 const podio = [
   {
@@ -33,9 +34,6 @@ const tabla = [
   { puesto: 8, nombre: 'NOMBRE', puntos: 45 },
   { puesto: 9, nombre: 'NOMBRE', puntos: 43 },
   { puesto: 10, nombre: 'NOMBRE', puntos: 40 },
-  { puesto: 11, nombre: 'NOMBRE', puntos: 39 },
-  { puesto: 12, nombre: 'NOMBRE', puntos: 36 },
-  { puesto: 13, nombre: 'NOMBRE', puntos: 35 }
 ];
 
 export default function Ranking() {
@@ -43,248 +41,75 @@ export default function Ranking() {
 
   return (
     <DashboardLayout>
-      <div style={{
-        width: '100%',
-        margin: '0 auto',
-        padding: '18px 25px 70px 25px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        background: '#f4f4f4',
-        borderRadius: 12,
-        boxSizing: 'border-box',
-        overflowX: 'hidden',
-      }}>
+      <div className="ranking-container">
         {/* Botones de filtro */}
-        <div style={{ display: 'flex', gap: 0, marginBottom: 18 }}>
+        <div className="filtro-buttons">
           {['GENERAL', 'REGIONAL', 'ZONA'].map(btn => (
             <button
               key={btn}
               onClick={() => setFiltro(btn)}
-              style={{
-                background: filtro === btn ? '#e30613' : '#f4f4f4',
-                color: filtro === btn ? '#fff' : '#e30613',
-                border: 'none',
-                borderRadius: 8,
-                fontWeight: 700,
-                fontSize: 15,
-                padding: '7px 22px',
-                cursor: 'pointer',
-                boxShadow: filtro === btn ? '0 2px 8px #e3061322' : 'none',
-                letterSpacing: 1,
-                transition: 'background 0.2s'
-              }}
+              className={`filtro-button ${filtro === btn ? 'active' : ''}`}
             >
               {btn}
             </button>
           ))}
         </div>
         {/* Podio */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'flex-end',
-          justifyContent: 'center',
-          width: '100%',
-          margin: '0 0 18px 0'
-        }}>
+        <div className="podio-container">
           {/* 2do lugar */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            marginRight: 8,
-            position: 'relative'
-          }}>
+          <div className="podio-position segundo">
             {/* Cinta */}
-            <div style={{
-              position: 'absolute',
-              top: 8,
-              left: -12,
-              width: 60,
-              height: 18,
-              background: '#b0b0b0',
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: 11,
-              textAlign: 'center',
-              lineHeight: '18px',
-              transform: 'rotate(-18deg)',
-              zIndex: 2,
-              boxShadow: '0 2px 6px #0002'
-            }}>
+            <div className="cinta segundo">
               2do Lugar
             </div>
-            <span style={{ fontSize: 38 }}>{podio[0].trofeo}</span>
-            <div style={{
-              background: '#e30613',
-              width: 54,
-              height: 70,
-              borderRadius: '8px 8px 0 0',
-              marginTop: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'flex-end',
-              alignItems: 'center'
-            }}>
-              <span style={{ color: '#b0b0b0', fontWeight: 900, fontSize: 22, marginBottom: -2 }}>2do</span>
-              <span style={{ color: '#222', fontWeight: 700, fontSize: 13, marginBottom: 8 }}>{podio[0].puntos}</span>
+            <span className="trofeo">{podio[0].trofeo}</span>
+            <div className="podio-base segundo">
+              <span className="podio-posicion segundo">2do</span>
+              <span className="podio-puntos segundo">{podio[0].puntos}</span>
             </div>
-            <span style={{
-              fontSize: 11,
-              color: '#b0b0b0',
-              fontWeight: 600,
-              marginTop: 2,
-              textAlign: 'center',
-              minHeight: 18
-            }}>{podio[0].cita}</span>
+            <span className="podio-cita segundo">{podio[0].cita}</span>
           </div>
           {/* 1er lugar */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            margin: '0 8px',
-            position: 'relative'
-          }}>
+          <div className="podio-position primero">
             {/* Cinta */}
-            <div style={{
-              position: 'absolute',
-              top: 8,
-              left: -14,
-              width: 68,
-              height: 20,
-              background: '#ffd700',
-              color: '#222',
-              fontWeight: 900,
-              fontSize: 13,
-              textAlign: 'center',
-              lineHeight: '20px',
-              transform: 'rotate(-18deg)',
-              zIndex: 2,
-              boxShadow: '0 2px 6px #0002'
-            }}>
+            <div className="cinta primero">
               1er Lugar
             </div>
-            <span style={{ fontSize: 44 }}>{podio[1].trofeo}</span>
-            <div style={{
-              background: '#e30613',
-              width: 62,
-              height: 100,
-              borderRadius: '8px 8px 0 0',
-              marginTop: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'flex-end',
-              alignItems: 'center'
-            }}>
-              <span style={{ color: '#ffd700', fontWeight: 900, fontSize: 26, marginBottom: -2 }}>1er</span>
-              <span style={{ color: '#222', fontWeight: 700, fontSize: 15, marginBottom: 10 }}>{podio[1].puntos}</span>
+            <span className="trofeo primero">{podio[1].trofeo}</span>
+            <div className="podio-base primero">
+              <span className="podio-posicion primero">1er</span>
+              <span className="podio-puntos primero">{podio[1].puntos}</span>
             </div>
-            <span style={{
-              fontSize: 12,
-              color: '#ffd700',
-              fontWeight: 700,
-              marginTop: 2,
-              textAlign: 'center',
-              minHeight: 18
-            }}>{podio[1].cita}</span>
+            <span className="podio-cita primero">{podio[1].cita}</span>
           </div>
           {/* 3er lugar */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            marginLeft: 8,
-            position: 'relative'
-          }}>
+          <div className="podio-position tercero">
             {/* Cinta */}
-            <div style={{
-              position: 'absolute',
-              top: 8,
-              left: -12,
-              width: 60,
-              height: 18,
-              background: '#cd7f32',
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: 11,
-              textAlign: 'center',
-              lineHeight: '18px',
-              transform: 'rotate(-18deg)',
-              zIndex: 2,
-              boxShadow: '0 2px 6px #0002'
-            }}>
+            <div className="cinta tercero">
               3er Lugar
             </div>
-            <span style={{ fontSize: 38 }}>{podio[2].trofeo}</span>
-            <div style={{
-              background: '#e30613',
-              width: 54,
-              height: 55,
-              borderRadius: '8px 8px 0 0',
-              marginTop: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'flex-end',
-              alignItems: 'center'
-            }}>
-              <span style={{ color: '#cd7f32', fontWeight: 900, fontSize: 22, marginBottom: -2 }}>3er</span>
-              <span style={{ color: '#222', fontWeight: 700, fontSize: 13, marginBottom: 8 }}>{podio[2].puntos}</span>
+            <span className="trofeo">{podio[2].trofeo}</span>
+            <div className="podio-base tercero">
+              <span className="podio-posicion tercero">3er</span>
+              <span className="podio-puntos tercero">{podio[2].puntos}</span>
             </div>
-            <span style={{
-              fontSize: 11,
-              color: '#cd7f32',
-              fontWeight: 600,
-              marginTop: 2,
-              textAlign: 'center',
-              minHeight: 18
-            }}>{podio[2].cita}</span>
+            <span className="podio-cita tercero">{podio[2].cita}</span>
           </div>
         </div>
         {/* Tabla de posiciones */}
-        <div style={{
-          width: '100%',
-          background: '#ededed',
-          borderRadius: 10,
-          marginTop: 0,
-          marginBottom: 10,
-          border: '2px solid #d3d3d3',
-          overflow: 'hidden'
-        }}>
+        <div className="tabla-ranking">
           {/* Encabezado */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: '#ededed',
-            borderBottom: '2px solid #d3d3d3',
-            padding: '8px 0',
-            fontWeight: 900,
-            fontSize: 15,
-            color: '#e30613',
-            textAlign: 'center'
-          }}>
-            <span style={{ width: 28 }}>#</span>
-            <span style={{ flex: 1 }}>NOMBRE</span>
-            <span style={{ width: 32 }}>PTS</span>
+          <div className="tabla-header">
+            <span className="tabla-header-puesto">#</span>
+            <span className="tabla-header-nombre">NOMBRE</span>
+            <span className="tabla-header-puntos">PTS</span>
           </div>
           {/* Filas */}
           {tabla.map(row => (
-            <div key={row.puesto} style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: '#ededed',
-              borderBottom: '1.5px solid #d3d3d3',
-              padding: '7px 0',
-              fontWeight: 700,
-              fontSize: 15,
-              color: '#555',
-              textAlign: 'center'
-            }}>
-              <span style={{ width: 28 }}>{row.puesto}</span>
-              <span style={{ flex: 1 }}>{row.nombre}</span>
-              <span style={{ width: 32 }}>{row.puntos}</span>
+            <div key={row.puesto} className="tabla-fila">
+              <span className="tabla-fila-puesto">{row.puesto}</span>
+              <span className="tabla-fila-nombre">{row.nombre}</span>
+              <span className="tabla-fila-puntos">{row.puntos}</span>
             </div>
           ))}
         </div>

@@ -144,7 +144,7 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
                 {/* Tarjeta PDV */}
                 <div className="info-card">
                   <div className="card-header">
-                    <span className="card-icon">🏪</span>
+                    <span className="card-icon"></span>
                     <h4>Información del PDV</h4>
                   </div>
                   <div className="card-content">
@@ -166,7 +166,7 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
                 {/* Tarjeta Registro */}
                 <div className="info-card">
                   <div className="card-header">
-                    <span className="card-icon">📊</span>
+                    <span className="card-icon"></span>
                     <h4>Información del Registro</h4>
                   </div>
                   <div className="card-content">
@@ -204,7 +204,7 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
               {registro?.tipo_kpi?.toLowerCase() !== 'frecuencia' && (
                 <div className="productos-section">
                   <div className="section-header">
-                    <span className="section-icon">📦</span>
+                    <span className="section-icon"></span>
                     <h3>Productos Registrados</h3>
                   </div>
                   {renderTablaProductos()}
@@ -215,7 +215,7 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
               {registro?.foto_evidencia && (
                 <div className="foto-section">
                   <div className="section-header">
-                    <span className="section-icon">📷</span>
+                    <span className="section-icon"></span>
                     <h3>Evidencia Fotográfica</h3>
                   </div>
                   <div className="foto-container">

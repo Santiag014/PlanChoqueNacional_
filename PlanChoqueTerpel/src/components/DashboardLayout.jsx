@@ -51,7 +51,10 @@ export default function DashboardLayout({ user, children }) {
     rol = 'ASESOR';
   } else if (rol === 2) {
     rol = 'MYSTERY_SHOPPER';
-  }
+  } else if (rol === 3) {
+    rol = 'PROMOTORIA';
+  } else if (rol === 4) 
+    rol = 'MERCADEO_AC';
   
   //console.log('DashboardLayout - Usuario:', userObj, 'Rol detectado:', rol);
 
@@ -73,6 +76,11 @@ export default function DashboardLayout({ user, children }) {
     MYSTERY_SHOPPER: {
       '/misteryShopper/home': 'HOME',
       '/misteryShopper/registrar_visitas': 'REGISTRA TUS VISITAS',
+      // Agrega aquí más rutas si tienes más vistas para este rol
+    },
+    MERCADEO_AC: {
+      '/mercadeo/home': 'HOME',
+      '/mercadeo/visitas': 'VISITAS POR APROBAR',
       // Agrega aquí más rutas si tienes más vistas para este rol
     },
     // ...otros roles
@@ -176,6 +184,9 @@ export default function DashboardLayout({ user, children }) {
     }, 500);
   };
 
+  // Verificar si es usuario de mercadeo para ocultar WhatsApp
+  const isMercadeoUser = rol === 'MERCADEO_AC' || userObj.rol === 'MERCADEO_AC' || userObj.tipo === 'MERCADEO_AC';
+
   // ==========================
   // Renderizado principal
   // ==========================
@@ -256,27 +267,29 @@ export default function DashboardLayout({ user, children }) {
             </svg>
           </span>
           {/* Icono WhatsApp */}
-          <span style={{ marginLeft: -20, marginRight: 25 }}>
-            <a
-              href="https://api.whatsapp.com/send/?phone=573142180090&type=phone_number&app_absent=0"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: 'inline-flex', alignItems: 'center' }}
-              title="WhatsApp"
-              onClick={handleWhatsAppClick}
-            >
-              <img 
-                src={whatsAppImg} 
-                alt="WhatsApp" 
-                style={{ 
-                  width: 22, 
-                  height: 22, 
-                  borderRadius: '50%',
-                  objectFit: 'cover'
-                }} 
-              />
-            </a>
-          </span>
+          {!isMercadeoUser && (
+            <span style={{ marginLeft: -20, marginRight: 25 }}>
+              <a
+                href="https://api.whatsapp.com/send/?phone=573142180090&type=phone_number&app_absent=0"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center' }}
+                title="WhatsApp"
+                onClick={handleWhatsAppClick}
+              >
+                <img 
+                  src={whatsAppImg} 
+                  alt="WhatsApp" 
+                  style={{ 
+                    width: 22, 
+                    height: 22, 
+                    borderRadius: '50%',
+                    objectFit: 'cover'
+                  }} 
+                />
+              </a>
+            </span>
+          )}
         </div>
         {/* Menú desplegable móvil */}
         {showMenu && (
@@ -363,10 +376,17 @@ export default function DashboardLayout({ user, children }) {
           flexDirection: 'column',
           alignItems: 'center',
           paddingTop: 28,
-          color: '#fff'
+          color: '#fff',
         }}>
           <img src="/src/assets/Iconos/icono_completo.png" alt="Terpel" style={{ width: 75, marginBottom: 20 }} />
-          <nav style={{ width: '100%' }}>
+          <nav style={{ 
+            width: '100%', 
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'stretch',
+            alignItems: 'center'
+          }}>
             {menuRoutes.map((route) => (
               <button
                 key={route}
@@ -381,7 +401,7 @@ export default function DashboardLayout({ user, children }) {
                   marginBottom: 10,
                   fontWeight: 'bold',
                   cursor: location.pathname === route ? 'default' : 'pointer',
-                  fontSize: 12,
+                  fontSize: 10,
                   opacity: location.pathname === route ? 1 : 0.8,
                   boxShadow: location.pathname === route ? '0 2px 8px #e3061322' : 'none',
                   transition: 'background 0.2s'
@@ -404,7 +424,11 @@ export default function DashboardLayout({ user, children }) {
             justifyContent: 'flex-end',
             padding: '6px 18px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-            position: 'relative'
+            position: 'fixed',
+            top: 0,
+            left: 120,
+            right: 0,
+            zIndex: 999999
           }}>
             {/* Título dinámico en escritorio */}
             <span style={{
@@ -523,6 +547,7 @@ export default function DashboardLayout({ user, children }) {
               minHeight: 0,
               background: '#ececec',
               paddingBottom: 60,
+              paddingTop: 50,
               boxSizing: 'border-box'
             }}
           >
@@ -546,40 +571,42 @@ export default function DashboardLayout({ user, children }) {
             </div>
           </main>
           {/* Botón flotante de WhatsApp solo en escritorio */}
-          <a
-            href="https://api.whatsapp.com/send/?phone=573142180090&type=phone_number&app_absent=0"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="WhatsApp"
-            style={{
-              position: 'fixed',
-              right: 32,
-              bottom: 90,
-              zIndex: 200,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 58,
-              height: 58,
-              borderRadius: '50%',
-              background: '#25D366',
-              boxShadow: '0 4px 16px #25d36655',
-              transition: 'box-shadow 0.2s',
-              cursor: 'pointer'
-            }}
-            className="whatsapp-desktop-btn"
-          >
-            <img 
-              src={whatsAppImg} 
-              alt="WhatsApp" 
-              style={{ 
-                width: 32, 
-                height: 32, 
+          {!isMercadeoUser && (
+            <a
+              href="https://api.whatsapp.com/send/?phone=573142180090&type=phone_number&app_absent=0"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="WhatsApp"
+              style={{
+                position: 'fixed',
+                right: 32,
+                bottom: 90,
+                zIndex: 200,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 58,
+                height: 58,
                 borderRadius: '50%',
-                objectFit: 'cover'
-              }} 
-            />
-          </a>
+                background: '#25D366',
+                boxShadow: '0 4px 16px #25d36655',
+                transition: 'box-shadow 0.2s',
+                cursor: 'pointer'
+              }}
+              className="whatsapp-desktop-btn"
+            >
+              <img 
+                src={whatsAppImg} 
+                alt="WhatsApp" 
+                style={{ 
+                  width: 32, 
+                  height: 32, 
+                  borderRadius: '50%',
+                  objectFit: 'cover'
+                }} 
+              />
+            </a>
+          )}
         </div>
       </div>
       {/* ==========================

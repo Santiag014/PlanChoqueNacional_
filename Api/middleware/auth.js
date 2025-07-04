@@ -42,9 +42,11 @@ export const requireRole = (allowedRoles) => {
       1: 'asesor',
       2: 'pdv', 
       3: 'misteryshopper',
+      4: 'mercadeo_ac',
       'asesor': 'asesor',
       'pdv': 'pdv',
-      'misteryshopper': 'misteryshopper'
+      'misteryshopper': 'misteryshopper',
+      'mercadeo_ac': 'mercadeo_ac'
     };
 
     const userRoleId = req.user.tipo;
@@ -72,6 +74,9 @@ export const requirePdv = requireRole('pdv');
 
 // Middleware específico para Mystery Shoppers
 export const requireMisteryShopper = requireRole('misteryshopper');
+
+// Middleware específico para Mercadeo AC
+export const requireMercadeo = requireRole('mercadeo_ac');
 
 // Middleware para múltiples roles
 export const requireAnyRole = (...roles) => requireRole(roles);

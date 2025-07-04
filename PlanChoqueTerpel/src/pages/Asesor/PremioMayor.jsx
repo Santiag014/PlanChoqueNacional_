@@ -114,17 +114,17 @@ export default function PremioMayor() {
               alt={slides[current].titulo}
               className="premio-mayor-slide-img"
             />
-            
-            {/* Puntos */}
-            <div className="premio-mayor-dots">
-              {slides.map((_, idx) => (
-                <span 
-                  key={idx} 
-                  className={`premio-mayor-dot ${idx === current ? 'active' : 'inactive'}`}
-                  onClick={() => setCurrent(idx)}
-                />
-              ))}
-            </div>
+          </div>
+          
+          {/* Puntos */}
+          <div className="premio-mayor-dots">
+            {slides.map((_, idx) => (
+              <span 
+                key={idx} 
+                className={`premio-mayor-dot ${idx === current ? 'active' : 'inactive'}`}
+                onClick={() => setCurrent(idx)}
+              />
+            ))}
           </div>
         </div>
         

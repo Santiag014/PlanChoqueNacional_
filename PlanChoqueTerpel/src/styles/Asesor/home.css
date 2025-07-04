@@ -278,31 +278,33 @@
 /* Responsive para desktop */
 @media (min-width: 901px) {
   .home-navigation-container {
-    padding: 30px 25px 110px 25px;
+    /* padding: 30px 25px 110px 25px; */
+    background: none;
   }
   
   .home-navigation-grid {
-    max-width: 450px;
-    gap: 30px;
+    /* max-width: 450px;
+    gap: 30px; */
+    background: none;
   }
   
   .home-nav-button {
-    width: 180px;
+    width: 120px;
     min-height: 190px;
   }
   
   .home-nav-icon-container {
-    width: 170px;
-    height: 145px;
+    width: 120px;
+    height: 120px;
   }
   
   .home-nav-icon {
-    width: 85px;
-    height: 85px;
+    width: 50px;
+    height: 50px;
   }
   
   .home-nav-label {
-    font-size: 13px;
+    font-size: 12px;
     max-width: 160px;
   }
   
@@ -312,13 +314,14 @@
   }
   
   .home-page-dots {
-    bottom: 90px;
-    gap: 18px;
+    bottom: 60px;
+    gap: 10px;
+    left: 54%;
   }
   
   .home-dot {
-    width: 14px;
-    height: 14px;
+    width: 9px;
+    height: 9px;
   }
   
   .home-carousel-dot {

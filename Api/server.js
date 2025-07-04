@@ -10,6 +10,7 @@ import cargarVisitas from './routes_post/cargar_registros_pdv.js';
 import miscRouter from './routes/misc.js';
 import misteryRouter from './routes/mistery.js';
 import historialRouter from './routes/historial.js';
+import mercadeoRouter from './routes/mercadeo.js';
 import { getConnection } from './db.js';
 import bcrypt from 'bcrypt';
 
@@ -29,6 +30,7 @@ app.use('/api', miscRouter);
 app.use('/api', cargarVisitas);
 app.use('/api', misteryRouter);
 app.use('/api', historialRouter);
+app.use('/api', mercadeoRouter);
 
 // Endpoint para probar conexión a la BD
 app.get('/api/check-db', async (req, res) => {

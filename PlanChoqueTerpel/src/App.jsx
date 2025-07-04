@@ -1,10 +1,15 @@
 import './App.css';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
-import DashboardPage from './pages/Asesor/Metas';
-import HomeAsesor from './pages/Asesor/Home';
+
+// Visuales Globales
 import HomePage from './pages/HomePage';
 import Register from './pages/Register';
+import UnauthorizedPage from './pages/UnauthorizedPage';
+import { AuthProvider } from './contexts/AuthContext';
+
+// Visuales para el rol de Asesor
+import DashboardPage from './pages/Asesor/Metas';
+import HomeAsesor from './pages/Asesor/Home';
 import Metas from './pages/Asesor/Metas';
 import Pdvs from './pages/Asesor/Pdvs';
 import Ranking from './pages/Asesor/Ranking';
@@ -13,10 +18,15 @@ import PremioMayor from './pages/Asesor/PremioMayor';
 import TyC from './pages/Asesor/TyC';
 import HistorialRegistros from './pages/Asesor/HistorialRegistros';
 import Ayuda from './pages/Asesor/Ayuda';
-import UnauthorizedPage from './pages/UnauthorizedPage';
 
+// Visuales para el rol de MisteryShopper
 import HomeMisteryShopper from './pages/Mistery/home';
 import RegistrarVisitas from './pages/Mistery/servicios';
+
+// Visuales para el rol de Mercadeo
+import HomeMercadeo from './pages/Mercadeo/home'; // Este es el iframe
+import GestionVisitas from './pages/Mercadeo/visitas'; // Esta es la gestión de visitas
+
 
 import { useEffect, useState } from 'react';
 
@@ -92,6 +102,10 @@ function AppContent() {
         {/* Rutas del mystery shopper - protegidas */}
         <Route path="/misteryShopper/home" element={<HomeMisteryShopper />} />
         <Route path="/misteryShopper/registrar_visitas" element={<RegistrarVisitas />} />
+
+        {/* Rutas del mercadeo - protegidas */}
+        <Route path="/mercadeo/home" element={<HomeMercadeo />} />
+        <Route path="/mercadeo/visitas" element={<GestionVisitas />} />
         
         {/* Ruta por defecto */}
         <Route path="*" element={<HomePage />} />

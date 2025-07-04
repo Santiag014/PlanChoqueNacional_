@@ -29,6 +29,8 @@ function HomePage() {
           navigate('/asesor/home', { replace: true });
         } else if (userRole === 'MYSTERY_SHOPPER' || userRole === 'mystery_shopper' || userRole === 2) {
           navigate('/misteryShopper/home', { replace: true });
+        } else if (userRole === 'MERCADEO_AC' || userRole === 'mercadeo_ac' || userRole === 3 || userRole === 4) {
+          navigate('/mercadeo/home', { replace: true });
         } else {
           //console.log('Rol no reconocido:', userRole);
           // Si no reconoce el rol, hacer logout y limpiar
@@ -76,7 +78,8 @@ function HomePage() {
         
         // Redirigir según el rol del usuario
         const userRole = result.user.tipo || result.user.rol;
-        //console.log('Login exitoso, redirigiendo usuario con rol:', userRole);
+        console.log('Login exitoso, redirigiendo usuario con rol:', userRole);
+        console.log('Datos completos del usuario:', result.user);
         
         if (userRole === 'ASESOR' || userRole === 'asesor' || userRole === 1) {
           //console.log('Redirigiendo a /asesor/home');
@@ -84,8 +87,11 @@ function HomePage() {
         } else if (userRole === 'MYSTERY_SHOPPER' || userRole === 'mystery_shopper' || userRole === 2) {
           // console.log('Redirigiendo a /misteryShopper/home');
           navigate('/misteryShopper/home', { replace: true });
+        } else if (userRole === 'MERCADEO_AC' || userRole === 'mercadeo_ac' || userRole === 3 || userRole === 4) {
+          console.log('Redirigiendo a /mercadeo/home');
+          navigate('/mercadeo/home', { replace: true });
         } else {
-          // console.error('Rol no reconocido después del login:', userRole);
+          console.error('Rol no reconocido después del login:', userRole);
           setError('Rol de usuario no válido');
           setIsLoginSuccess(false);
         }

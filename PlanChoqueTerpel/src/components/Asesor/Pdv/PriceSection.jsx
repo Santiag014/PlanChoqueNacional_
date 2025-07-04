@@ -27,6 +27,17 @@ const PriceSection = ({
 }) => {
   const productoActual = productos[productSelection.productoActivo];
   
+  // Funciones wrapper para pasar el KPI ID correcto
+  const navegarMarcaAnteriorConKPI = () => {
+    // KPI Precio tiene ID 2 según la base de datos
+    productSelection.anteriorMarca(2);
+  };
+  
+  const navegarMarcaSiguienteConKPI = () => {
+    // KPI Precio tiene ID 2 según la base de datos
+    productSelection.siguienteMarca(2);
+  };
+  
   // Función para obtener las presentaciones según la marca
   const getPresentaciones = () => {
     const marcaActual = productSelection.marcas[productSelection.marcaActiva];
@@ -55,7 +66,19 @@ const PriceSection = ({
     <div className={`kpi-section kpi-transition${kpiTransition ? ' kpi-fade' : ''}`}>
       <div className='venta-productos-label'>VENTA PRODUCTOS</div>
       
-      <ProductCarousel {...productSelection} />
+      <ProductCarousel 
+        marcas={productSelection.marcas || []}
+        marcaActiva={productSelection.marcaActiva || 0}
+        productos={productos || []}
+        productoActivo={productSelection.productoActivo || 0}
+        setProductoActivo={productSelection.setProductoActivo}
+        carruselInicio={0}
+        referenciasVisibles={productos?.length || 0}
+        navegarMarcaAnterior={navegarMarcaAnteriorConKPI}
+        navegarMarcaSiguiente={navegarMarcaSiguienteConKPI}
+        navegarCarruselAnterior={productSelection.anteriorProducto}
+        navegarCarruselSiguiente={productSelection.siguienteProducto}
+      />
       
       {/* Presentaciones y precio */}
       <div className="precio-section flex-center-gap4">

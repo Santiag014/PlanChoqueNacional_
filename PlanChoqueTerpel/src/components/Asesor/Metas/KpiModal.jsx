@@ -3,6 +3,18 @@ import React from 'react';
 const KpiModal = ({ isOpen, onClose, selectedKpi, kpiPdvData, isLoading, isMobile }) => {
   if (!isOpen) return null;
 
+  // Función para obtener el icono del KPI
+  const getKpiIcon = (kpi) => {
+    switch (kpi?.name?.toLowerCase()) {
+      case 'volumen': return '📊';
+      case 'precio': return '💰';
+      case 'frecuencia': return '⚡';
+      case 'cobertura': return '🎯';
+      case 'profundidad': return '📈';
+      default: return '📋';
+    }
+  };
+
   return (
     <div className="pdv-modal-overlay" onClick={onClose}>
       <div 
@@ -16,38 +28,87 @@ const KpiModal = ({ isOpen, onClose, selectedKpi, kpiPdvData, isLoading, isMobil
           ×
         </button>
         
-        <h3 className="pdv-modal-title">
+        <div className="pdv-modal-title">
+          <span style={{ fontSize: '20px', marginRight: '8px' }}>
+            {getKpiIcon(selectedKpi)}
+          </span>
           KPI: {selectedKpi?.label}
-        </h3>
+        </div>
 
-        {isLoading ? (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: isMobile ? 40 : 60,
-            color: '#666'
-          }}>
+        <div className="pdv-modal-body">
+          {isLoading ? (
             <div style={{
-              fontSize: isMobile ? 48 : 64,
-              marginBottom: 16,
-              opacity: 0.3
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: isMobile ? 40 : 60,
+              color: '#666'
             }}>
-              ⏳
+              <div style={{
+                fontSize: isMobile ? 48 : 64,
+                marginBottom: 16,
+                opacity: 0.3
+              }}>
+                ⏳
+              </div>
+              <div style={{
+                fontSize: isMobile ? 16 : 18,
+                fontWeight: 600,
+                marginBottom: 8,
+                textAlign: 'center'
+              }}>
+                Cargando datos del KPI...
+              </div>
             </div>
-            <div style={{
-              fontSize: isMobile ? 16 : 18,
-              fontWeight: 600,
-              marginBottom: 8,
-              textAlign: 'center'
-            }}>
-              Cargando datos del KPI...
-            </div>
-          </div>
-        ) : kpiPdvData.length > 0 ? (
-          <div>
-            <table className="pdv-modal-table">
+          ) : kpiPdvData.length > 0 ? (
+            <div>
+              {/* Información del KPI */}
+              <div style={{
+                background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '20px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginBottom: '12px',
+                  color: '#374151'
+                }}>
+                  <span style={{ 
+                    fontSize: '16px', 
+                    marginRight: '8px',
+                    background: selectedKpi?.color || '#e30613',
+                    color: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    fontWeight: '600'
+                  }}>
+                    📊
+                  </span>
+                  <strong>Información del KPI</strong>
+                </div>
+                <div style={{ color: '#6b7280', fontSize: '14px' }}>
+                  <div><strong>KPI:</strong> {selectedKpi?.label}</div>
+                  <div><strong>Total PDVs:</strong> {kpiPdvData.length}</div>
+                  <div><strong>Puntos Totales:</strong> 
+                    <span style={{ 
+                      color: selectedKpi?.color || '#e30613', 
+                      fontWeight: '700',
+                      marginLeft: '8px',
+                      background: `${selectedKpi?.color || '#e30613'}20`,
+                      padding: '2px 6px',
+                      borderRadius: '4px'
+                    }}>
+                      {kpiPdvData.reduce((total, pdv) => total + (Number(pdv.puntos_totales) || 0), 0)} puntos
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <table className="pdv-modal-table">
               <thead>
                 <tr className="pdv-modal-header-row">
                   <th className="pdv-modal-th pdv-modal-th-codigo">Código</th>
@@ -131,6 +192,7 @@ const KpiModal = ({ isOpen, onClose, selectedKpi, kpiPdvData, isLoading, isMobil
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

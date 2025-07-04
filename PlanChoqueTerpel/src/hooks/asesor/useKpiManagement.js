@@ -150,12 +150,15 @@ export const useKpiManagement = (productSelection = {}) => {
       a => a.id === producto.id && a.presentacion === precioSeleccion
     );
     
+    // Asegurar que tenemos el nombre correcto del producto
+    const nombreProducto = producto.descripcion || producto.nombre || producto.name || 'Producto';
+    
     if (idx >= 0) {
       nuevosAcumulados[idx].precio = precioValor;
     } else {
       nuevosAcumulados.push({
         id: producto.id,
-        descripcion: producto.descripcion,
+        descripcion: nombreProducto,
         presentacion: precioSeleccion,
         precio: precioValor
       });

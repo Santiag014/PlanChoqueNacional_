@@ -69,11 +69,11 @@
 .kpi-label {
   font-weight: 700;
   color: #555;
-  font-size: 14px;
-  letter-spacing: 0.4px;
+  font-size: 8px;
+  /* letter-spacing: 0.4px; */
   text-transform: uppercase;
-  margin-bottom: 15px;
-  text-align: justify;
+  margin-bottom: 5px;
+  text-align: center;
 }
 
 .kpi-options {
@@ -195,10 +195,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 70px;
+  min-width: 85px;
   cursor: pointer;
   border-radius: 8px;
-  padding: 4px 2px;
+  padding: 6px 4px;
   border: 2px solid transparent;
   transition: border 0.2s, background 0.2s;
   background: #fff;
@@ -216,7 +216,7 @@
   display: block;
 }
 .producto-item-label {
-  font-size: 11px !important;
+  font-size: 9px !important;
   color: #222;
   font-weight: 600;
   text-align: center;
@@ -378,8 +378,8 @@
 /* Productos dentro del scroll horizontal */
 .productos-scroll-inner .producto-item {
   flex-shrink: 0;
-  min-width: 80px;
-  max-width: 80px;
+  min-width: 95px;
+  max-width: 95px;
 }
 
 /* Scroll más sutil para .pdv-main-box */
@@ -446,8 +446,8 @@
     padding: 6px 12px;
   }
   .producto-item img {
-    width: 38px;
-    height: 54px;
+    width: 200px;
+    height: 100px;
   }
   .cant-input {
     width: 32px;
@@ -468,7 +468,7 @@
     word-break: break-word !important;
     white-space: normal !important;
     padding: 5px 4px !important;
-    font-size: 10.5px !important;
+    font-size: 9px !important;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -487,7 +487,8 @@
   .pdv-label,
   .kpi-label,
   .venta-productos-label {
-    font-size: 11px;
+    font-size: 7px;
+    padding: 5px 10px;
     /* letter-spacing: 0.2px; */
   }
   .pdv-input-codigo,
@@ -523,15 +524,15 @@
     box-shadow: 0 1.5px 8px #e3061311;
   }
   .producto-item-custom {
-    width: 80px;
-    height: 90px;
+    width: 120px;
+    height: 130px;
     margin: 0 4px;
     border-radius: 7px;
     box-shadow: 0 1px 4px #e3061311;
   }
   .producto-item-imgbox {
-    width: 50px;
-    height: 50px;
+    width: 70px;
+    height: 80px;
     border-radius: 7px;
     box-shadow: 0 1px 4px #e3061311;
   }
@@ -578,7 +579,7 @@
     font-weight: 400;
   }
   .tabla-acumulados th, .tabla-acumulados td {
-    font-size: 9.5px !important;
+    font-size: 9px !important;
     padding: 4px 3px !important;
   }
   .adjuntar-foto-input {
@@ -864,8 +865,8 @@
 }
 
 .producto-item-custom {
-  width: 100px;
-  height: 110px;
+  width: 120px;
+  height: 130px;
   margin: 0 8px;
   overflow: hidden;
   text-align: center;
@@ -878,8 +879,8 @@
   box-shadow: 0 1px 4px #e3061311;
 }
 .producto-item-imgbox {
-  width: 70px;
-  height: 70px;
+  width: 90px;
+  height: 90px;
   background: #fff;
   display: flex;
   align-items: center;

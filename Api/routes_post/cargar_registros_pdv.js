@@ -53,6 +53,10 @@ router.post('/cargar-registro-pdv', upload.single('foto'), async (req, res) => {
     const { codigoPDV, correspondeA, kpi, fecha, productos, userId } = req.body;
     const productosArr = parseJSONSafely(productos);
 
+    // DEBUG: Log para ver qué está llegando
+    console.log('🔍 DEBUG - KPI recibido:', kpi);
+    console.log('🔍 DEBUG - Productos recibidos:', JSON.stringify(productosArr, null, 2));
+
     // Validar que los datos de entrada sean correctos
     if (!productosArr || !Array.isArray(productosArr)) {
       return res.status(400).json({
@@ -71,16 +75,53 @@ router.post('/cargar-registro-pdv', upload.single('foto'), async (req, res) => {
 
     // Validar que cada producto tenga los campos necesarios (solo si hay productos)
     if (productosArr.length > 0) {
-      const productosValidos = productosArr.every(producto => {
-        return producto && 
-               typeof producto.id !== 'undefined' && 
-               typeof producto.cantidad !== 'undefined';
-      });
+      let productosValidos = false;
+      
+      console.log('🔍 DEBUG - Validando productos para KPI:', kpi);
+      
+      if (kpi === 'Volumen') {
+        // Para Volumen: necesita id y cantidad
+        console.log('🔍 DEBUG - Validación para Volumen: id y cantidad');
+        productosValidos = productosArr.every(producto => {
+          const valido = producto && 
+                 typeof producto.id !== 'undefined' && 
+                 typeof producto.cantidad !== 'undefined';
+          console.log('🔍 DEBUG - Producto válido para Volumen:', valido, producto);
+          return valido;
+        });
+      } else if (kpi === 'Precio') {
+        // Para Precio: necesita id y precio (cantidad no es necesaria)
+        console.log('🔍 DEBUG - Validación para Precio: id y precio');
+        productosValidos = productosArr.every(producto => {
+          const valido = producto && 
+                 typeof producto.id !== 'undefined' && 
+                 typeof producto.precio !== 'undefined';
+          console.log('🔍 DEBUG - Producto válido para Precio:', valido, producto);
+          return valido;
+        });
+      } else {
+        // Para otros KPIs: solo necesita id
+        console.log('🔍 DEBUG - Validación para otros KPIs: solo id');
+        productosValidos = productosArr.every(producto => {
+          const valido = producto && typeof producto.id !== 'undefined';
+          console.log('🔍 DEBUG - Producto válido para otros KPIs:', valido, producto);
+          return valido;
+        });
+      }
+
+      console.log('🔍 DEBUG - Productos válidos:', productosValidos);
 
       if (!productosValidos) {
+        let mensajeError = 'Todos los productos deben tener id';
+        if (kpi === 'Volumen') {
+          mensajeError = 'Todos los productos deben tener id y cantidad';
+        } else if (kpi === 'Precio') {
+          mensajeError = 'Todos los productos deben tener id y precio';
+        }
+        
         return res.status(400).json({
           success: false,
-          message: 'Todos los productos deben tener id y cantidad'
+          message: mensajeError
         });
       }
     }

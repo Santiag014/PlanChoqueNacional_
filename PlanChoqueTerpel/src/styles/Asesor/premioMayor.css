@@ -67,13 +67,12 @@
 }
 
 .premio-mayor-dots {
-  position: absolute;
-  bottom: 10px;
-  left: 0;
+  position: static;
   width: 100%;
   display: flex;
   justify-content: center;
   gap: 6px;
+  margin-top: 10px;
 }
 
 .premio-mayor-dot {
@@ -164,7 +163,7 @@
 }
 
 .premio-mayor-recuadro-lista li {
-  margin-bottom: 6px;
+  margin-bottom: 1px;
   line-height: 1.5;
   color: #444;
   font-weight: 400;
@@ -187,138 +186,48 @@
   border: 1px solid rgba(227, 6, 19, 0.1);
 }
 
-/* Estilos responsive para escritorio */
-@media (min-width: 768px) {
-  .premio-mayor-container {
-    padding: 30px 20px 60px 20px;
-    min-height: 85vh;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #dee2e6 100%);
-  }
-
-  .premio-mayor-intro {
-    max-width: 900px;
-    margin: 30px 0 40px 0;
-  }
-
-  .premio-mayor-intro-text {
-    font-size: 18px;
-    margin: 15px 60px 30px 60px;
-    line-height: 1.6;
-    color: #555;
-    font-weight: 500;
-  }
-
-  .premio-mayor-carrusel {
-    width: 100%;
-    max-width: 1200px;
-    margin-bottom: 40px;
-  }
-
-  .premio-mayor-slide {
-    height: 450px;
-    border-radius: 20px;
-    box-shadow: 0 8px 40px rgba(227, 6, 19, 0.12);
-  }
-
-  .premio-mayor-slide:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 50px rgba(227, 6, 19, 0.2);
-  }
-
-  .premio-mayor-slide-img {
-    border-radius: 20px;
-  }
-
-  .premio-mayor-dots {
-    bottom: 25px;
-    gap: 12px;
-  }
-
-  .premio-mayor-dot {
-    width: 16px;
-    height: 16px;
-    border-width: 2px;
-    transition: all 0.3s ease;
-  }
-
-  .premio-mayor-dot:hover {
-    transform: scale(1.2);
-  }
-
-  .premio-mayor-info {
-    max-width: 900px;
-  }
-
-  .premio-mayor-titulo {
-    font-size: 36px;
-    margin-bottom: 15px;
-    text-shadow: 0 2px 4px rgba(227, 6, 19, 0.1);
-  }
-
-  .premio-mayor-descripcion {
-    font-size: 22px;
-    margin-bottom: 40px;
-    color: #444;
-    font-weight: 300;
-  }
-
-  .premio-mayor-recuadro {
-    padding: 40px 45px;
-    width: 85%;
-    max-width: 800px;
-    border-radius: 24px;
-    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.08);
-    border: 2px solid rgba(227, 6, 19, 0.1);
-  }
-
-  .premio-mayor-recuadro::before {
-    height: 4px;
-  }
-
-  .premio-mayor-recuadro-titulo {
-    font-size: 24px;
-    margin-bottom: 20px;
-  }
-
-  .premio-mayor-recuadro-texto {
-    font-size: 16px;
-    margin-bottom: 16px;
-    line-height: 1.7;
-  }
-
-  .premio-mayor-recuadro-lista {
-    margin: 12px 0 20px 30px;
-  }
-
-  .premio-mayor-recuadro-lista li {
-    margin-bottom: 8px;
-    line-height: 1.6;
-    font-size: 15px;
-  }
-
-  .premio-mayor-recuadro-footer {
-    font-size: 18px;
-    margin-top: 20px;
-    padding: 12px 20px;
-    font-weight: 700;
-    background: linear-gradient(135deg, rgba(227, 6, 19, 0.08) 0%, rgba(227, 6, 19, 0.03) 100%);
-    border: 2px solid rgba(227, 6, 19, 0.15);
-  }
-}
-
 /* Para pantallas muy grandes */
 @media (min-width: 1200px) {
   .premio-mayor-container {
-    padding: 40px 30px 80px 30px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 30%, #dee2e6 70%, #ced4da 100%);
+    /* padding: 40px 30px 80px 30px; */
+    background: none;
+    box-shadow: none;
+    overflow-y: scroll;
+    height: 80vh;
   }
 
-  .premio-mayor-carrusel {
-    max-width: 1400px;
+  /* Estilos personalizados para la barra de scroll en escritorio */
+  .premio-mayor-container::-webkit-scrollbar {
+    width: 8px;
   }
+
+  .premio-mayor-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+  }
+
+  .premio-mayor-container::-webkit-scrollbar-thumb {
+    background: #e3061557;
+    border-radius: 10px;
+    transition: background 0.3s ease;
+  }
+
+  .premio-mayor-container::-webkit-scrollbar-thumb:hover {
+    background: #c505125b;
+  }
+
+  /* Soporte para Firefox */
+  .premio-mayor-container {
+    scrollbar-width: thin;
+    scrollbar-color: #e3061561 #f1f1f1;
+  }
+
+  /* .premio-mayor-carrusel {
+    max-width: 1400px;
+  } */
 
   .premio-mayor-slide {
-    height: 500px;
+    height: 300px;
     border-radius: 24px;
   }
 
@@ -331,32 +240,32 @@
   }
 
   .premio-mayor-titulo {
-    font-size: 42px;
+    font-size: 15px;
   }
 
   .premio-mayor-descripcion {
-    font-size: 24px;
+    font-size: 11px;
   }
 
   .premio-mayor-recuadro {
-    max-width: 900px;
-    padding: 50px 60px;
+    max-width: 500px;
+    /* padding: 50px 60px; */
   }
 
   .premio-mayor-recuadro-titulo {
-    font-size: 26px;
+    font-size: 12px;
   }
 
   .premio-mayor-recuadro-texto {
-    font-size: 17px;
+    font-size: 11pxx;
   }
 
   .premio-mayor-recuadro-lista li {
-    font-size: 16px;
+    font-size: 10px;
   }
 
   .premio-mayor-recuadro-footer {
-    font-size: 20px;
+    font-size: 10px;
     padding: 15px 25px;
   }
 }

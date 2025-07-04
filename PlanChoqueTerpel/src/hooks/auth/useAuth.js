@@ -120,8 +120,18 @@ export const useAuthBase = () => {
         // Normalizar la estructura del usuario
         const normalizedUser = {
           ...userData,
-          tipo: userData.tipo || (userData.rol === 1 ? 'ASESOR' : userData.rol === 2 ? 'MYSTERY_SHOPPER' : 'ASESOR'),
-          rol: userData.rol || userData.tipo
+          tipo: userData.tipo || (
+            userData.rol === 1 ? 'ASESOR' : 
+            userData.rol === 2 ? 'MYSTERY_SHOPPER' : 
+            userData.rol === 3 ? 'MERCADEO_AC' :
+            userData.rol === 4 ? 'MERCADEO_AC' :
+            userData.rol_id === 1 ? 'ASESOR' :
+            userData.rol_id === 2 ? 'MYSTERY_SHOPPER' :
+            userData.rol_id === 3 ? 'MERCADEO_AC' :
+            userData.rol_id === 4 ? 'MERCADEO_AC' :
+            'ASESOR'
+          ),
+          rol: userData.rol || userData.rol_id || userData.tipo
         };
         
         // Guardar en localStorage
@@ -186,14 +196,15 @@ export const useAuthBase = () => {
     
     // Obtener el rol del usuario en diferentes formatos posibles
     const userRole = user.tipo || user.rol;
-    const userRoleNum = typeof user.rol === 'number' ? user.rol : null;
+    const userRoleNum = typeof user.rol === 'number' ? user.rol : 
+                       typeof user.rol_id === 'number' ? user.rol_id : null;
     
-    // console.log('hasRole: Verificando rol', { 
-    //   requiredRole, 
-    //   userRole, 
-    //   userRoleNum, 
-    //   user 
-    // });
+    console.log('hasRole: Verificando rol', { 
+      requiredRole, 
+      userRole, 
+      userRoleNum, 
+      user 
+    });
     
     // Si requiredRole es un array, verificar si el usuario tiene alguno de esos roles
     if (Array.isArray(requiredRole)) {
@@ -205,12 +216,18 @@ export const useAuthBase = () => {
         if (role === 'ASESOR' && (userRole === 'asesor' || userRoleNum === 1)) return true;
         if (role === 'mystery_shopper' && (userRole === 'MYSTERY_SHOPPER' || userRoleNum === 2)) return true;
         if (role === 'MYSTERY_SHOPPER' && (userRole === 'mystery_shopper' || userRoleNum === 2)) return true;
+        if (role === 'mercadeo' && (userRole === 'MERCADEO_AC' || userRoleNum === 3 || userRoleNum === 4)) return true;
+        if (role === 'MERCADEO' && (userRole === 'MERCADEO_AC' || userRoleNum === 3 || userRoleNum === 4)) return true;
+        if (role === 'mercadeo_ac' && (userRole === 'MERCADEO_AC' || userRoleNum === 3 || userRoleNum === 4)) return true;
+        if (role === 'MERCADEO_AC' && (userRole === 'mercadeo_ac' || userRole === 'MERCADEO_AC' || userRoleNum === 3 || userRoleNum === 4)) return true;
         if (role === 1 && userRoleNum === 1) return true;
         if (role === 2 && userRoleNum === 2) return true;
+        if (role === 3 && userRoleNum === 3) return true;
+        if (role === 4 && userRoleNum === 4) return true;
         return false;
       });
       
-      //console.log('hasRole resultado:', hasAccess);
+      console.log('hasRole resultado:', hasAccess);
       return hasAccess;
     }
     
@@ -221,8 +238,14 @@ export const useAuthBase = () => {
     if (requiredRole === 'ASESOR' && (userRole === 'asesor' || userRoleNum === 1)) return true;
     if (requiredRole === 'mystery_shopper' && (userRole === 'MYSTERY_SHOPPER' || userRoleNum === 2)) return true;
     if (requiredRole === 'MYSTERY_SHOPPER' && (userRole === 'mystery_shopper' || userRoleNum === 2)) return true;
+    if (requiredRole === 'mercadeo' && (userRole === 'MERCADEO_AC' || userRoleNum === 3 || userRoleNum === 4)) return true;
+    if (requiredRole === 'MERCADEO' && (userRole === 'MERCADEO_AC' || userRoleNum === 3 || userRoleNum === 4)) return true;
+    if (requiredRole === 'mercadeo_ac' && (userRole === 'MERCADEO_AC' || userRoleNum === 3 || userRoleNum === 4)) return true;
+    if (requiredRole === 'MERCADEO_AC' && (userRole === 'mercadeo_ac' || userRole === 'MERCADEO_AC' || userRoleNum === 3 || userRoleNum === 4)) return true;
     if (requiredRole === 1 && userRoleNum === 1) return true;
     if (requiredRole === 2 && userRoleNum === 2) return true;
+    if (requiredRole === 3 && userRoleNum === 3) return true;
+    if (requiredRole === 4 && userRoleNum === 4) return true;
     
     //console.log('hasRole: Sin coincidencia, acceso denegado');
     return false;
