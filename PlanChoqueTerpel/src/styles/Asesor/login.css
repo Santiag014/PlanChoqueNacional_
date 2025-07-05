@@ -4,7 +4,6 @@ html, body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  font-family: 'Segoe UI', Arial, sans-serif;
   box-sizing: border-box;
 }
 
@@ -343,8 +342,8 @@ footer {
 .visionarios-mordida {
   background: #e30613;
   color: #fff;
-  font-weight: 900;
-  font-size: 2.7rem;
+  font-weight: 800;
+  font-size: 2.9rem;
   letter-spacing: 1px;
   padding: 0px 32px 0px 32px;
   border-radius: 0;
@@ -361,33 +360,35 @@ footer {
 }
 
 .visionarios-mejor {
-  font-weight: 900;
+  font-weight:850;
   font-size: 8rem;
   color: #fff;
   line-height: 1.02;
-  letter-spacing: 2.2px;
+  letter-spacing: 0px;
   margin: 0;
-  margin-top: -3%;
+  margin-top: -1%;
+  margin-bottom: 10px;
   text-shadow: 0 2px 8px rgba(0,0,0,0.18);
   text-transform: uppercase;
   display: block;
   text-align: center;
-  margin-bottom: 0;
+  transform: scaleY(1.15); /* estira horizontalmente */
 }
 
 .visionarios-energia {
-  font-weight: 900;
-  font-size: 5.8rem;
+  font-weight: 850;
+  font-size: 5.9rem;
   color: #fff;
   line-height: 1.02;
-  letter-spacing: 4px; /* aumenta el espaciado entre letras */
+  letter-spacing: 4.8px; /* aumenta el espaciado entre letras */
   margin: 0;
   text-shadow: 0 2px 8px rgba(0,0,0,0.18);
   text-transform: uppercase;
   display: block;
   text-align: center;
-  margin-bottom: 8px;
+  margin-bottom: 0px;
   margin-top: -10px;
+  margin-left: 0px;
   /* Si quieres aún más alargada visualmente: */
   transform: scaleY(1.25); /* estira horizontalmente */
 }
@@ -395,10 +396,10 @@ footer {
 .visionarios-meta {
   background: #e30613;
   color: #fff;
-  font-weight: 700;
+  font-weight: 800;
   font-size: 1.45rem;
   letter-spacing: 1px;
-  padding: 10px 32px 10px 32px;
+  padding: 8px 35px 8px 35px;
   border-radius: 0;
   margin-top: 8px;
   margin-bottom: 0;
@@ -460,9 +461,9 @@ footer {
     margin-top: -15%;
   }
   .visionarios-mordida {
-    font-size: 1.1rem;
-    padding: 0.2em 0.7em;
-    margin-bottom: 0.2em;
+    font-size: 1.2rem;
+    padding: 0.0em 0.7em;
+    margin-bottom: 0.3em;
     width: auto;
     clip-path: none;
     border-radius: 0;
@@ -478,8 +479,8 @@ footer {
   }
   .visionarios-meta{
     width: auto;
-    font-size: 0.8rem;
-    padding: 5px 10px 5px 10px;
+    font-size: 0.75rem;
+    padding: 2px 10px 2px 10px;
     margin-bottom: 5%;
     margin-top: -0.5px;
     letter-spacing: 0px
@@ -497,26 +498,26 @@ footer {
   }
   
   .visionarios-mejor {
-    font-size: 3.2rem;
+    font-size: 3.5rem;
     line-height: 1;
     margin: 0;
-    letter-spacing: 0.5px;
+    letter-spacing: -1.5px;
     text-shadow: none;
     text-transform: uppercase;
     display: block;
     text-align: center;
     word-break: break-word;
-    font-weight: 700;
+    font-weight: 800;
     line-height: 1;
     margin-top: -5px;
-    margin-bottom: 5px;
+    margin-bottom: 2px;
     transform: scaleY(1.15); /* estira horizontalmente */
   }
   .visionarios-energia {
-    font-size: 2.6rem;
-    font-weight: 700;
+    font-size: 2.7rem;
+    font-weight: 800;
     line-height: 1;
-    margin: 0 0 0.2em -0.2em;
+    margin: 0 0 0.1em -0.01em;
     letter-spacing: 0.5px;
     text-shadow: none;
     text-transform: uppercase;
@@ -556,6 +557,7 @@ footer {
     width: 100%;
     font-weight: 790;
     letter-spacing: -0.5px;
+    margin-top: 6px;
   }
    .login-form label label{
     font-size: 10px;

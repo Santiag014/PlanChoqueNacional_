@@ -66,12 +66,11 @@ export default function DashboardLayout({ user, children }) {
       '/asesor/home': 'HOME',
       '/asesor/metas': 'MIS METAS',
       '/asesor/pdvs': 'REGISTRA TUS PDVS',
+      '/asesor/historial-registros': 'HISTORIAL REGISTROS',
       '/asesor/ranking': 'RANKING ASESORES',
       '/asesor/catalogos': 'CATÁLOGOS DEL PLAN',
       '/asesor/premio-mayor': 'PREMIO MAYOR',
       '/asesor/tyc': 'T&C',
-      '/asesor/historial-registros': 'HISTORIAL REGISTROS',
-      '/asesor/ayuda': 'AYUDA',
     },
     MYSTERY_SHOPPER: {
       '/misteryShopper/home': 'HOME',
@@ -175,7 +174,7 @@ export default function DashboardLayout({ user, children }) {
   const handleWhatsAppClick = (e) => {
     e.preventDefault();
     setWaError('');
-    const waUrl = 'https://api.whatsapp.com/send/?phone=573142180090&type=phone_number&app_absent=0';
+    const waUrl = 'https://api.whatsapp.com/send/?phone=5731111111&type=phone_number&app_absent=0';
     const win = window.open(waUrl, '_blank', 'noopener,noreferrer');
     setTimeout(() => {
       if (!win || win.closed || typeof win.closed === 'undefined') {

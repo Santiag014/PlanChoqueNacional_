@@ -41,13 +41,13 @@ export default function MercadeoVisitas() {
             cedula: '123456789',
             puntoVenta: 'LUBRICANTES EL HERRERO',
             codigo: '1001',
-            segmento: 'N/A',
+            direccion: 'Calle 45 #23-12, Bogotá',
             fotoFactura: true,
             fecha: '27/06/2025',
             kpi: 'VOLUMEN',
             tipo: 'vol',
             estado: 'pendiente',
-            fotoUrl: '/storage/2025-06-26/1750954094915-11-08-14.jpg',
+            fotoUrl: '/storage/2025-07-04/1751639626310-09-33-46.png',
             productos: [
               { nombre: 'TERPEL OILTEC 10W-30 TITANIO', presentacion: '1/4 Gal', volumenAprobado: 15.5, cantidad: 62 },
               { nombre: 'TERPEL OILTEC 10W-40 TITANIO', presentacion: '1 Gal', volumenAprobado: 8.0, cantidad: 8 },
@@ -62,13 +62,13 @@ export default function MercadeoVisitas() {
             cedula: '987654321',
             puntoVenta: 'LA TIENDA DEL MÁXIMO DESEMPEÑO',
             codigo: '1002',
-            segmento: 'N/A',
+            direccion: 'Carrera 15 #78-45, Medellín',
             fotoFactura: true,
             fecha: '26/06/2025',
             kpi: 'FRECUENCIA',
             tipo: 'fre',
             estado: 'aprobado',
-            fotoUrl: '/storage/2025-06-26/1750955400880-11-30-00.jpg'
+            fotoUrl: '/storage/2025-07-04/1751639742109-09-35-42.png'
           },
           {
             id: 3,
@@ -76,13 +76,13 @@ export default function MercadeoVisitas() {
             cedula: '476482848',
             puntoVenta: 'TODO PARA TU MOTOR SAS',
             codigo: '1002',
-            segmento: 'N/A',
+            direccion: 'Avenida 68 #12-34, Cali',
             fotoFactura: true,
             fecha: '26/06/2025',
             kpi: 'PRECIO',
             tipo: 'pre',
             estado: 'pendiente',
-            fotoUrl: '/storage/2025-06-27/1751031436049-08-37-16.jpg',
+            fotoUrl: '/storage/2025-07-04/1751639822542-09-37-02.png',
             productos: [
               { nombre: 'TERPEL OILTEC 10W-30 TITANIO', presentacion: '1/4 Gal', precio: 28500, cantidad: 10 },
               { nombre: 'TERPEL OILTEC 20W-50 MULTIGRADO', presentacion: '1 Gal', precio: 95000, cantidad: 5 },
@@ -96,13 +96,13 @@ export default function MercadeoVisitas() {
             cedula: '555666777',
             puntoVenta: 'ESTACIÓN CENTRAL',
             codigo: '1001',
-            segmento: 'N/A',
+            direccion: 'Transversal 12 #56-89, Barranquilla',
             fotoFactura: false,
             fecha: '26/06/2025',
             kpi: 'VOLUMEN',
             tipo: 'vol',
             estado: 'rechazado',
-            fotoUrl: '/storage/2025-06-27/1751032442889-08-54-02.jpg',
+            fotoUrl: '/storage/2025-07-04/1751639626310-09-33-46.png',
             productos: [
               { nombre: 'TERPEL OILTEC 40 MONOGRADO', presentacion: '55 Gal', volumenAprobado: 165.0, cantidad: 3 },
               { nombre: 'TERPEL OILTEC 50 MONOGRADO', presentacion: '1 Gal', volumenAprobado: 25.0, cantidad: 25 }
@@ -115,13 +115,13 @@ export default function MercadeoVisitas() {
             cedula: '888999000',
             puntoVenta: 'LUBRICANTES TOTAL',
             codigo: '1003',
-            segmento: 'N/A',
+            direccion: 'Diagonal 25 #34-67, Bucaramanga',
             fotoFactura: true,
             fecha: '25/06/2025',
             kpi: 'FRECUENCIA',
             tipo: 'fre',
             estado: 'pendiente',
-            fotoUrl: '/storage/2025-06-26/1750955530114-11-32-10.jpg'
+            fotoUrl: '/storage/2025-07-04/1751639742109-09-35-42.png'
           },
           {
             id: 6,
@@ -129,13 +129,13 @@ export default function MercadeoVisitas() {
             cedula: '111222333',
             puntoVenta: 'DISTRIBUIDORA EL SOL',
             codigo: '1004',
-            segmento: 'N/A',
+            direccion: 'Calle 80 #45-23, Pereira',
             fotoFactura: true,
             fecha: '25/06/2025',
             kpi: 'PRECIO',
             tipo: 'pre',
             estado: 'aprobado',
-            fotoUrl: '/storage/2025-06-27/1751031541147-08-39-01.jpg',
+            fotoUrl: '/storage/2025-07-04/1751639822542-09-37-02.png',
             productos: [
               { nombre: 'TERPEL OILTEC 15W-40 TITANIO', presentacion: '1/4 Gal', precio: 27000, cantidad: 20 },
               { nombre: 'TERPEL OILTEC SAE 40', presentacion: '1 Gal', precio: 85000, cantidad: 8 }
@@ -148,13 +148,13 @@ export default function MercadeoVisitas() {
             cedula: '444555666',
             puntoVenta: 'SERVITERPEL NORTE',
             codigo: '1005',
-            segmento: 'N/A',
+            direccion: 'Autopista Norte Km 15, Bogotá',
             fotoFactura: true,
             fecha: '24/06/2025',
             kpi: 'VOLUMEN',
             tipo: 'vol',
             estado: 'pendiente',
-            fotoUrl: '/storage/2025-06-27/1751031625476-08-40-25.jpg',
+            fotoUrl: '/storage/2025-07-04/1751639626310-09-33-46.png',
             productos: [
               { nombre: 'TERPEL OILTEC TERGAS 20W-50', presentacion: '1 Gal', volumenAprobado: 45.0, cantidad: 45 },
               { nombre: 'REFRIGERANTE PREMIUM', presentacion: '1/2 Gal', volumenAprobado: 18.0, cantidad: 36 }
@@ -167,13 +167,13 @@ export default function MercadeoVisitas() {
             cedula: '777888999',
             puntoVenta: 'MOTOR PARTS CENTER',
             codigo: '1006',
-            segmento: 'N/A',
+            direccion: 'Carrera 7 #123-45, Manizales',
             fotoFactura: false,
             fecha: '24/06/2025',
             kpi: 'FRECUENCIA',
             tipo: 'fre',
             estado: 'rechazado',
-            fotoUrl: '/storage/2025-06-27/1751032679740-08-57-59.jpg'
+            fotoUrl: '/storage/2025-07-04/1751639742109-09-35-42.png'
           }
         ];
         console.log('🏪 Visitas cargadas:', visitasEjemplo);
@@ -314,13 +314,6 @@ export default function MercadeoVisitas() {
                 </div>
               </div>
             </div>
-
-            {/* <div className="contador-container">
-              <div className="contador-badge">
-                <span className="contador-icon">📋</span>
-                <span className="contador-text">Total de registros: {visitasFiltradas.length}</span>
-              </div>
-            </div> */}
           </div>
 
           {/* Tabla de visitas */}
@@ -337,16 +330,16 @@ export default function MercadeoVisitas() {
             <div className="visitas-table-container">
               <div className="table-header">
                 <div className="header-cell">USUARIO</div>
-                <div className="header-cell">PUNTO</div>
                 <div className="header-cell">CÓDIGO PDV</div>
-                <div className="header-cell">SEGMENTO</div>
+                <div className="header-cell">PUNTO DE VENTA</div>
+                <div className="header-cell">DIRECCIÓN</div>
                 <div className="header-cell">FOTO FACTURA</div>
                 <div className="header-cell">FECHA</div>
                 <div className="header-cell">KPI</div>
                 <div className="header-cell">ACCIONES</div>
               </div>
 
-              <div className={`table-body ${visitasFiltradas.length > 5 ? 'scrollable' : ''}`}>
+              <div className={`table-body ${visitasFiltradas.length > 6 ? 'scrollable' : ''}`}>
                 {visitasFiltradas.length === 0 ? (
                   <div className="no-results">
                     <p>No se encontraron visitas que coincidan con los filtros</p>
@@ -360,19 +353,19 @@ export default function MercadeoVisitas() {
                           <div className="usuario-cedula">{visita.cedula}</div>
                         </div>
                       </div>
+
+                      <div className="cell codigo-cell">
+                        <span className="codigo-badge">{visita.codigo}</span>
+                      </div>
                       
                       <div className="cell punto-cell">
                         <div className="punto-info">
                           <span className="punto-nombre">{visita.puntoVenta}</span>
                         </div>
                       </div>
-
-                      <div className="cell codigo-cell">
-                        <span className="codigo-badge">{visita.codigo}</span>
-                      </div>
                       
-                      <div className="cell segmento-cell">
-                        <span className="segmento-text">{visita.segmento}</span>
+                      <div className="cell direccion-cell">
+                        <span className="direccion-text">{visita.direccion}</span>
                       </div>
                       
                       <div className="cell foto-cell">

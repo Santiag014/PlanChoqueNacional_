@@ -368,11 +368,12 @@
   overflow: visible;
   margin-bottom: 2rem;
   border: 1px solid #e0e0e0;
+  min-width: 1150px; /* Asegurar ancho mínimo para todas las columnas */
 }
 
 .table-header {
   display: grid;
-  grid-template-columns: 180px 250px 120px 120px 140px 120px 120px 180px;
+  grid-template-columns: 160px 100px 180px 120px 130px 100px 100px 160px;
   background: #e31e24;
   color: white;
   font-weight: bold;
@@ -382,12 +383,14 @@
 }
 
 .header-cell {
-  padding: 1rem 0.5rem;
+  padding: 1rem 0.3rem;
   text-align: center;
   border-right: 1px solid rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 0.75rem;
+  line-height: 1.2;
 }
 
 .header-cell:last-child {
@@ -402,7 +405,7 @@
 }
 
 .table-body.scrollable {
-  max-height: 275px; /* Altura para exactamente 5 registros (5 × 50px + padding) */
+  max-height: 300px; /* Altura para exactamente 6 registros (6 × 50px) */
   overflow-y: auto;
   overflow-x: hidden;
   border-radius: 0 0 8px 8px;
@@ -440,7 +443,7 @@
 
 .table-row {
   display: grid;
-  grid-template-columns: 180px 250px 120px 120px 140px 120px 120px 180px;
+  grid-template-columns: 160px 100px 180px 120px 130px 100px 100px 160px;
   border-bottom: 1px solid #dee2e6;
   transition: background-color 0.2s ease;
   min-height: 50px;
@@ -455,12 +458,12 @@
 }
 
 .cell {
-  padding: 0.6rem 0.5rem;
+  padding: 0.4rem 0.3rem;
   display: flex;
   align-items: center;
   justify-content: center;
   border-right: 1px solid #dee2e6;
-  font-size: 0.85rem;
+  font-size: 0.5rem;
   text-align: center;
   min-height: 50px;
   box-sizing: border-box;
@@ -475,7 +478,7 @@
   flex-direction: column;
   align-items: flex-start;
   text-align: left;
-  padding: 0.75rem;
+  padding: 0.5rem;
   justify-content: center;
 }
 
@@ -486,16 +489,16 @@
 }
 
 .usuario-name {
-  font-weight: 600;
+  font-weight: 550;
   color: #495057;
-  font-size: 0.85rem;
-  margin-bottom: 0.2rem;
+  font-size: 0.75rem;
+  margin-bottom: 0.0rem;
   line-height: 1.2;
 }
 
 .usuario-cedula {
   color: #6c757d;
-  font-size: 0.75rem;
+  font-size: 0.6rem;
   line-height: 1.2;
 }
 
@@ -503,7 +506,7 @@
   flex-direction: column;
   align-items: flex-start;
   text-align: left;
-  padding: 0.75rem;
+  padding: 0.5rem;
   justify-content: center;
 }
 
@@ -514,9 +517,9 @@
 }
 
 .punto-nombre {
-  font-weight: 500;
+  font-weight: 200;
   color: #495057;
-  font-size: 0.8rem;
+  font-size: 0.6rem;
   line-height: 1.3;
   word-wrap: break-word;
   max-width: 100%;
@@ -529,19 +532,20 @@
 .codigo-badge {
   background: #e31e24;
   color: white;
-  padding: 0.3rem 0.6rem;
-  border-radius: 4px;
+  padding: 0.25rem 0.4rem;
+  border-radius: 3px;
   font-weight: bold;
-  font-size: 0.8rem;
-  min-width: 60px;
+  font-size: 0.7rem;
+  min-width: 50px;
   text-align: center;
 }
 
-.segmento-cell {
-  font-weight: 500;
+.direccion-cell {
+  font-weight: 200;
+  font-size: 0.6rem;
 }
 
-.segmento-text {
+.direccion-text {
   font-size: 0.8rem;
   color: #495057;
   font-weight: 500;
@@ -560,12 +564,12 @@
 }
 
 .foto-disponible {
-  font-size: 1.2rem;
+  font-size: 0.8rem;
   color: #007bff;
 }
 
 .foto-texto {
-  font-size: 0.7rem;
+  font-size: 0.6rem;
   color: #007bff;
   font-weight: 600;
   text-transform: uppercase;
@@ -573,11 +577,11 @@
 
 .no-foto {
   color: #6c757d;
-  font-size: 0.8rem;
+  font-size: 0.6rem;
 }
 
 .fecha-cell {
-  font-weight: 500;
+  font-weight: 300;
 }
 
 .fecha-text {
@@ -591,28 +595,28 @@
 }
 
 .kpi-badge {
-  padding: 0.3rem 0.6rem;
-  border-radius: 4px;
+  padding: 0.25rem 0.4rem;
+  border-radius: 3px;
   font-weight: bold;
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
-  min-width: 80px;
+  min-width: 60px;
   display: inline-block;
   text-align: center;
 }
 
 .kpi-badge.fre {
-  background: #ffc107;
+  background: #ffc1078d;
   color: #212529;
 }
 
 .kpi-badge.vol {
-  background: #007bff;
+  background: #007bfff0;
   color: white;
 }
 
 .kpi-badge.pre {
-  background: #28a745;
+  background: #28a746ef;
   color: white;
 }
 
@@ -647,11 +651,12 @@
 }
 
 .estado-final {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: #495057;
   text-align: center;
   display: block;
+  line-height: 1.2;
 }
 
 .acciones-cell {
@@ -662,19 +667,20 @@
 .acciones-group {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.2rem;
   width: 100%;
 }
 
 .btn-accion {
-  padding: 0.3rem 0.6rem;
+  padding: 0.25rem 0.4rem;
   border: none;
-  border-radius: 4px;
+  border-radius: 3px;
   cursor: pointer;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 600;
   transition: all 0.2s ease;
   width: 100%;
+  text-transform: uppercase;
 }
 
 .btn-accion.aprobar {

@@ -190,12 +190,12 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
                         <span className="galonaje-value">{registro.galonaje} galones</span>
                       </div>
                     )}
-                    {registro?.puntos_kpi && (
+                    {/* {registro?.puntos_kpi && (
                       <div className="info-row">
                         <label>Puntos:</label>
                         <span className="puntos-badge">{registro.puntos_kpi} puntos</span>
                       </div>
-                    )}
+                    )} */}
                   </div>
                 </div>
               </div>

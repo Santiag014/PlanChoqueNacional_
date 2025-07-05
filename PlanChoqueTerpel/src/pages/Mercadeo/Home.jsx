@@ -26,7 +26,7 @@ export default function DashboardAsesor() {
   }
 
   // URL del dashboard de PowerBI (puedes cambiar por la URL real)
-  const powerBIUrl = "https://app.powerbi.com/view?r=eyJrIjoiNDJhYjNkMDUtZmU5Mi00OWU5LWI0OTgtYjk3YzdmOGJhODNhIiwidCI6Ijk2OWUxYWZhLTM2YWItNGQ5ZS1iYmM2LWU5Y2U3ZWE0N2U5OSIsImMiOjR9";
+  const powerBIUrl = "https://app.powerbi.com/view?r=eyJrIjoiM2ZjMWIxNzgtM2I4MS00YWViLWIxYzUtZDBmMjViY2U2Y2QzIiwidCI6Ijk2OWUxYWZhLTM2YWItNGQ5ZS1iYmM2LWU5Y2U3ZWE0N2U5OSIsImMiOjR9";
 
   return (
     <DashboardLayout user={user}>

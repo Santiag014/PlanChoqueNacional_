@@ -45,7 +45,7 @@ export default function DashboardAsesor() {
     ],
     [
       { icon: RegistroPDV, label: 'HISTORIAL REGISTROS', to: '/asesor/historial-registros' },
-      { icon: iconMisMetas, label: 'AYUDA', to: '/asesor/ayuda' },
+      { icon: null, label: '', to: '', empty: true },
       // Botones vacíos para mantener la estructura 2x3
       { icon: null, label: '', to: '', empty: true },
       { icon: null, label: '', to: '', empty: true },

@@ -17,7 +17,6 @@ import Catalogos from './pages/Asesor/Catalogos';
 import PremioMayor from './pages/Asesor/PremioMayor';
 import TyC from './pages/Asesor/TyC';
 import HistorialRegistros from './pages/Asesor/HistorialRegistros';
-import Ayuda from './pages/Asesor/Ayuda';
 
 // Visuales para el rol de MisteryShopper
 import HomeMisteryShopper from './pages/Mistery/home';
@@ -97,7 +96,6 @@ function AppContent() {
         <Route path="/asesor/premio-mayor" element={<PremioMayor />} />
         <Route path="/asesor/tyc" element={<TyC />} />
         <Route path="/asesor/historial-registros" element={<HistorialRegistros />} />
-        <Route path="/asesor/ayuda" element={<Ayuda />} />
 
         {/* Rutas del mystery shopper - protegidas */}
         <Route path="/misteryShopper/home" element={<HomeMisteryShopper />} />
