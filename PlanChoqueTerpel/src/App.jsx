@@ -5,27 +5,32 @@ import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import Register from './pages/Register';
 import UnauthorizedPage from './pages/UnauthorizedPage';
+import DebugAuth from './pages/DebugAuth';
 import { AuthProvider } from './contexts/AuthContext';
 
 // Visuales para el rol de Asesor
-import DashboardPage from './pages/Asesor/Metas';
-import HomeAsesor from './pages/Asesor/Home';
-import Metas from './pages/Asesor/Metas';
-import Pdvs from './pages/Asesor/Pdvs';
-import Ranking from './pages/Asesor/Ranking';
-import Catalogos from './pages/Asesor/Catalogos';
-import PremioMayor from './pages/Asesor/PremioMayor';
-import TyC from './pages/Asesor/TyC';
-import HistorialRegistros from './pages/Asesor/HistorialRegistros';
+import HomeAsesor from './pages/Asesor/AsesorHome';
+import InformeSeguimientoDashboard from './pages/Asesor/AsesorInformeSeguimientoDashboard';
+import RegistroImplementacion from './pages/Asesor/AsesorRegistroImplementacion';
+import AsesorRegistroMenu from './pages/Asesor/AsesorRegistroMenu';
+import Ranking from './pages/Asesor/AsesorRanking';
+import HistorialRegistros from './pages/Asesor/AsesorHistorialRegistros';
 
 // Visuales para el rol de MisteryShopper
-import HomeMisteryShopper from './pages/Mistery/home';
-import RegistrarVisitas from './pages/Mistery/servicios';
+import HomeMisteryShopper from './pages/Mistery/MisteryShopperHome';
+import RegistrarVisitas from './pages/Mistery/MisteryShopperServicios';
 
 // Visuales para el rol de Mercadeo
-import HomeMercadeo from './pages/Mercadeo/home'; // Este es el iframe
-import GestionVisitas from './pages/Mercadeo/visitas'; // Esta es la gestión de visitas
+import HomeMercadeo from './pages/Mercadeo/MercadeoHome'; // Este es el iframe
+import GestionVisitas from './pages/Mercadeo/MercadeoVisitas'; // Esta es la gestión de visitas
+import MercadeoInformeSeguimientoDashboard from './pages/Mercadeo/MercadeoInformeSeguimientoDashboard';
+import MercadeoPlanIncentivos from './pages/Mercadeo/MercadeoPlanIncentivos';
+import MercadeoRegistrosImplementacion from './pages/Mercadeo/MercadeoRegistrosImplementacion';
+import MercadeoMysteryShopperVisitas from './pages/Mercadeo/MercadeoMysteryShopperVisitas';
 
+// Visuales para el rol de Director y OT
+import HomeDirector from './pages/Director/DirectorDashboard';
+import HomeOT from './pages/OrganizacionTerpel/OrganizacionTerpelDashboard';
 
 import { useEffect, useState } from 'react';
 
@@ -85,17 +90,15 @@ function AppContent() {
         <Route path="/login" element={<HomePage />} />
         <Route path="/register" element={<Register />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        <Route path="/debug-auth" element={<DebugAuth />} />
         
         {/* Rutas del asesor - protegidas */}
-        <Route path="/asesor/dashboard" element={<DashboardPage />} />
         <Route path="/asesor/home" element={<HomeAsesor />} />
-        <Route path="/asesor/metas" element={<Metas />} />
-        <Route path="/asesor/pdvs" element={<Pdvs />} />
-        <Route path="/asesor/ranking" element={<Ranking />} />
-        <Route path="/asesor/catalogos" element={<Catalogos />} />
-        <Route path="/asesor/premio-mayor" element={<PremioMayor />} />
-        <Route path="/asesor/tyc" element={<TyC />} />
-        <Route path="/asesor/historial-registros" element={<HistorialRegistros />} />
+        <Route path="/asesor/informe-seguimiento-dashboard" element={<InformeSeguimientoDashboard />} />
+        <Route path="/asesor/registro-menu" element={<AsesorRegistroMenu />} />
+        <Route path="/asesor/registro-implementacion" element={<RegistroImplementacion />} />
+        <Route path="/asesor/historico-registros" element={<HistorialRegistros />} />
+        <Route path="/asesor/plan-incentivos" element={<Ranking />} />
 
         {/* Rutas del mystery shopper - protegidas */}
         <Route path="/misteryShopper/home" element={<HomeMisteryShopper />} />
@@ -104,6 +107,14 @@ function AppContent() {
         {/* Rutas del mercadeo - protegidas */}
         <Route path="/mercadeo/home" element={<HomeMercadeo />} />
         <Route path="/mercadeo/visitas" element={<GestionVisitas />} />
+        <Route path="/mercadeo/informe-seguimiento-dashboard" element={<MercadeoInformeSeguimientoDashboard />} />
+        <Route path="/mercadeo/plan-incentivos" element={<MercadeoPlanIncentivos />} />
+        <Route path="/mercadeo/registros-implementacion" element={<MercadeoRegistrosImplementacion />} />
+        <Route path="/mercadeo/mystery-shopper-visitas" element={<MercadeoMysteryShopperVisitas />} />
+
+        {/* Rutas del Directoy y OT - protegidas */}
+        <Route path="/director-zona/home" element={<HomeDirector />} />
+        <Route path="/organizacion-terpel/home" element={<HomeOT />} />
         
         {/* Ruta por defecto */}
         <Route path="*" element={<HomePage />} />

@@ -15,7 +15,7 @@ export const usePdvData = (userId) => {
 
   // Función para obtener datos del PDV desde el API
   const obtenerDatosPDV = async (codigo) => {
-    if (!codigo || codigo.length < 3) return;
+    if (!codigo || codigo.length < 3 || !userId) return;
     
     setIsLoading(true);
     setError(null);
@@ -53,7 +53,7 @@ export const usePdvData = (userId) => {
   // Función para manejar cambios en el código PDV
   const handleCodigoPDVChange = (codigo) => {
     setCodigoPDV(codigo);
-    if (codigo.length >= 3) {
+    if (codigo.length >= 3 && userId) {
       obtenerDatosPDV(codigo);
     } else {
       setCorrespondeA('');

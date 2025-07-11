@@ -52,11 +52,23 @@ export default function DashboardLayout({ user, children }) {
   } else if (rol === 2) {
     rol = 'MYSTERY_SHOPPER';
   } else if (rol === 3) {
-    rol = 'PROMOTORIA';
-  } else if (rol === 4) 
     rol = 'MERCADEO_AC';
+  } else if (rol === 4) {
+    rol = 'DIRECTOR';
+  } else if (rol === 5) {
+    rol = 'ORGANIZACION_TERPEL';
+  }
+
+  // Si quieres que solo le aparezca a un rol específico (por ejemplo, solo a ASESOR):
+  const showWhatsApp = rol === 'ASESOR';
   
   //console.log('DashboardLayout - Usuario:', userObj, 'Rol detectado:', rol);
+  console.log('DashboardLayout - Detalles:', {
+    userObj,
+    rolOriginal: userObj.rol || userObj.tipo,
+    rolNormalizado: rol,
+    pathname: location.pathname
+  });
 
   // --------------------------
   // Definición de menús por rol
@@ -64,13 +76,9 @@ export default function DashboardLayout({ user, children }) {
   const MENUS = {
     ASESOR: {
       '/asesor/home': 'HOME',
-      '/asesor/metas': 'MIS METAS',
-      '/asesor/pdvs': 'REGISTRA TUS PDVS',
-      '/asesor/historial-registros': 'HISTORIAL REGISTROS',
-      '/asesor/ranking': 'RANKING ASESORES',
-      '/asesor/catalogos': 'CATÁLOGOS DEL PLAN',
-      '/asesor/premio-mayor': 'PREMIO MAYOR',
-      '/asesor/tyc': 'T&C',
+      '/asesor/informe-seguimiento-dashboard': 'INFORME SEGUIMIENTO',
+      '/asesor/registro-menu': 'REGISTROS IMPLEMENTACIÓN',
+      '/asesor/plan-incentivos': 'PLAN DE INCENTIVOS',
     },
     MYSTERY_SHOPPER: {
       '/misteryShopper/home': 'HOME',
@@ -79,8 +87,16 @@ export default function DashboardLayout({ user, children }) {
     },
     MERCADEO_AC: {
       '/mercadeo/home': 'HOME',
+      '/mercadeo/informe-seguimiento-dashboard': 'SEGUIMIENTO ASESORES',
       '/mercadeo/visitas': 'VISITAS POR APROBAR',
+      '/mercadeo/plan-incentivos': 'PLAN INCENTIVOS',
       // Agrega aquí más rutas si tienes más vistas para este rol
+    },
+      DIRECTOR: {
+      '/director-zona/home': 'HOME',
+    },
+      ORGANIZACION_TERPEL: {
+      '//home': 'HOME',
     },
     // ...otros roles
   };
@@ -91,15 +107,17 @@ export default function DashboardLayout({ user, children }) {
   const mainRoute = menuRoutes[0];
 
   // --------------------------
-  // Redirección automática si la ruta no corresponde al menú del rol
+  // *** PROTECCIÓN DE RUTAS COMPLETAMENTE DESACTIVADA PARA DESARROLLO ***
   // --------------------------
   useEffect(() => {
-    //console.log('Verificando ruta actual:', location.pathname, 'Rutas permitidas:', menuRoutes);
+    // console.log('🔓 DESARROLLO: Permitiendo acceso a todas las rutas del dashboard');
     
+    /* CÓDIGO ORIGINAL COMENTADO PARA DESARROLLO:
     if (!menuRoutes.includes(location.pathname)) {
-      //console.log('Ruta no permitida, redirigiendo a:', mainRoute);
+      console.log('DashboardLayout - Ruta no permitida, redirigiendo de', location.pathname, 'a:', mainRoute);
       navigate(mainRoute, { replace: true });
     }
+    */
   }, [rol, location.pathname, menuRoutes, mainRoute, navigate]);
 
   // --------------------------
@@ -183,8 +201,8 @@ export default function DashboardLayout({ user, children }) {
     }, 500);
   };
 
-  // Verificar si es usuario de mercadeo para ocultar WhatsApp
-  const isMercadeoUser = rol === 'MERCADEO_AC' || userObj.rol === 'MERCADEO_AC' || userObj.tipo === 'MERCADEO_AC';
+  // Mostrar WhatsApp solo a un rol específico (por ejemplo, solo ASESOR)
+  // Si quieres que le aparezca a otro rol, cambia la condición de showWhatsApp
 
   // ==========================
   // Renderizado principal
@@ -266,8 +284,8 @@ export default function DashboardLayout({ user, children }) {
             </svg>
           </span>
           {/* Icono WhatsApp */}
-          {!isMercadeoUser && (
-            <span style={{ marginLeft: -20, marginRight: 25 }}>
+          {showWhatsApp && (
+            <span style={{ marginLeft: -20, marginRight: 0 }}>
               <a
                 href="https://api.whatsapp.com/send/?phone=573142180090&type=phone_number&app_absent=0"
                 target="_blank"
@@ -374,10 +392,10 @@ export default function DashboardLayout({ user, children }) {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          paddingTop: 28,
+          paddingTop: 20,
           color: '#fff',
         }}>
-          <img src="/src/assets/Iconos/icono_completo.png" alt="Terpel" style={{ width: 75, marginBottom: 20 }} />
+          <img src="/src/assets/Iconos/IconosPage/LogoTerpelBlanco.png" alt="Terpel" style={{ width: 100, marginBottom: 20 }} />
           <nav style={{ 
             width: '100%', 
             flex: 1,
@@ -427,7 +445,6 @@ export default function DashboardLayout({ user, children }) {
             top: 0,
             left: 120,
             right: 0,
-            zIndex: 999999
           }}>
             {/* Título dinámico en escritorio */}
             <span style={{
@@ -568,44 +585,44 @@ export default function DashboardLayout({ user, children }) {
             >
               {children}
             </div>
-          </main>
-          {/* Botón flotante de WhatsApp solo en escritorio */}
-          {!isMercadeoUser && (
-            <a
-              href="https://api.whatsapp.com/send/?phone=573142180090&type=phone_number&app_absent=0"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="WhatsApp"
-              style={{
-                position: 'fixed',
-                right: 32,
-                bottom: 90,
-                zIndex: 200,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 58,
-                height: 58,
-                borderRadius: '50%',
-                background: '#25D366',
-                boxShadow: '0 4px 16px #25d36655',
-                transition: 'box-shadow 0.2s',
-                cursor: 'pointer'
-              }}
-              className="whatsapp-desktop-btn"
-            >
-              <img 
-                src={whatsAppImg} 
-                alt="WhatsApp" 
-                style={{ 
-                  width: 32, 
-                  height: 32, 
+            {/* Botón flotante de WhatsApp solo en escritorio */}
+            {showWhatsApp && (
+              <a
+                href="https://api.whatsapp.com/send/?phone=573142180090&type=phone_number&app_absent=0"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="WhatsApp"
+                style={{
+                  position: 'fixed',
+                  right: 32,
+                  bottom: 90,
+                  zIndex: 200,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 58,
+                  height: 58,
                   borderRadius: '50%',
-                  objectFit: 'cover'
-                }} 
-              />
-            </a>
-          )}
+                  background: '#25D366',
+                  boxShadow: '0 4px 16px #25d36655',
+                  transition: 'box-shadow 0.2s',
+                  cursor: 'pointer'
+                }}
+                className="whatsapp-desktop-btn"
+              >
+                <img 
+                  src={whatsAppImg} 
+                  alt="WhatsApp" 
+                  style={{ 
+                    width: 32, 
+                    height: 32, 
+                    borderRadius: '50%',
+                    objectFit: 'cover'
+                  }} 
+                />
+              </a>
+            )}
+          </main>
         </div>
       </div>
       {/* ==========================

@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
  * @returns {Object} Estados y funciones para manejo de KPIs
  */
 export const useKpiManagement = (productSelection = {}) => {
-  const kpis = ['Volumen', 'Precio', 'Frecuencia'];
+  const kpis = ['Implementación', 'Visitas'];
   const [kpiSeleccionado, setKpiSeleccionado] = useState('');
   const [acumulados, setAcumulados] = useState([]);
   const [kpiTransition, setKpiTransition] = useState(false);

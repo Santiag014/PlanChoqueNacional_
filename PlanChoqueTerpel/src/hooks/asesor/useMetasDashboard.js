@@ -55,10 +55,10 @@ export const useMetasDashboard = (user) => {
     if (user?.id && isAuthenticated && token) {
       setLoading(true);
       Promise.all([
-        authenticatedFetch(`${API_URL}/api/visitas-pdv-resumen/${user.id}`).then(res => res.json()).catch(() => null),
-        authenticatedFetch(`${API_URL}/api/dashboard-kpi/${user.id}`).then(res => res.json()).catch(() => null),
-        authenticatedFetch(`${API_URL}/api/pdv-metas/${user.id}`).then(res => res.json()).catch(() => null),
-        authenticatedFetch(`${API_URL}/api/kpi-puntos/${user.id}`).then(res => res.json()).catch(() => null),
+        authenticatedFetch(`${API_URL}/api/asesor/visitas-pdv-resumen/${user.id}`).then(res => res.json()).catch(() => null),
+        authenticatedFetch(`${API_URL}/api/asesor/dashboard-kpi/${user.id}`).then(res => res.json()).catch(() => null),
+        authenticatedFetch(`${API_URL}/api/asesor/pdv-metas/${user.id}`).then(res => res.json()).catch(() => null),
+        authenticatedFetch(`${API_URL}/api/asesor/kpi-puntos/${user.id}`).then(res => res.json()).catch(() => null),
       ]).then(([visitasRes, kpiRes, metasRes, puntosRes]) => {
         setDashboardData({
           visitas: visitasRes?.success ? visitasRes.data : [],
@@ -83,7 +83,7 @@ export const useMetasDashboard = (user) => {
     try {
       const kpiPromises = kpiLabels.map(async (kpi) => {
         try {
-          const response = await authenticatedFetch(`${API_URL}/api/kpi-puntos-por-pdv/${user.id}/${kpi.name}`);
+          const response = await authenticatedFetch(`${API_URL}/api/asesor/kpi-puntos-por-pdv/${user.id}/${kpi.name}`);
           const result = await response.json();
           if (result.success) {
             const totalPuntos = result.data.reduce((total, pdv) => total + (Number(pdv.puntos_totales) || 0), 0);
@@ -123,7 +123,7 @@ export const useMetasDashboard = (user) => {
     setLoadingKpiData(true);
     
     try {
-      const response = await authenticatedFetch(`${API_URL}/api/kpi-puntos-por-pdv/${user.id}/${kpi.name}`);
+      const response = await authenticatedFetch(`${API_URL}/api/asesor/kpi-puntos-por-pdv/${user.id}/${kpi.name}`);
       const result = await response.json();
       if (result.success) {
         setKpiPdvData(result.data);

@@ -7,6 +7,11 @@ import { useState } from 'react';
 export const useCatalogos = () => {
   const [catalogos] = useState([
     {
+      titulo: 'CATÁLOGO PLAN PDV',
+      img: '/src/assets/Iconos/IconosCatalogos/KV_VISIONARIOS-NUEVO.jpg',
+      link: '/catalogos/planpdv.pdf'
+    },
+    {
       titulo: 'CATÁLOGO OILTEC',
       img: '/src/assets/Iconos/IconosCatalogos/OILTEC.png',
       link: '/catalogos/oiltec.pdf'
@@ -15,11 +20,6 @@ export const useCatalogos = () => {
       titulo: 'CATÁLOGO CELERITY',
       img: '/src/assets/Iconos/IconosCatalogos/CELERITY.png',
       link: '/catalogos/celerity.pdf'
-    },
-    {
-      titulo: 'CATÁLOGO PLAN PDV',
-      img: '/src/assets/Iconos/IconosCatalogos/KV_VISIONARIOS-NUEVO.jpg',
-      link: '/catalogos/planpdv.pdf'
     }
   ]);
 

@@ -6,5 +6,7 @@ export {
   useAsesorRoute, 
   useMysteryRoute, 
   useMercadeoRoute,
+  useDirectorRoute,
+  useOTRoute,
   useMultiRoleRoute 
 } from './useProtectedRoute';

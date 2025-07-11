@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../../../styles/Asesor/navigation-carousel.css';
+import '../../../styles/Asesor/asesor-carrusel-navegacion.css';
 
 export default function NavigationCarousel({ buttonPages, currentPage, onNavigate }) {
   const navigate = useNavigate();

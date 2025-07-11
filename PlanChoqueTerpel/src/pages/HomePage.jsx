@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../contexts/AuthContext';
 import EmergencyCleanup from '../components/EmergencyCleanup';
-import '../styles/Asesor/login.css';
-import logoTerpel from '../assets/Iconos/IconosPage/logoTerpel.png';
+import '../styles/Asesor/asesor-login.css';
+import logoTerpel from '../assets/Iconos/IconosPage/LogoTerpelBlanco.png';
+import logoTerpel_Rojo from '../assets/Iconos/IconosPage/logoTerpel.png';
 
 function HomePage() {
   const navigate = useNavigate();
@@ -23,17 +24,29 @@ function HomePage() {
     const checkAndCleanSession = () => {
       if (isAuthenticated()) {
         const userRole = currentUser?.tipo || currentUser?.rol;
-        //console.log('Usuario autenticado detectado, rol:', userRole);
+        const userRoleNum = typeof currentUser?.rol === 'number' ? currentUser?.rol : 
+                           typeof currentUser?.rol_id === 'number' ? currentUser?.rol_id : null;
         
-        if (userRole === 'ASESOR' || userRole === 'asesor' || userRole === 1) {
+        console.log('Usuario autenticado detectado:', {
+          rol: userRole, 
+          rolNum: userRoleNum,
+          currentUser: currentUser,
+          tipo: currentUser?.tipo,
+          rol_id: currentUser?.rol_id
+        });
+        
+        // Redirección por rol
+        if (userRoleNum === 1 || userRole === 'ASESOR' || userRole === 'asesor') {
           navigate('/asesor/home', { replace: true });
-        } else if (userRole === 'MYSTERY_SHOPPER' || userRole === 'mystery_shopper' || userRole === 2) {
+        } else if (userRoleNum === 2 || userRole === 'MYSTERY_SHOPPER' || userRole === 'mystery_shopper') {
           navigate('/misteryShopper/home', { replace: true });
-        } else if (userRole === 'MERCADEO_AC' || userRole === 'mercadeo_ac' || userRole === 3 || userRole === 4) {
+        } else if (userRoleNum === 3 || userRole === 'MERCADEO_AC' || userRole === 'mercadeo_ac') {
           navigate('/mercadeo/home', { replace: true });
+        } else if (userRoleNum === 4 || userRole === 'DIRECTOR' || userRole === 'director') {
+          navigate('/director-zona/home', { replace: true });
+        } else if (userRoleNum === 5 || userRole === 'ORGANIZACION_TERPEL' || userRole === 'organizacion_terpel') {
+          navigate('/organizacion-terpel/home', { replace: true });
         } else {
-          //console.log('Rol no reconocido:', userRole);
-          // Si no reconoce el rol, hacer logout y limpiar
           localStorage.clear();
           sessionStorage.clear();
         }
@@ -82,16 +95,16 @@ function HomePage() {
         console.log('Datos completos del usuario:', result.user);
         
         if (userRole === 'ASESOR' || userRole === 'asesor' || userRole === 1) {
-          //console.log('Redirigiendo a /asesor/home');
           navigate('/asesor/home', { replace: true });
         } else if (userRole === 'MYSTERY_SHOPPER' || userRole === 'mystery_shopper' || userRole === 2) {
-          // console.log('Redirigiendo a /misteryShopper/home');
           navigate('/misteryShopper/home', { replace: true });
-        } else if (userRole === 'MERCADEO_AC' || userRole === 'mercadeo_ac' || userRole === 3 || userRole === 4) {
-          console.log('Redirigiendo a /mercadeo/home');
+        } else if (userRole === 'MERCADEO_AC' || userRole === 'mercadeo_ac' || userRole === 3) {
           navigate('/mercadeo/home', { replace: true });
+        } else if (userRole === 'DIRECTOR' || userRole === 'director' || userRole === 4) {
+          navigate('/director-zona/home', { replace: true });
+        } else if (userRole === 'ORGANIZACION_TERPEL' || userRole === 'organizacion_terpel' || userRole === 5) {
+          navigate('/organizacion-terpel/home', { replace: true });
         } else {
-          console.error('Rol no reconocido después del login:', userRole);
           setError('Rol de usuario no válido');
           setIsLoginSuccess(false);
         }
@@ -262,7 +275,7 @@ function HomePage() {
             © TERPEL 2025. TODOS LOS DERECHOS RESERVADOS.
           </span>
           <span className="footer-logo">
-            <img src={logoTerpel} alt="Terpel" className="logo-footer" />
+            <img src={logoTerpel_Rojo} alt="Terpel" className="logo-footer" />
           </span>
         </div>
       </footer>

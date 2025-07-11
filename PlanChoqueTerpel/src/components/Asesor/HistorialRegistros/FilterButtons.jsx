@@ -1,26 +1,62 @@
 import React from 'react';
 
-export default function FilterButtons({ filtroActivo, onFiltroChange, isMobile }) {
-  const filtros = [
-    { key: 'TODOS', label: 'TODOS' },
-    { key: 'VOLUMEN', label: 'VOLUMEN' },
-    { key: 'PRECIO', label: 'PRECIO' },
-    { key: 'FRECUENCIA', label: 'FRECUENCIA' }
+export default function FilterButtons({ 
+  filtroKPI, 
+  filtroActividad, 
+  filtroEstado, 
+  onFiltroKPIChange, 
+  onFiltroActividadChange, 
+  onFiltroEstadoChange, 
+  isMobile 
+}) {
+
+  const actividadOptions = [
+    { value: 'TODAS', label: 'Todas las Actividades' },
+    { value: 'IMPLEMENTACION', label: 'IMPLEMENTACIÓN' },
+    { value: 'VISITA', label: 'VISITA' }
+  ];
+
+  const estadoOptions = [
+    { value: 'TODOS', label: 'Todos los Estados' },
+    { value: 'VALIDADO', label: 'VALIDADO' },
+    { value: 'PENDIENTE', label: 'PENDIENTE' },
+    { value: 'RECHAZADO', label: 'RECHAZADO' }
   ];
 
   return (
-    <div className={`filter-buttons ${isMobile ? 'mobile' : ''}`}>
-      {filtros.map((filtro) => (
-        <button
-          key={filtro.key}
-          className={`filter-btn ${filtroActivo === filtro.key ? 'active' : ''} ${isMobile ? 'mobile-btn' : ''}`}
-          onClick={() => onFiltroChange(filtro.key)}
+    <div className={`filter-selects ${isMobile ? 'mobile' : ''}`}>
+
+      <div className="filter-group">
+        <label htmlFor="actividad-select">Actividad:</label>
+        <select 
+          id="actividad-select"
+          className="filter-select"
+          value={filtroActividad}
+          onChange={(e) => onFiltroActividadChange(e.target.value)}
         >
-          <span className="filter-text">
-            {isMobile && filtro.key !== 'TODOS' ? filtro.key.substring(0, 3) : filtro.label}
-          </span>
-        </button>
-      ))}
+          {actividadOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="filter-group">
+        <label htmlFor="estado-select">Estado:</label>
+        <select 
+          id="estado-select"
+          className="filter-select"
+          value={filtroEstado}
+          onChange={(e) => onFiltroEstadoChange(e.target.value)}
+        >
+          {estadoOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }

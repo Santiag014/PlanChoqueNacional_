@@ -6,7 +6,7 @@ import React from 'react';
 const KpiSelector = ({ kpis, kpiSeleccionado, puedeSeleccionarKPI, handleSeleccionarKPI }) => {
   return (
     <div className="kpi-section">
-      <div className="kpi-label">KPI A REGISTRAR</div>
+      <div className="kpi-label">ACTIVIDAD A REGISTRAR</div>
       <div className="kpi-options">
         {kpis.map(kpi => {
           const puedeSeleccionar = puedeSeleccionarKPI;

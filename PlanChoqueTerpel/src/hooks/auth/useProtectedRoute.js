@@ -15,20 +15,12 @@ export const useProtectedRoute = (allowedRoles = [], redirectTo = '/') => {
   useEffect(() => {
     // Esperar a que termine de cargar la verificación del token
     if (loading) {
-      console.log('useProtectedRoute: Cargando autenticación...');
       return;
     }
 
-    console.log('useProtectedRoute: Estado de autenticación:', {
-      isAuthenticated: isAuthenticated(),
-      user,
-      allowedRoles,
-      location: location.pathname
-    });
-
     // Si no está autenticado, redirigir al login
     if (!isAuthenticated()) {
-      console.log('Usuario no autenticado, redirigiendo al login...');
+      console.log('🔒 Usuario no autenticado, redirigiendo al login...');
       navigate(redirectTo, { 
         state: { from: location.pathname },
         replace: true 
@@ -36,14 +28,19 @@ export const useProtectedRoute = (allowedRoles = [], redirectTo = '/') => {
       return;
     }
 
-    // Si hay roles específicos requeridos, verificarlos
-    if (allowedRoles.length > 0 && !hasRole(allowedRoles)) {
-      console.log(`Usuario sin permisos para acceder a ${location.pathname}. Roles requeridos: ${allowedRoles}, Rol actual: ${user?.tipo || user?.rol}`);
-      navigate('/unauthorized', { replace: true });
-      return;
+    // *** MODO DESARROLLO: PROTECCIÓN DE ROLES DESACTIVADA ***
+    // console.log('🔓 DESARROLLO: Acceso permitido a todas las rutas autenticadas');
+    
+    /* CÓDIGO ORIGINAL COMENTADO PARA DESARROLLO:
+    if (allowedRoles.length > 0) {
+      const hasRequiredRole = hasRole(allowedRoles);
+      if (!hasRequiredRole) {
+        console.log(`Usuario sin permisos para acceder a ${location.pathname}`);
+        navigate('/unauthorized', { replace: true });
+        return;
+      }
     }
-
-    console.log(`Acceso autorizado a ${location.pathname} para usuario ${user?.nombre} (${user?.tipo || user?.rol})`);
+    */
   }, [
     user, 
     isAuthenticated, 
@@ -59,7 +56,8 @@ export const useProtectedRoute = (allowedRoles = [], redirectTo = '/') => {
     user,
     loading,
     isAuthenticated: isAuthenticated(),
-    hasRequiredRole: allowedRoles.length === 0 || hasRole(allowedRoles)
+    hasRequiredRole: isAuthenticated() // MODO DESARROLLO: Siempre true si está autenticado
+    // hasRequiredRole: allowedRoles.length === 0 || hasRole(allowedRoles) // ORIGINAL COMENTADO
   };
 };
 
@@ -73,7 +71,7 @@ export const useAuthRequired = (redirectTo = '/') => {
 /**
  * Hook para rutas específicas de asesor
  */
-export const useAsesorRoute = (redirectTo = '/') => {
+export const useAsesorRoute = (redirectTo = '/asesor/home') => {
   return useProtectedRoute(['asesor', 'ASESOR', 1], redirectTo);
 };
 
@@ -88,9 +86,22 @@ export const useMysteryRoute = (redirectTo = '/') => {
  * Hook para rutas específicas de Mercadeo AC
  */
 export const useMercadeoRoute = (redirectTo = '/') => {
-  return useProtectedRoute(['mercadeo', 'MERCADEO', 'mercadeo_ac', 'MERCADEO_AC', 3, 4], redirectTo);
+  return useProtectedRoute(['mercadeo', 'MERCADEO', 'mercadeo_ac', 'MERCADEO_AC', 3], redirectTo);
 };
 
+/**
+ * Hook para rutas específicas de Mercadeo AC
+ */
+export const useDirectorRoute = (redirectTo = '/') => {
+  return useProtectedRoute(['director', 'DIRECTOR', 'Director', 4], redirectTo);
+};
+/**
+ * Hook para rutas específicas de Mercadeo AC
+ */
+export const useOTRoute = (redirectTo = '/') => {
+  return useProtectedRoute(['organizacionterpel','organizacion_terpel','ORGANIZACION_TERPEL','OrganizacionTerpel',5
+  ], redirectTo);
+};
 /**
  * Hook para rutas que permiten múltiples roles
  */

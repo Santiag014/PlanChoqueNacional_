@@ -1,139 +1,139 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import '../../../styles/Asesor/asesor-carrusel-productos.css';
 
 /**
- * Componente para el carrusel de productos
+ * Componente del carrusel de productos
+ * Muestra los productos disponibles en un carrusel deslizable
  */
-const ProductCarousel = ({ 
-  marcas, 
-  marcaActiva, 
-  productos, 
-  productoActivo, 
-  setProductoActivo,
-  carruselInicio,
-  referenciasVisibles,
-  navegarMarcaAnterior,
-  navegarMarcaSiguiente,
-  navegarCarruselAnterior,
-  navegarCarruselSiguiente
-}) => {
-  return (
-    <>
-      {/* Selector de marca */}
-      <div className="productos-selector flex-center-gap8">
-        <button
-          type="button"
-          className="productos-arrow"
-          onClick={navegarMarcaAnterior}
-        >
-          ◀
-        </button>
-        <button
-          type="button"
-          className="productos-marca flex-center-gap8"
-        >
-          <span>
-            {marcas[marcaActiva]?.descripcion || 'Marca'}
-          </span>
-        </button>
-        <button
-          type="button"
-          className="productos-arrow"
-          onClick={navegarMarcaSiguiente}
-        >
-          ▶
-        </button>
-      </div>
+const ProductCarousel = ({ productos, onSelectProduct, selectedProduct }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [visibleProducts, setVisibleProducts] = useState(3);
 
-      {/* Carrusel de productos */}
-      <div className="productos-lista-carrusel flex-center-gap0 mt-10">
-        {productos.length > 2 ? (
-          // Scroll horizontal cuando hay más de 2 productos
-          <div className="productos-scroll-container">
-            <div className="productos-scroll-inner">
-              {productos.map((prod, idx) => {
-                const nombreImagen = prod.descripcion ? `${prod.descripcion}.png` : '';
-                const imagenSrc = prod.descripcion
-                  ? `/storage/img_productos_carrusel/${nombreImagen}`
-                  : '/img/logo-prueba.png';
-                
-                return (
-                  <div
-                    key={prod.id}
-                    className={`producto-item producto-item-custom${productoActivo === idx ? ' selected' : ''}`}
-                    onClick={() => setProductoActivo(idx)}
-                  >
-                    <div className="producto-item-imgbox">
-                      <img
-                        src={imagenSrc}
-                        alt={prod.descripcion}
-                        onError={e => { e.target.src = '/img/logo-prueba.png'; }}
-                      />
-                    </div>
-                    <div
-                      className={`producto-item-label producto-item-label-custom${productoActivo === idx ? ' producto-item-label-active' : ''}`}
-                      title={prod.descripcion}
-                    >
-                      {prod.descripcion}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          // Carrusel con flechas cuando hay 2 o menos productos
-          <>
-            <button
-              type="button"
-              className={`carrusel-arrow ${productos.length > referenciasVisibles ? 'carrusel-arrow-visible' : 'carrusel-arrow-hidden'}`}
-              onClick={navegarCarruselAnterior}
-              disabled={carruselInicio === 0}
-            >
-              <span className="carrusel-arrow-icon">◀</span>
-            </button>
-            
-            {productos.slice(carruselInicio, carruselInicio + referenciasVisibles).map((prod, idx) => {
-              const realIdx = carruselInicio + idx;
-              const nombreImagen = prod.descripcion ? `${prod.descripcion}.png` : '';
-              const imagenSrc = prod.descripcion
-                ? `/storage/img_productos_carrusel/${nombreImagen}`
-                : '/img/logo-prueba.png';
-              
-              return (
-                <div
-                  key={prod.id}
-                  className={`producto-item producto-item-custom${productoActivo === realIdx ? ' selected' : ''}`}
-                  onClick={() => setProductoActivo(realIdx)}
+  // Ajustar productos visibles según el tamaño de pantalla
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setVisibleProducts(1);
+      } else if (window.innerWidth < 1024) {
+        setVisibleProducts(2);
+      } else {
+        setVisibleProducts(3);
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const nextSlide = () => {
+    setCurrentIndex(prev => 
+      prev + visibleProducts >= productos.length ? 0 : prev + 1
+    );
+  };
+
+  const prevSlide = () => {
+    setCurrentIndex(prev => 
+      prev === 0 ? Math.max(0, productos.length - visibleProducts) : prev - 1
+    );
+  };
+
+  const goToSlide = (index) => {
+    setCurrentIndex(index);
+  };
+
+  if (!productos || productos.length === 0) {
+    return (
+      <div className="carousel-empty">
+        <p>No hay productos disponibles</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="product-carousel">
+      <div className="carousel-wrapper">
+        {productos.length > visibleProducts && (
+          <button 
+            className="carousel-btn carousel-btn-prev"
+            onClick={prevSlide}
+            disabled={currentIndex === 0}
+          >
+            ‹
+          </button>
+        )}
+        
+        <div className="carousel-container">
+          <div 
+            className="carousel-track"
+            style={{
+              transform: `translateX(-${currentIndex * (100 / visibleProducts)}%)`,
+              width: `${(productos.length / visibleProducts) * 100}%`
+            }}
+          >
+            {productos.map((producto, index) => (
+              <div 
+                key={producto.id || index}
+                className="carousel-slide"
+                style={{ width: `${100 / productos.length}%` }}
+              >
+                <div 
+                  className={`product-card ${selectedProduct?.id === producto.id ? 'selected' : ''}`}
+                  onClick={() => onSelectProduct?.(producto)}
                 >
-                  <div className="producto-item-imgbox">
-                    <img
-                      src={imagenSrc}
-                      alt={prod.descripcion}
-                      onError={e => { e.target.src = '/img/logo-prueba.png'; }}
+                  <div className="product-image">
+                    <img 
+                      src={producto.imagen || '/storage/img_productos_carrusel/default.png'} 
+                      alt={producto.nombre || producto.descripcion}
+                      onError={(e) => {
+                        e.target.src = '/storage/img_productos_carrusel/default.png';
+                      }}
                     />
                   </div>
-                  <div
-                    className={`producto-item-label producto-item-label-custom${productoActivo === realIdx ? ' producto-item-label-active' : ''}`}
-                    title={prod.descripcion}
-                  >
-                    {prod.descripcion}
+                  <div className="product-info">
+                    <h4 className="product-name">
+                      {producto.nombre || producto.descripcion}
+                    </h4>
+                    <p className="product-brand">
+                      {producto.marca || 'Terpel'}
+                    </p>
+                    <div className="product-price">
+                      <span className="price-label">PVP Sugerido:</span>
+                      <span className="price-value">
+                        ${producto.precio_sugerido?.toLocaleString() || 'N/A'}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              );
-            })}
-            
-            <button
-              type="button"
-              className={`carrusel-arrow ${productos.length > referenciasVisibles ? 'carrusel-arrow-visible' : 'carrusel-arrow-hidden'}`}
-              onClick={navegarCarruselSiguiente}
-              disabled={carruselInicio >= productos.length - referenciasVisibles}
-            >
-              <span className="carrusel-arrow-icon">▶</span>
-            </button>
-          </>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {productos.length > visibleProducts && (
+          <button 
+            className="carousel-btn carousel-btn-next"
+            onClick={nextSlide}
+            disabled={currentIndex + visibleProducts >= productos.length}
+          >
+            ›
+          </button>
         )}
       </div>
-    </>
+      
+      {/* Indicadores */}
+      {productos.length > visibleProducts && (
+        <div className="carousel-indicators">
+          {Array.from({ length: Math.ceil(productos.length / visibleProducts) }).map((_, index) => (
+            <button
+              key={index}
+              className={`indicator ${Math.floor(currentIndex / visibleProducts) === index ? 'active' : ''}`}
+              onClick={() => goToSlide(index * visibleProducts)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
