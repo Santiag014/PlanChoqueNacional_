@@ -7,7 +7,7 @@ const SuccessModal = ({
   title = "¡Registro Exitoso!", 
   message = "Tu información ha sido guardada correctamente.",
   onComplete,
-  duration = 3000 
+  duration = 9000 
 }) => {
   
   useEffect(() => {

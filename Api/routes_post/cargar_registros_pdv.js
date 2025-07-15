@@ -47,200 +47,212 @@ const parseJSONSafely = (data) => {
   return data;
 };
 
-router.post('/cargar-registro-pdv', upload.single('foto'), async (req, res) => {
+
+// NUEVO ENDPOINT: Recibe el objeto completo como lo ves en el modal de detalles
+router.post('/cargar-registro-pdv', upload.any(), async (req, res) => {
+  console.log('LLEGA A LA RUTA /cargar-registro-pdv')
   let conn;
   try {
-    const { codigoPDV, correspondeA, kpi, fecha, productos, userId } = req.body;
-    const productosArr = parseJSONSafely(productos);
-
-    // DEBUG: Log para ver qué está llegando
-    console.log('🔍 DEBUG - KPI recibido:', kpi);
-    console.log('🔍 DEBUG - Productos recibidos:', JSON.stringify(productosArr, null, 2));
-
-    // Validar que los datos de entrada sean correctos
-    if (!productosArr || !Array.isArray(productosArr)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Los productos deben ser un array válido'
-      });
-    }
-
-    // Solo validar productos para KPIs que los requieren (Volumen y Precio)
-    if ((kpi === 'Volumen' || kpi === 'Precio') && productosArr.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Debe seleccionar al menos un producto para este KPI'
-      });
-    }
-
-    // Validar que cada producto tenga los campos necesarios (solo si hay productos)
-    if (productosArr.length > 0) {
-      let productosValidos = false;
-      
-      console.log('🔍 DEBUG - Validando productos para KPI:', kpi);
-      
-      if (kpi === 'Volumen') {
-        // Para Volumen: necesita id y cantidad
-        console.log('🔍 DEBUG - Validación para Volumen: id y cantidad');
-        productosValidos = productosArr.every(producto => {
-          const valido = producto && 
-                 typeof producto.id !== 'undefined' && 
-                 typeof producto.cantidad !== 'undefined';
-          console.log('🔍 DEBUG - Producto válido para Volumen:', valido, producto);
-          return valido;
-        });
-      } else if (kpi === 'Precio') {
-        // Para Precio: necesita id y precio (cantidad no es necesaria)
-        console.log('🔍 DEBUG - Validación para Precio: id y precio');
-        productosValidos = productosArr.every(producto => {
-          const valido = producto && 
-                 typeof producto.id !== 'undefined' && 
-                 typeof producto.precio !== 'undefined';
-          console.log('🔍 DEBUG - Producto válido para Precio:', valido, producto);
-          return valido;
-        });
-      } else {
-        // Para otros KPIs: solo necesita id
-        console.log('🔍 DEBUG - Validación para otros KPIs: solo id');
-        productosValidos = productosArr.every(producto => {
-          const valido = producto && typeof producto.id !== 'undefined';
-          console.log('🔍 DEBUG - Producto válido para otros KPIs:', valido, producto);
-          return valido;
-        });
-      }
-
-      console.log('🔍 DEBUG - Productos válidos:', productosValidos);
-
-      if (!productosValidos) {
-        let mensajeError = 'Todos los productos deben tener id';
-        if (kpi === 'Volumen') {
-          mensajeError = 'Todos los productos deben tener id y cantidad';
-        } else if (kpi === 'Precio') {
-          mensajeError = 'Todos los productos deben tener id y precio';
-        }
-        
-        return res.status(400).json({
-          success: false,
-          message: mensajeError
-        });
+    // Cuando se usa FormData, los campos complejos llegan como string, hay que parsearlos
+    let registro = req.body;
+    console.log('req.body:', req.body);
+    console.log('req.files:', req.files);
+    // Parsear campos complejos si vienen como string
+    if (typeof registro.productos === 'string') {
+      try {
+        registro.productos = JSON.parse(registro.productos);
+      } catch (e) {
+        registro.productos = [];
       }
     }
+    // Forzar que productos sea array aunque venga null/undefined
+    if (!Array.isArray(registro.productos)) {
+      registro.productos = [];
+    }
+    if (typeof registro.fotos === 'string') {
+      try {
+        registro.fotos = JSON.parse(registro.fotos);
+      } catch (e) {
+        registro.fotos = { factura: [], implementacion: [] };
+      }
+    }
+    const { pdv_id, fecha, fotos, productos, user_id } = registro;
+    if (!registro || typeof registro !== 'object') {
+      return res.status(400).json({ success: false, message: 'El objeto de registro es inválido' });
+    }
+    if (!Array.isArray(productos) || productos.length === 0) {
+      return res.status(400).json({ success: false, message: 'Debe enviar al menos un producto' });
+    }
+    if (!pdv_id) {
+      return res.status(400).json({ success: false, message: 'Debe enviar el id del punto de venta' });
+    }
+    if (!fecha) {
+      return res.status(400).json({ success: false, message: 'Debe enviar la fecha del registro' });
+    }
 
-    // Carpeta del día
+    conn = await getConnection();
+
+    // 1. Guardar fotos en carpetas por día y obtener URLs
     const today = new Date();
     const folder = today.toISOString().slice(0, 10); // YYYY-MM-DD
+    const publicDir = path.join(process.cwd(), 'public');
+    const storageDir = path.join(publicDir, 'storage');
+    const dayDir = path.join(storageDir, folder);
+    if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir);
+    if (!fs.existsSync(storageDir)) fs.mkdirSync(storageDir);
+    if (!fs.existsSync(dayDir)) fs.mkdirSync(dayDir);
 
-    // URL pública de la foto
-    let fotoUrl = null;
-    if (req.file) {
-      // Solo la ruta relativa, sin host
-      fotoUrl = `storage/${folder}/${req.file.filename}`;
-    }
-
-    // Buscar el id del PDV
-    conn = await getConnection();
-    const [pdvRows] = await conn.execute(
-      'SELECT id FROM puntos_venta WHERE codigo = ?',
-      [codigoPDV]
-    );
-    if (!pdvRows.length) {
-      return res.status(400).json({ success: false, message: 'PDV no encontrado' });
-    }
-    const pdv_id = pdvRows[0].id;
-
-    // Buscar el id y puntos del KPI
-    const [kpiRows] = await conn.execute(
-      'SELECT id FROM kpi WHERE descripcion = ?',
-      [kpi]
-    );
-    if (!kpiRows.length) {
-      return res.status(400).json({ success: false, message: 'KPI no encontrado' });
-    }
-    const kpi_id = kpiRows[0].id;
-
-    // Calcular galonaje total (solo para Volumen)
-    let galonaje = 0;
-    if (kpi === 'Volumen') {
-      galonaje = productosArr.reduce((sum, p) => sum + Number(p.galones), 0);
-    } else {
-      galonaje = null;
-    }
-
-    // Obtener meta del PDV para calcular puntos
-    const [pdvMeta] = await conn.execute(
-      'SELECT meta_volumen FROM puntos_venta WHERE id = ?',
-      [pdv_id]
-    );
-    const meta_volumen = pdvMeta[0]?.meta_volumen || 0;
-
-    // Calcular puntos según el tipo de KPI
-    let puntos_calculados = 0;
-    if (kpi === 'Volumen') {
-      // KPI de VOLUMEN: porcentaje de meta * 200
-      if (meta_volumen > 0 && galonaje > 0) {
-        const porcentaje = (galonaje / meta_volumen);
-        puntos_calculados = Math.round(porcentaje * 200);
-      }
-    } else if (kpi === 'Precio') {
-      // KPI de PRECIO: 2 puntos por registro
-      puntos_calculados = 2;
-    } else if (kpi === 'Frecuencia') {
-      // KPI de FRECUENCIA: 1 punto por registro
-      puntos_calculados = 1;
-    } else if (kpi === 'Cobertura') {
-      // KPI de COBERTURA: 3 puntos por registro (nuevo PDV visitado)
-      puntos_calculados = 3;
-    } else if (kpi === 'Profundidad') {
-      // KPI de PROFUNDIDAD: 2 puntos por registro (productos registrados)
-      puntos_calculados = 2;
-    }
-
-    // Insertar en registros_pdv (tabla maestra) con tipo_kpi y puntos calculados
-    const [result] = await conn.execute(
-      `INSERT INTO registros_pdv 
-        (pdv_id, user_id, foto_factura, galonaje, created_at, update_at, estado_id, estado_agente_id, kpi_id, puntos_kpi) 
-        VALUES (?, ?, ?, ?, NOW(), NOW(), 1, 1, ?, ?)`,
-      [pdv_id, userId, fotoUrl, galonaje, kpi_id, puntos_calculados]
-    );
-    const registro_id = result.insertId;
-
-    // Insertar productos en productos_registros_pdv (tabla hijos) solo si hay productos
-    if (productosArr.length > 0) {
-      for (const prod of productosArr) {
-        // Normaliza los valores para evitar undefined
-        const referencia_id = prod.id ?? null;
-        const presentacion = prod.presentacion ?? null;
-        const cantidad = prod.cantidad ?? null;
-        const galones = prod.galones ?? null;
-        const precio = prod.precio ?? null;
-
-        if (kpi === 'Volumen') {
-          await conn.execute(
-            `INSERT INTO productos_registros_pdv 
-              (registro_id, referencia_id, presentacion, cantidad, conversion_galonaje) 
-              VALUES (?, ?, ?, ?, ?)`,
-            [registro_id, referencia_id, presentacion, cantidad, galones]
-          );
-        } else if (kpi === 'Precio') {
-          await conn.execute(
-            `INSERT INTO productos_registros_pdv 
-              (registro_id, referencia_id, presentacion, cantidad, conversion_galonaje, precio) 
-              VALUES (?, ?, ?, NULL, NULL, ?)`,
-            [registro_id, referencia_id, presentacion, precio]
-          );
+    // Ajuste: Mapear los archivos subidos a los arrays correctos de nombres, aceptando fieldnames con índice (ej: factura_0, implementacion_0)
+    const facturaNombres = [];
+    const implementacionNombres = [];
+    if (Array.isArray(req.files)) {
+      for (const file of req.files) {
+        if (file.fieldname.startsWith('factura')) {
+          facturaNombres.push(file.filename);
+        } else if (file.fieldname.startsWith('implementacion')) {
+          implementacionNombres.push(file.filename);
         }
       }
     }
 
-    res.json({ 
-      success: true, 
-      message: 'Registro guardado correctamente', 
-      fotoUrl,
+    // Si no llegaron archivos, usar los nombres que vengan en fotos (por compatibilidad)
+    if (fotos && fotos.factura && Array.isArray(fotos.factura)) {
+      for (const nombre of fotos.factura) {
+        if (typeof nombre === 'string' && nombre.trim() !== '') {
+          facturaNombres.push(nombre);
+        } else if (nombre && typeof nombre === 'object' && typeof nombre.filename === 'string' && nombre.filename.trim() !== '') {
+          facturaNombres.push(nombre.filename);
+        }
+        // Si es un objeto vacío o no tiene filename, lo ignora
+      }
+    }
+    if (fotos && fotos.implementacion && Array.isArray(fotos.implementacion)) {
+      for (const nombre of fotos.implementacion) {
+        if (typeof nombre === 'string' && nombre.trim() !== '') {
+          implementacionNombres.push(nombre);
+        } else if (nombre && typeof nombre === 'object' && typeof nombre.filename === 'string' && nombre.filename.trim() !== '') {
+          implementacionNombres.push(nombre.filename);
+        }
+        // Si es un objeto vacío o no tiene filename, lo ignora
+      }
+    }
+
+    // Armar arrays de URLs definitivos
+    const facturaUrls = facturaNombres.map(nombre => `storage/${folder}/${nombre}`);
+    const implementacionUrls = implementacionNombres.map(nombre => `storage/${folder}/${nombre}`);
+
+    // 2. Insertar en registro_servicios
+    // Determinar los KPIs
+    let kpi_volumen = 0, kpi_precio = 0, kpi_frecuencia = 0;
+    for (const prod of productos) {
+      if (prod.numeroCajas && prod.numeroCajas > 0) kpi_volumen = 1;
+      if (prod.pvpReal && prod.pvpReal > 0) kpi_precio = 1;
+    }
+    // Si ambos están presentes, frecuencia es 1
+    if (kpi_volumen && kpi_precio) kpi_frecuencia = 1;
+
+  // Si recibes codigo_pdv en vez de pdv_id
+  const codigo_pdv = pdv_id; // usa pdv_id si no hay codigo_pdv
+
+  // Buscar el id real del PDV usando el código
+  const [rows] = await conn.execute('SELECT id FROM puntos_venta WHERE codigo = ? OR id = ?', [codigo_pdv, codigo_pdv]);
+  if (!rows.length) {
+    return res.status(400).json({ success: false, message: 'El código o id de PDV no existe' });
+  }
+  const pdv_id_real = rows[0].id;
+
+  // Ahora usa pdv_id_real en el insert
+  // Corregido: 10 columnas, 10 valores
+  const [servicioResult] = await conn.execute(
+    `INSERT INTO registro_servicios (pdv_id, user_id, estado_id, estado_agente_id, kpi_volumen, kpi_frecuencia, kpi_precio, fecha_registro, created_at, updated_at)
+    VALUES (?, ?, 1, 1, ?, ?, ?, ?, NOW()-7, NOW()-7)`,
+    [pdv_id_real, user_id, kpi_volumen, kpi_frecuencia, kpi_precio, fecha]
+  );
+  const registro_id = servicioResult.insertId;
+
+    // 3. Insertar productos en registro_productos
+    for (const prod of productos) {
+      await conn.execute(
+        `INSERT INTO registro_productos (registro_id, referencia_id, presentacion, cantidad_cajas, conversion_galonaje, precio_sugerido, precio_real)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          registro_id,
+          prod.referencia ?? null,
+          prod.presentacion ?? null,
+          prod.numeroCajas ?? null,
+          prod.volumenGalones ?? null,
+          prod.pvpSugerido ?? null,
+          prod.pvpReal ?? null
+        ]
+      );
+    }
+
+    // 4. Insertar fotos en registro_fotografico_servicios
+    for (const url of facturaUrls) {
+      await conn.execute(
+        `INSERT INTO registro_fotografico_servicios (id_registro, foto_factura) VALUES (?, ?)`,
+        [registro_id, url]
+      );
+    }
+    for (const url of implementacionUrls) {
+      await conn.execute(
+        `INSERT INTO registro_fotografico_servicios (id_registro, foto_pop) VALUES (?, ?)`,
+        [registro_id, url]
+      );
+    }
+
+    // 5. Calcular puntos y guardar en la tabla registro_puntos
+    // KPIs: 1 = Volumen, 2 = Precio, 3 = Frecuencia
+    // Si hay ambos, se insertan dos registros
+    let galonaje = 0;
+    for (const prod of productos) {
+      galonaje += Number(prod.volumenGalones) || 0;
+    }
+    // Obtener meta del PDV para calcular puntos de volumen
+    let meta_volumen = 0;
+    if (kpi_volumen) {
+      const [pdvMeta] = await conn.execute(
+        'SELECT meta_volumen FROM puntos_venta WHERE id = ?',
+        [pdv_id_real]
+      );
+      meta_volumen = pdvMeta[0]?.meta_volumen || 0;
+    }
+
+    // Si hay volumen (kpi 1)
+    if (kpi_volumen) {
+      let puntos = 0;
+      if (meta_volumen > 0 && galonaje > 0) {
+        const porcentaje = galonaje / meta_volumen;
+        puntos = Math.round(porcentaje * 200);
+      }
+      await conn.execute(
+        'INSERT INTO registro_puntos (id_visita, id_kpi, puntos) VALUES (?, ?, ?)',
+        [registro_id, 1, puntos]
+      );
+    }
+    // Si hay precio (kpi 2)
+    if (kpi_precio) {
+      let puntos = 2;
+      await conn.execute(
+        'INSERT INTO registro_puntos (id_visita, id_kpi, puntos) VALUES (?, ?, ?)',
+        [registro_id, 2, puntos]
+      );
+    }
+    // Si hay frecuencia (kpi 3)
+    if (kpi_frecuencia) {
+      let puntos = 1;
+      await conn.execute(
+        'INSERT INTO registro_puntos (id_visita, id_kpi, puntos) VALUES (?, ?, ?)',
+        [registro_id, 3, puntos]
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'Registro guardado correctamente',
       registro_id,
-      puntos_calculados,
-      kpi_tipo: kpi,
-      galonaje_registrado: galonaje,
-      meta_pdv: meta_volumen
+      facturaUrls,
+      implementacionUrls
     });
   } catch (err) {
     console.error('Error en cargar-registro-pdv:', err);

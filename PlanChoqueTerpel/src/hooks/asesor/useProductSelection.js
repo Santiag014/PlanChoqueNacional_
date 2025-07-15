@@ -26,7 +26,7 @@ export const useProductSelection = () => {
       
       if (response.ok) {
         const marcasData = await response.json();
-        console.log('Marcas cargadas:', marcasData);
+        // console.log('Marcas cargadas:', marcasData);
         setMarcas(marcasData || []);
         if (marcasData.length > 0) {
           setMarcaActiva(0);
@@ -74,7 +74,7 @@ export const useProductSelection = () => {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Referencias cargadas:', data);
+        // console.log('Referencias cargadas:', data);
         if (data.success && Array.isArray(data.data)) {
           setTodosLosProductos(data.data);
           setProductoActivo(0); // Resetear a primer producto

@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import ConfirmationModal from './ConfirmationModal';
-import SuccessModal from './SuccessModal';
 import '../../../styles/Asesor/asesor-seccion-implementacion.css';
 
 /**
@@ -15,15 +13,39 @@ const ImplementationSection = ({
   foto, 
   setFoto, 
   enviarReporte, 
-  subiendo,
+  isSubmitting, // <-- del hook useReportSubmission
+  submitSuccess, // <-- del hook useReportSubmission
   userId,
-  pdvCode
+  pdvCode,
+  acumulados,
+  onSuccess // NUEVA PROP
 }) => {
+  // Eliminado showSuccessModal, ahora el modal se maneja en la página padre
+  const [submitError, setSubmitError] = useState(null);
+  // Envío con modal bonito
+  const handleSubmit = async () => {
+    setSubmitError(null);
+    try {
+      const params = {
+        pdv_id: pdvCode,
+        user_id: userId,
+        fecha,
+        productos: productos,
+        fotos: {
+          factura: fotoFactura,
+          implementacion: fotoImplementacion
+        }
+      };
+      const result = await enviarReporte(params);
+      if (result && onSuccess) {
+        onSuccess();
+      }
+    } catch (error) {
+      setSubmitError(error.message || 'Error al enviar el registro');
+    }
+  };
   const [productos, setProductos] = useState([]);
   const [showPopup, setShowPopup] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
   const [marcas, setMarcas] = useState([]);
   const [marcaSeleccionada, setMarcaSeleccionada] = useState(null);
@@ -41,6 +63,9 @@ const ImplementationSection = ({
     pvpReal: '',
     pvpSugerido: ''
   });
+
+  // Estado para mostrar el popup de confirmación de eliminación
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Efecto para manejar el scroll del body
   useEffect(() => {
@@ -186,8 +211,15 @@ const ImplementationSection = ({
     else if (formProducto.presentacion === 'Tambor') galones = cajas * 55;
 
   const handleAgregarProducto = () => {
-    if (referenciaSeleccionada && formProducto.presentacion && formProducto.pvpReal && formProducto.pvpSugerido) {
-      const cajas = parseFloat(formProducto.numeroCajas) || 0;
+    // Permitir agregar si hay referencia, presentación y (número de cajas > 0 o ambos precios llenos)
+    const cajas = parseFloat(formProducto.numeroCajas) || 0;
+    const tieneCajas = cajas > 0;
+    const tienePrecios = formProducto.pvpReal && formProducto.pvpSugerido;
+    if (
+      referenciaSeleccionada &&
+      formProducto.presentacion &&
+      (tieneCajas || tienePrecios)
+    ) {
       let galones = 0;
       if (formProducto.presentacion === 'Galón') galones = cajas * 4;
       else if (formProducto.presentacion === 'Cuarto') galones = cajas * 3;
@@ -200,9 +232,9 @@ const ImplementationSection = ({
         referencia: referenciaSeleccionada.descripcion,
         presentacion: formProducto.presentacion,
         numeroCajas: cajas,
-        pvpReal: parseFloat(formProducto.pvpReal),
+        pvpReal: formProducto.pvpReal ? parseFloat(formProducto.pvpReal) : '',
         volumenGalones: galones,
-        pvpSugerido: parseFloat(formProducto.pvpSugerido)
+        pvpSugerido: formProducto.pvpSugerido ? parseFloat(formProducto.pvpSugerido) : ''
       };
       setProductos([...productos, nuevoProducto]);
       handleClosePopup();
@@ -215,69 +247,120 @@ const ImplementationSection = ({
     setShowDeleteConfirm(true);
   };
 
-  const confirmarEliminar = () => {
-    if (productToDelete) {
-      setProductos(productos.filter(producto => producto.id !== productToDelete.id));
-      setShowDeleteConfirm(false);
-      setProductToDelete(null);
-    }
-  };
-
-  const cancelarEliminar = () => {
-    setShowDeleteConfirm(false);
-    setProductToDelete(null);
-  };
-
-  const handleSubmit = () => {
-    setShowSubmitConfirm(true);
-  };
-
-  const handleConfirmSubmit = () => {
-    const datosImplementacion = {
-      productos,
-      fecha,
-      fotoFactura,
-      fotoImplementacion
-    };
-    console.log('Datos de implementación:', datosImplementacion);
-    setShowSubmitConfirm(false);
-    
-    // Intentar llamar con callback si la función lo soporta
+  const handleCargarRegistro = async () => {
     try {
-      const resultado = enviarReporte(() => {
-        // Callback de éxito
-        setTimeout(() => {
-          setShowSuccessModal(true);
-        }, 500);
-      });
-      
-      // Si no soporta callback, usar timeout como fallback
-      if (resultado === undefined) {
-        setTimeout(() => {
-          setShowSuccessModal(true);
-        }, 2000);
-      }
+      console.log('Datos a enviar:', {
+      pdv_id: pdvCode,
+      fecha,
+      productos,
+      fotos: {
+        factura: fotoFactura,
+        implementacion: fotoImplementacion
+      },
+      user_id: userId
+    });
+    const respuesta = await enviarReporte({
+      pdv_id: pdvCode,
+      fecha,
+      productos,
+      fotos: {
+        factura: fotoFactura,
+        implementacion: fotoImplementacion
+      },
+      user_id: userId
+    });
+      console.log('Datos a enviar:', respuesta);
+      //console.log('Respuesta de la API:', respuesta);
     } catch (error) {
-      console.error('Error al enviar reporte:', error);
+      console.error('Error al cargar el registro:', error);
     }
   };
 
-  const handleSuccessComplete = () => {
-    setShowSuccessModal(false);
-    // Recargar la página después de un breve delay
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
-  };
 
-  const handleCancelSubmit = () => {
-    setShowSubmitConfirm(false);
-  };
+  // Modal para mostrar detalles de acumulados, fotos y productos
+  const [showAcumuladosModal, setShowAcumuladosModal] = useState(false);
+  const handleMostrarAcumulados = () => setShowAcumuladosModal(true);
+  const handleCerrarAcumuladosModal = () => setShowAcumuladosModal(false);
 
   return (
     <div className={`implementation-section ${kpiTransition ? 'kpi-transition' : ''}`}>
       {/* Tabla de productos */}
       <div className="implementation-table-container">
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8, gap: 8 }}>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ marginLeft: 8 }}
+            onClick={handleMostrarAcumulados}
+          >
+            Ver Detalles Registro
+          </button>
+        </div>
+      {/* Modal de detalles de registro acumulado */}
+      {showAcumuladosModal && createPortal(
+        <div className="modal-overlay" style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',background:'rgba(0,0,0,0.5)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={handleCerrarAcumuladosModal}>
+          <div className="modal-content" style={{background:'#fff',padding:24,borderRadius:12,maxWidth:500,width:'95vw',maxHeight:'90vh',overflowY:'auto',position:'relative'}} onClick={e=>e.stopPropagation()}>
+            <button style={{position:'absolute',top:8,right:12,fontSize:22,border:'none',background:'none',cursor:'pointer'}} onClick={handleCerrarAcumuladosModal}>×</button>
+            <h2 style={{marginTop:0}}>Detalle del Registro</h2>
+            <div style={{marginBottom:12}}>
+              <strong>Punto de Venta Seleccionado:</strong> {pdvCode ? pdvCode : <span style={{color:'#888'}}>No seleccionado</span>}
+            </div>
+            <div style={{marginBottom:12}}>
+              <strong>Fecha:</strong> {fecha || <span style={{color:'#888'}}>No seleccionada</span>}
+            </div>
+            <h4 style={{marginBottom:4}}>Productos (acumulados):</h4>
+            {acumulados && acumulados.length > 0 ? (
+              <table style={{width:'100%',fontSize:13,marginBottom:12,borderCollapse:'collapse'}}>
+                <thead>
+                  <tr style={{background:'#f5f5f5'}}>
+                    <th style={{padding:'4px 6px',border:'1px solid #eee'}}>ID</th>
+                    <th style={{padding:'4px 6px',border:'1px solid #eee'}}>Nombre</th>
+                    <th style={{padding:'4px 6px',border:'1px solid #eee'}}>Presentación</th>
+                    <th style={{padding:'4px 6px',border:'1px solid #eee'}}>Galones</th>
+                    <th style={{padding:'4px 6px',border:'1px solid #eee'}}>N° Cajas</th>
+                    <th style={{padding:'4px 6px',border:'1px solid #eee'}}>Precio Venta</th>
+                    <th style={{padding:'4px 6px',border:'1px solid #eee'}}>Precio Sugerido</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {acumulados.map((item, idx) => (
+                    <tr key={idx}>
+                      <td style={{padding:'4px 6px',border:'1px solid #eee'}}>{item.id}</td>
+                      <td style={{padding:'4px 6px',border:'1px solid #eee'}}>{item.nombre || item.referencia || '-'}</td>
+                      <td style={{padding:'4px 6px',border:'1px solid #eee'}}>{item.presentacion || '-'}</td>
+                      <td style={{padding:'4px 6px',border:'1px solid #eee'}}>{item.galones !== undefined ? item.galones : (item.volumenGalones !== undefined ? item.volumenGalones : '-')}</td>
+                      <td style={{padding:'4px 6px',border:'1px solid #eee'}}>{item.cantidad !== undefined ? item.cantidad : (item.numeroCajas !== undefined ? item.numeroCajas : '-')}</td>
+                      <td style={{padding:'4px 6px',border:'1px solid #eee'}}>{item.precio !== undefined ? item.precio : (item.pvpReal !== undefined ? item.pvpReal : '-')}</td>
+                      <td style={{padding:'4px 6px',border:'1px solid #eee'}}>{item.pvpSugerido !== undefined ? item.pvpSugerido : '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : <div style={{color:'#888',marginBottom:12}}>[Sin productos acumulados]</div>}
+            <h4 style={{marginBottom:4}}>Fotos Factura:</h4>
+            {fotoFactura && fotoFactura.length > 0 ? (
+              <ul style={{marginTop:0}}>
+                {fotoFactura.map((foto, idx) => (
+                  <li key={idx}>{foto.name}</li>
+                ))}
+              </ul>
+            ) : <div style={{color:'#888'}}>No hay fotos de factura</div>}
+            <h4 style={{marginBottom:4}}>Fotos Implementación:</h4>
+            {fotoImplementacion && fotoImplementacion.length > 0 ? (
+              <ul style={{marginTop:0}}>
+                {fotoImplementacion.map((foto, idx) => (
+                  <li key={idx}>{foto.name}</li>
+                ))}
+              </ul>
+            ) : <div style={{color:'#888'}}>No hay fotos de implementación</div>}
+            <h4 style={{marginBottom:4}}>Productos en tabla (array a enviar):</h4>
+            {productos && productos.length > 0 ? (
+              <pre style={{background:'#f5f5f5',padding:8,borderRadius:6,overflowX:'auto',fontSize:12,marginBottom:12}}>{JSON.stringify(productos, null, 2)}</pre>
+            ) : <div style={{color:'#888'}}>No hay productos en tabla</div>}
+          </div>
+        </div>,
+        document.body
+      )}
         <div className="table-responsive">
           <table className="implementation-table">
             <thead>
@@ -308,8 +391,8 @@ const ImplementationSection = ({
                     <td>{producto.presentacion}</td>
                     <td>{producto.numeroCajas}</td>
                     <td className="volume-cell">{producto.volumenGalones}</td>
-                    <td className="price-cell">${producto.pvpSugerido.toFixed(2)}</td>
-                    <td>${producto.pvpReal.toFixed(2)}</td>
+                    <td className="price-cell">{typeof producto.pvpSugerido === 'number' && !isNaN(producto.pvpSugerido) ? `$${producto.pvpSugerido.toFixed(2)}` : ''}</td>
+                    <td>{typeof producto.pvpReal === 'number' && !isNaN(producto.pvpReal) ? `$${producto.pvpReal.toFixed(2)}` : ''}</td>
                   </tr>
                 ))
               )}
@@ -452,9 +535,20 @@ const ImplementationSection = ({
         <button
           className="btn-cargar-registro"
           onClick={handleSubmit}
-          disabled={subiendo || !fecha || productos.length === 0}
+          disabled={isSubmitting || !fecha || productos.length === 0}
         >
-          {subiendo ? 'Enviando...' : 'CARGAR REGISTRO'}
+          {isSubmitting ? (
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="22" height="22" viewBox="0 0 50 50" style={{ marginRight: 8 }}>
+                <circle cx="25" cy="25" r="20" fill="none" stroke="#27ae60" strokeWidth="5" strokeDasharray="31.4 31.4" strokeLinecap="round">
+                  <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s" repeatCount="indefinite" />
+                </circle>
+              </svg>
+              Enviando...
+            </span>
+          ) : (
+            'CARGAR REGISTRO'
+          )}
         </button>
       </div>
 
@@ -494,7 +588,7 @@ const ImplementationSection = ({
               {/* Carrusel de referencias */}
               <div className="referencias-section">
                 <div className="referencias-carousel-container">
-                  {marcaSeleccionada ? (
+                  {marcaSeleccionada && referencias.length > 0 ? (
                     <div className="referencias-scroll">
                       {referencias.map((referencia) => (
                         <div 
@@ -518,28 +612,7 @@ const ImplementationSection = ({
                       ))}
                     </div>
                   ) : (
-                    <div className="marcas-grid">
-                      {marcas.map((marca) => (
-                        <div 
-                          key={marca.id}
-                          className={`marca-card ${marcaSeleccionada?.id === marca.id ? 'selected' : ''}`}
-                          onClick={() => handleMarcaClick(marca)}
-                        >
-                          <div className="marca-logo">
-                            <img 
-                              src={`/storage/img_productos_carrusel/${marca.descripcion}.png`}
-                              alt={marca.descripcion}
-                              onError={(e) => {
-                                e.target.src = '/storage/img_productos_carrusel/default.png';
-                              }}
-                            />
-                          </div>
-                          <div className="marca-label">
-                            {marca.descripcion}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <div style={{textAlign:'center',color:'#888',margin:'16px 0'}}>Selecciona una marca para ver referencias</div>
                   )}
                 </div>
               </div>
@@ -553,6 +626,7 @@ const ImplementationSection = ({
                       value={formProducto.presentacion}
                       onChange={(e) => setFormProducto({...formProducto, presentacion: e.target.value})}
                       className="form-input-modern"
+                      required
                     >
                       <option value="">Seleccionar presentación</option>
                       {(() => {
@@ -570,14 +644,13 @@ const ImplementationSection = ({
                             <option key="Tambor" value="Tambor">Galón</option> 
                           ];
                         } else {
-                          return [
-                          ];
+                          return [];
                         }
                       })()}
                     </select>
                   </div>
                   <div className="form-row">
-                    <label>Número de Cajas: <span className="optional">(Opcional)</span></label>
+                    <label>Número de Cajas: <span className="optional">(Obligatorio si no hay precios)</span></label>
                     <input
                       type="number"
                       value={formProducto.numeroCajas}
@@ -588,7 +661,7 @@ const ImplementationSection = ({
                     />
                   </div>
                   <div className="form-row">
-                    <label>PRECIO DE VENTA SUGERIDO UND: <span className="optional">*</span></label>
+                    <label>PRECIO DE VENTA SUGERIDO UND: <span className="optional">(Obligatorio si no hay cajas)</span></label>
                     <input
                       type="text"
                       value={formatearCOP(formProducto.pvpSugerido)}
@@ -599,11 +672,10 @@ const ImplementationSection = ({
                       }}
                       className="form-input-modern"
                       placeholder="$"
-                      required
                     />
                   </div>
                   <div className="form-row">
-                    <label>PRECIO DE VENTA REAL UND: <span className="optional">*</span></label>
+                    <label>PRECIO DE VENTA REAL UND: <span className="optional">(Obligatorio si no hay cajas)</span></label>
                     <input
                       type="text"
                       value={formatearCOP(formProducto.pvpReal)}
@@ -614,7 +686,6 @@ const ImplementationSection = ({
                       }}
                       className="form-input-modern"
                       placeholder="$"
-                      required
                     />
                   </div>
                 </div>
@@ -628,7 +699,14 @@ const ImplementationSection = ({
               <button 
                 className="btn-primary"
                 onClick={handleAgregarProducto}
-                disabled={!referenciaSeleccionada || !formProducto.presentacion || !formProducto.pvpReal}
+                disabled={
+                  !referenciaSeleccionada ||
+                  !formProducto.presentacion ||
+                  (
+                    !(parseFloat(formProducto.numeroCajas) > 0) &&
+                    !(formProducto.pvpReal && formProducto.pvpSugerido)
+                  )
+                }
               >
                 Agregar Producto
               </button>
@@ -666,36 +744,20 @@ const ImplementationSection = ({
         </div>,
         document.body
       )}
-
-      {/* Modal de confirmación para envío de reporte */}
-      <ConfirmationModal
-        isOpen={showSubmitConfirm}
-        onClose={handleCancelSubmit}
-        onConfirm={handleConfirmSubmit}
-        title="Confirmar envío de implementación"
-        message="¿Estás seguro de que deseas cargar este reporte de implementación? Esta acción no se puede deshacer."
-        isLoading={subiendo}
-      />
-
-      {/* Modal de éxito */}
-      <SuccessModal
-        isOpen={showSuccessModal}
-        title="¡Implementación Registrada!"
-        message="Tu reporte de implementación ha sido enviado exitosamente."
-        onComplete={handleSuccessComplete}
-        duration={3000}
-      />
+      {/* Modal de éxito bonito ahora se maneja en la página padre */}
+      {/* Modal de error */}
+      {submitError && (
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <h3>Error</h3>
+            <p>{submitError}</p>
+            <button className="btn-confirm" onClick={() => setSubmitError(null)}>Cerrar</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 
 export default ImplementationSection;
-
-// Formatear a pesos colombianos
-function formatearCOP(valor) {
-  if (!valor) return '';
-  const num = Number(valor.toString().replace(/\D/g, ''));
-  if (!num) return '';
-  return num.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
-}

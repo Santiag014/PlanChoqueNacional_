@@ -63,12 +63,12 @@ export default function DashboardLayout({ user, children }) {
   const showWhatsApp = rol === 'ASESOR';
   
   //console.log('DashboardLayout - Usuario:', userObj, 'Rol detectado:', rol);
-  console.log('DashboardLayout - Detalles:', {
-    userObj,
-    rolOriginal: userObj.rol || userObj.tipo,
-    rolNormalizado: rol,
-    pathname: location.pathname
-  });
+  // console.log('DashboardLayout - Detalles:', {
+  //   userObj,
+  //   rolOriginal: userObj.rol || userObj.tipo,
+  //   rolNormalizado: rol,
+  //   pathname: location.pathname
+  // });
 
   // --------------------------
   // Definición de menús por rol

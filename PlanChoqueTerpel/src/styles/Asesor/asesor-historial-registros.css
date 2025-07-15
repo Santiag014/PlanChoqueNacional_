@@ -1,3 +1,64 @@
+/* Estilos bonitos para la lista de productos en el modal */
+.productos-section-bonito {
+  margin-top: 1.5rem;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  padding: 1.2rem 1rem 1.5rem 1rem;
+}
+.productos-section-bonito .section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+.productos-section-bonito .section-icon {
+  font-size: 1.3rem;
+}
+.productos-lista {
+  margin-top: 0.5rem;
+}
+.productos-ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.producto-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.2rem;
+  border-bottom: 1px solid #f2f2f2;
+  font-size: 1rem;
+  color: #222;
+}
+.producto-item:last-child {
+  border-bottom: none;
+}
+.producto-punto {
+  color: #e30613;
+  font-size: 1.2rem;
+  margin-right: 0.3rem;
+}
+.producto-nombre {
+  font-weight: 600;
+  color: #e30613;
+}
+.producto-presentacion {
+  color: #888;
+  font-size: 0.98em;
+  margin-left: 0.2rem;
+}
+.producto-precio {
+  color: #4caf50;
+  font-weight: 500;
+  margin-left: 0.4rem;
+}
+.producto-volumen {
+  color: #2196f3;
+  font-weight: 500;
+  margin-left: 0.4rem;
+}
 /* Estilos para la página de Historial de Registros */
 .historial-registros {
   padding: 20px 15px 40px 15px;

@@ -21,20 +21,13 @@ export default function RegistrosTable({ registros, onVerDetalles, isMobile }) {
     }
   };
 
-  const getActividadNombre = (kpi) => {
-    switch (kpi?.toUpperCase()) {
-      case 'VOLUMEN': return 'IMPLEMENTACION';
-      case 'PRECIO': return 'IMPLEMENTACION';
-      case 'PRECIO_VOLUMEN': return 'IMPLEMENTACION';
-      case 'FRECUENCIA': return 'VISITA';
-      case 'COBERTURA': return 'VISITA';
-      case 'PROFUNDIDAD': return 'IMPLEMENTACION';
-      default: return 'VISITA';
-    }
+  // Ahora la actividad se toma directamente de tipo_accion
+  const getActividadNombre = (registro) => {
+    return registro.tipo_accion ? registro.tipo_accion.toUpperCase() : '';
   };
 
-  const getActividadClass = (kpi) => {
-    const actividad = getActividadNombre(kpi);
+  const getActividadClass = (registro) => {
+    const actividad = getActividadNombre(registro);
     return actividad === 'IMPLEMENTACION' ? 'actividad-implementacion' : 'actividad-visita';
   };
 
@@ -54,9 +47,9 @@ export default function RegistrosTable({ registros, onVerDetalles, isMobile }) {
         <table className="registros-table">
           <thead>
             <tr>
-              <th className="codigo-header">Código PDV</th>
+              <th className="codigo-header">Código</th>
               <th className="fecha-header">Fecha</th>
-              <th className="kpi-header">ACTIVIDAD</th>
+              <th className="kpi-header">Actividad</th>
             </tr>
           </thead>
           <tbody>
@@ -70,7 +63,7 @@ export default function RegistrosTable({ registros, onVerDetalles, isMobile }) {
               >
                 <td>
                   <span className="codigo-highlight">
-                    {registro.codigo_pdv}
+                    {registro.codigo || registro.codigo_pdv || '-'}
                   </span>
                 </td>
                 <td>
@@ -79,8 +72,8 @@ export default function RegistrosTable({ registros, onVerDetalles, isMobile }) {
                   </span>
                 </td>
                 <td>
-                  <span className={`kpi-badge ${getActividadClass(registro.tipo_kpi)}`}>
-                    {getActividadNombre(registro.tipo_kpi)}
+                  <span className={`kpi-badge ${getActividadClass(registro)}`}> 
+                    {getActividadNombre(registro)}
                   </span>
                 </td>
               </tr>

@@ -8,12 +8,13 @@ import '../../styles/Asesor/asesor-registro-pdv.css';
 import { usePdvData } from '../../hooks';
 import { useProductSelection } from '../../hooks';
 import { useKpiManagement } from '../../hooks';
-import { useReportSubmission } from '../../hooks';
+import { useReportSubmission, useVisitaSubmission } from '../../hooks';
 
 // Componentes
 import KpiSelector from '../../components/Asesor/Pdv/KpiSelector';
 import ImplementationSection from '../../components/Asesor/Pdv/ImplementationSection';
-import VolumeSection from '../../components/Asesor/Pdv/VolumeSection';
+import { createPortal } from 'react-dom';
+import VisitaSection from '../../components/Asesor/Pdv/VisitaSection';
 import PdvInfoPopup from '../../components/Asesor/Pdv/PdvInfoPopup';
 
 /**
@@ -26,6 +27,9 @@ export default function RegistroImplementacion() {
   // Proteger la ruta - solo asesores pueden acceder
   const { user, loading, isAuthenticated, hasRequiredRole } = useAsesorRoute();
 
+    // Estado para el modal de éxito global
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
   // Estado para el pop-up de información de PDVs
   const [showPdvPopup, setShowPdvPopup] = useState(false);
 
@@ -37,6 +41,7 @@ export default function RegistroImplementacion() {
   const productSelection = useProductSelection();
   const kpiManagement = useKpiManagement(productSelection);
   const reportSubmission = useReportSubmission(userId);
+  const visitaSubmission = useVisitaSubmission(userId);
 
   // Efectos para manejar cambios
   useEffect(() => {
@@ -63,31 +68,14 @@ export default function RegistroImplementacion() {
   }
 
   // Función para manejar el envío del reporte
-  const handleCargarReporte = async (onSuccess = null) => {
+  // Recibe el objeto de datos y lo pasa tal cual al hook
+  const handleCargarReporte = async (params, onSuccess = null) => {
     try {
-      const reporteFinal = reportSubmission.construirReporteFinal(
-        pdvData.codigoPDV, 
-        pdvData.correspondeA, 
-        kpiManagement.kpiSeleccionado, 
-        kpiManagement.fecha, 
-        kpiManagement.foto, 
-        kpiManagement.acumulados
-      );
-      
-      const resultado = await reportSubmission.enviarReporte(
-        pdvData.codigoPDV,
-        pdvData.correspondeA,
-        kpiManagement.kpiSeleccionado,
-        kpiManagement.fecha,
-        kpiManagement.foto,
-        kpiManagement.acumulados
-      );
-
+      const resultado = await reportSubmission.enviarReporte(params);
       // Si hay un callback de éxito y el envío fue exitoso, ejecutarlo
       if (resultado && onSuccess) {
         onSuccess();
       }
-
       return resultado;
     } catch (error) {
       console.error('Error en handleCargarReporte:', error);
@@ -107,12 +95,7 @@ export default function RegistroImplementacion() {
     // gracias al efecto del hook usePdvData
   };
 
-  const PDVS = [
-    { codigo: '1001', nombre: 'Tienda El Progreso', direccion: 'Calle 10 #5-20, Bogotá' },
-    { codigo: '1002', nombre: 'Minimercado Don Juan', direccion: 'Carrera 8 #12-34, Medellín' },
-    { codigo: '1003', nombre: 'Supermercado La Economía', direccion: 'Av. Principal 45-67, Cali' },
-    { codigo: '1004', nombre: 'Tienda La Esquina', direccion: 'Cra 3 #45-67, Barranquilla' }
-  ];
+
 
   return (
     <DashboardLayout user={user} pageTitle="REGISTRO IMPLEMENTACIÓN">
@@ -179,34 +162,43 @@ export default function RegistroImplementacion() {
             foto={kpiManagement.foto}
             setFoto={kpiManagement.setFoto}
             enviarReporte={handleCargarReporte}
-            subiendo={reportSubmission.isSubmitting}
+            isSubmitting={reportSubmission.isSubmitting}
             userId={userId}
             pdvCode={pdvData.codigoPDV}
+            acumulados={kpiManagement.acumulados}
+            subirFotoEvidencia={reportSubmission.subirFotoEvidencia}
+            onSuccess={() => setShowSuccessModal(true)}
           />
         )}
+      {/* Modal de éxito global para implementación */}
+      {showSuccessModal && createPortal(
+        <div className="modal-overlay" style={{background: 'rgba(0,0,0,0.25)', zIndex: 9999, position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+          <div className="modal-box success-modal" style={{background: '#fff', borderRadius: 18, boxShadow: '0 4px 24px rgba(0,0,0,0.10)', padding: 24, textAlign: 'center', maxWidth: 400, width: '90vw'}}>
+            <span className="success-icon" style={{fontSize: 56, color: '#27ae60', marginBottom: 12, display: 'inline-block'}}>
+              <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="28" cy="28" r="28" fill="#27ae60"/>
+                <path d="M16 29.5L24.5 38L40 22.5" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </span>
+            <h2 style={{color: '#27ae60', margin: 0, fontWeight: 700}}>¡Registro exitoso!</h2>
+            <p style={{color: '#222', margin: '12px 0 24px'}}>El registro de Implementación ha sido guardado correctamente.</p>
+            <button className="btn-confirm" onClick={() => { setShowSuccessModal(false); window.location.reload(); }} style={{marginTop: 0, borderRadius: 8, background: '#27ae60', color: '#fff', border: 'none', padding: '10px 28px', fontWeight: 600, fontSize: 16}}>Aceptar</button>
+          </div>
+        </div>,
+        document.body
+      )}
 
         {kpiManagement.kpiSeleccionado === 'Visitas' && (
-          <VolumeSection 
+          <VisitaSection
             kpiTransition={kpiManagement.kpiTransition}
-            productos={productSelection.productos}
-            cant14={kpiManagement.cant14}
-            setCant14={kpiManagement.setCant14}
-            cant1={kpiManagement.cant1}
-            setCant1={kpiManagement.setCant1}
-            cant55={kpiManagement.cant55}
-            setCant55={kpiManagement.setCant55}
-            totalCantidad={kpiManagement.totalCantidad}
-            handleCargarVolumen={kpiManagement.handleCargarVolumen}
-            acumulados={kpiManagement.acumulados}
-            handleEliminar={kpiManagement.handleEliminar}
-            totalGalones={kpiManagement.totalGalones}
             fecha={kpiManagement.fecha}
             setFecha={kpiManagement.setFecha}
             foto={kpiManagement.foto}
             setFoto={kpiManagement.setFoto}
-            enviarReporte={handleCargarReporte}
-            subiendo={reportSubmission.isSubmitting}
-            productSelection={productSelection}
+            pdvId={pdvData.codigoPDV}
+            userId={userId}
+            enviarVisita={visitaSubmission.enviarVisita}
+            subiendo={visitaSubmission.isSubmitting}
           />
         )}
 

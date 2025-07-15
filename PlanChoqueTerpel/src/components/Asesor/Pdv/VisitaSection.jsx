@@ -1,53 +1,46 @@
 import React, { useState } from 'react';
-import ConfirmationModal from './ConfirmationModal';
-import SuccessModal from './SuccessModal';
 
 /**
  * Componente para el KPI de Visitas (anteriormente Volumen)
  */
-const VolumeSection = ({ 
+
+const VisitaSection = ({
   kpiTransition,
   fecha,
   setFecha,
   foto,
   setFoto,
-  enviarReporte,
+  pdvId,
+  userId,
+  enviarVisita,
   subiendo
 }) => {
-  const [numeroVisita, setNumeroVisita] = useState('');
+  // Eliminado número de visita
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
-  const handleSubmit = () => {
-    setShowSubmitConfirm(true);
-  };
-
-  const handleConfirmSubmit = () => {
-    setShowSubmitConfirm(false);
-    
-    // Intentar llamar con callback si la función lo soporta
+  // Envío directo sin popup de confirmación
+  const handleSubmit = async () => {
+    setSubmitError(null);
     try {
-      const resultado = enviarReporte(() => {
-        // Callback de éxito
-        setTimeout(() => {
-          setShowSuccessModal(true);
-        }, 500);
-      });
-      
-      // Si no soporta callback, usar timeout como fallback
-      if (resultado === undefined) {
-        setTimeout(() => {
-          setShowSuccessModal(true);
-        }, 2000);
+      const params = {
+        pdv_id: pdvId,
+        user_id: userId,
+        fecha,
+        foto_seguimiento: foto
+      };
+      const result = await enviarVisita(params);
+      if (result) {
+        setShowSuccessModal(true);
       }
     } catch (error) {
-      console.error('Error al enviar reporte:', error);
+      setSubmitError(error.message || 'Error al enviar la visita');
     }
   };
 
   const handleSuccessComplete = () => {
     setShowSuccessModal(false);
-    // Recargar la página después de un breve delay
     setTimeout(() => {
       window.location.reload();
     }, 500);
@@ -59,7 +52,6 @@ const VolumeSection = ({
 
   return (
     <div className={`kpi-section kpi-transition${kpiTransition ? ' kpi-fade' : ''}`}>
-      
       {/* Fecha */}
       <div className="pdv-row-fecha">
         <label className="pdv-label" htmlFor="fecha-input-visitas">FECHA</label>
@@ -82,19 +74,8 @@ const VolumeSection = ({
         </div>
       </div>
 
-      {/* Número de Visita de Seguimiento */}
-      <div className="pdv-row">
-        <label className="pdv-label" htmlFor="numero-visita-input">NÚMERO DE VISITA</label>
-        <input
-          id="numero-visita-input"
-          className="pdv-input-corresponde"
-          type="number"
-          min="1"
-          value={numeroVisita}
-          onChange={(e) => setNumeroVisita(e.target.value)}
-          placeholder="Ej: 1, 2, 3..."
-        />
-      </div>
+
+      {/* Eliminado campo de número de visita */}
 
       {/* Foto de Seguimiento */}
       <div className="pdv-row-foto">
@@ -134,32 +115,41 @@ const VolumeSection = ({
           type="button"
           className="btn-cargar-registro"
           onClick={handleSubmit}
-          disabled={subiendo || !numeroVisita || !fecha || !foto}
+          disabled={subiendo || !fecha || !foto}
         >
           {subiendo ? 'Enviando...' : 'CARGAR REGISTRO'}
         </button>
       </div>
 
-      {/* Modal de confirmación para envío de reporte */}
-      <ConfirmationModal
-        isOpen={showSubmitConfirm}
-        onClose={handleCancelSubmit}
-        onConfirm={handleConfirmSubmit}
-        title="Confirmar envío de visitas"
-        message="¿Estás seguro de que deseas cargar este reporte de visitas? Esta acción no se puede deshacer."
-        isLoading={subiendo}
-      />
+      {/* Modal de éxito bonito */}
+      {showSuccessModal && (
+        <div className="modal-overlay" style={{background: 'rgba(0,0,0,0.25)'}}>
+          <div className="modal-box success-modal" style={{background: '#fff', borderRadius: 18, boxShadow: '0 4px 24px rgba(0,0,0,0.10)', padding: 24, textAlign: 'center'}}>
+            <span className="success-icon" style={{fontSize: 56, color: '#27ae60', marginBottom: 12, display: 'inline-block'}}>
+              <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="28" cy="28" r="28" fill="#27ae60"/>
+                <path d="M16 29.5L24.5 38L40 22.5" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </span>
+            <h2 style={{color: '#27ae60', margin: 0, fontWeight: 700}}>¡Registro exitoso!</h2>
+            <p style={{color: '#222', margin: '12px 0 24px'}}>El registro de visita ha sido guardado correctamente.</p>
+            <button className="btn-confirm" onClick={handleSuccessComplete} style={{marginTop: 0, borderRadius: 8, background: '#27ae60', color: '#fff', border: 'none', padding: '10px 28px', fontWeight: 600, fontSize: 16}}>Aceptar</button>
+          </div>
+        </div>
+      )}
 
-      {/* Modal de éxito */}
-      <SuccessModal
-        isOpen={showSuccessModal}
-        title="¡Visita Registrada!"
-        message="Tu reporte de visita ha sido enviado exitosamente."
-        onComplete={handleSuccessComplete}
-        duration={3000}
-      />
+      {/* Modal de error */}
+      {submitError && (
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <h3>Error</h3>
+            <p>{submitError}</p>
+            <button className="btn-confirm" onClick={() => setSubmitError(null)}>Cerrar</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default VolumeSection;
+export default VisitaSection;

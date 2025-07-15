@@ -1,6 +1,48 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 export default function RegistroModal({ isOpen, onClose, registro, loading, isMobile }) {
+  // Estado para los detalles frescos
+  const [detalles, setDetalles] = useState(null);
+  const [loadingDetalles, setLoadingDetalles] = useState(false);
+
+  // Fetch de detalles al abrir el modal y tener registro.id
+  useEffect(() => {
+    if (isOpen && registro?.id) {
+      setLoadingDetalles(true);
+      fetch(`/api/asesor/registro-detalles/${registro.id}`)
+        .then(async res => {
+          const contentType = res.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
+            const text = await res.text();
+            throw new Error(`La respuesta no es JSON. Respuesta: ${text.substring(0, 100)}`);
+          }
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`Error HTTP: ${res.status} - ${errorText}`);
+          }
+          return res.json();
+        })
+        .catch(err => {
+          setDetalles(null);
+          console.error('Error fetch detalles:', err);
+        })
+        .finally(() => setLoadingDetalles(false));
+    } else {
+      setDetalles(null);
+    }
+  }, [isOpen, registro?.id]);
+
+  // Mostrar en consola el objeto registro cada vez que cambia
+  useEffect(() => {
+    if (isOpen && registro) {
+      console.log('Registro recibido en el modal:', registro);
+      if (registro.detalles) {
+        console.log('Detalles del registro:', registro.detalles);
+      }
+    }
+  }, [isOpen, registro]);
+
+
   // Efecto para manejar el escape key y prevenir scroll del body
   useEffect(() => {
     if (!isOpen) return;
@@ -20,6 +62,7 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, onClose]);
+
 
   if (!isOpen) return null;
 
@@ -409,6 +452,29 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
     );
   };
 
+
+  // Usar los detalles frescos si existen, si no, usar el registro original
+  const datos = detalles || registro || {};
+
+  // Reconstruir productos SOLO si detalles está presente y tiene referencias
+  const productosReconstruidos = (() => {
+    if (!detalles || !detalles.referencias) return [];
+    const refs = detalles.referencias.split(',');
+    const presentaciones = (detalles.presentaciones || '').split(',');
+    const preciosReales = (detalles.precios_reales || '').split(',');
+    const preciosSugeridos = (detalles.precios_sugeridos || '').split(',');
+    const cantidades = (detalles.cantidades_cajas || '').split(',');
+    const galones = (detalles.galones || '').split(',');
+    return refs.map((ref, idx) => ({
+      referencia: ref.trim(),
+      presentacion: presentaciones[idx]?.trim() || '',
+      precio_real: preciosReales[idx]?.trim() || '',
+      precio_sugerido: preciosSugeridos[idx]?.trim() || '',
+      cantidad: cantidades[idx]?.trim() || '',
+      galones: galones[idx]?.trim() || '',
+    }));
+  })();
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div 
@@ -422,7 +488,7 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
             <div>
               <h2>Detalles del Registro</h2>
               <span className="modal-subtitle">
-                PDV {registro?.codigo_pdv} - {registro?.tipo_kpi}
+                PDV {datos.codigo_pdv || datos.codigo || '-'} - {datos.tipo_kpi || datos.tipo_accion || '-'}
               </span>
             </div>
           </div>
@@ -431,7 +497,7 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
 
         {/* Contenido del modal */}
         <div className="modal-body">
-          {loading ? (
+          {(loading || loadingDetalles) ? (
             <div className="loading-detalles">
               <div className="loading-spinner"></div>
               <p>Cargando detalles...</p>
@@ -439,26 +505,27 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
           ) : (
             <>
 
+
               {/* Información básica organizada en tarjetas */}
               <div className="info-cards-container">
                 {/* Tarjeta PDV */}
                 <div className="info-card">
                   <div className="card-header">
-                    <span className="card-icon"></span>
+                    <span className="card-icon">🏪</span>
                     <h4>Información del PDV</h4>
                   </div>
                   <div className="card-content">
                     <div className="info-row">
                       <label>Código:</label>
-                      <span className="codigo-value">{registro?.codigo_pdv}</span>
+                      <span className="codigo-value">{datos.codigo || datos.codigo_pdv || '-'}</span>
                     </div>
                     <div className="info-row">
                       <label>Nombre:</label>
-                      <span>{registro?.nombre_pdv || 'N/A'}</span>
+                      <span>{datos.nombre_pdv || datos.descripcion || datos.detalles?.nombre_pdv || datos.detalles?.descripcion || datos.detalles?.pdv_info?.nombre || 'N/A'}</span>
                     </div>
                     <div className="info-row">
                       <label>Dirección:</label>
-                      <span>{registro?.detalles?.pdv_info?.direccion || registro?.direccion_pdv || 'N/A'}</span>
+                      <span>{datos.direccion_pdv || datos.direccion || datos.detalles?.direccion_pdv || datos.detalles?.direccion || datos.detalles?.pdv_info?.direccion || 'N/A'}</span>
                     </div>
                   </div>
                 </div>
@@ -466,45 +533,56 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
                 {/* Tarjeta Registro */}
                 <div className="info-card">
                   <div className="card-header">
-                    <span className="card-icon"></span>
+                    <span className="card-icon">🧑‍💼</span>
                     <h4>Información del Registro</h4>
                   </div>
                   <div className="card-content">
                     <div className="info-row">
                       <label>Agente:</label>
-                      <span className="agente-value">{registro?.nombre_agente || 'N/A'}</span>
+                      <span className="agente-value">{datos.nombre_agente || datos.name || datos.detalles?.agente || datos.detalles?.name || 'N/A'}</span>
                     </div>
-                    {/* Etiquetas de KPI específicas */}
                     <div className="info-row">
                       <label>KPI:</label>
                       <div className="kpi-badges-container">
-                        {registro?.tipo_kpi?.toLowerCase() === 'precio_volumen' ? (
-                          <>
-                            <span className="kpi-badge kpi-precio">PRECIO</span>
-                            <span className="kpi-badge kpi-volumen">VOLUMEN</span>
-                          </>
-                        ) : registro?.tipo_kpi?.toLowerCase() === 'precio' ? (
-                          <span className="kpi-badge kpi-precio">PRECIO</span>
-                        ) : registro?.tipo_kpi?.toLowerCase() === 'volumen' ? (
-                          <span className="kpi-badge kpi-volumen">VOLUMEN</span>
-                        ) : registro?.tipo_kpi?.toLowerCase() === 'frecuencia' ? (
-                          <span className="kpi-badge kpi-frecuencia">FRECUENCIA</span>
-                        ) : (
-                          <span className="kpi-badge">N/A</span>
-                        )}
+                        {(() => {
+                          // Buscar el KPI en orden de prioridad
+                          const kpi = (datos.detalles?.tipo_accion || '').toLowerCase();
+                          if (kpi === 'precio_volumen' || kpi === 'volumen / precio') {
+                            return <><span className="kpi-badge kpi-precio">PRECIO</span><span className="kpi-badge kpi-volumen">VOLUMEN</span></>;
+                          } else if (kpi === 'precio') {
+                            return <span className="kpi-badge kpi-precio">PRECIO</span>;
+                          } else if (kpi === 'volumen') {
+                            return <span className="kpi-badge kpi-volumen">VOLUMEN</span>;
+                          } else if (kpi === 'frecuencia') {
+                            return <span className="kpi-badge kpi-frecuencia">FRECUENCIA</span>;
+                          } else if (kpi) {
+                            return <span className="kpi-badge">{kpi.toUpperCase()}</span>;
+                          } else {
+                            return <span className="kpi-badge">N/A</span>;
+                          }
+                        })()}
                       </div>
                     </div>
                     <div className="info-row">
-                      <label>Fecha:</label>
-                      <span className="fecha-value">{formatearFecha(registro?.fecha_registro)}</span>
+                      <label>Actividad:</label>
+                      <span>{datos.tipo_accion || datos.detalles?.tipo_accion || '-'}</span>
                     </div>
-                    {/* Información específica por KPI */}
-                    {renderInfoKPI()}
+                    <div className="info-row">
+                      <label>Fecha:</label>
+                      <span className="fecha-value">{formatearFecha(datos.fecha_registro)}</span>
+                    </div>
+                    {/* Estado del registro si existe */}
+                    {datos.estado || datos.detalles?.estado ? (
+                      <div className="info-row">
+                        <label>Estado:</label>
+                        <span className={`estado-badge ${getEstadoClass(datos.estado || datos.detalles?.estado)}`}>{getEstadoTexto(datos.estado || datos.detalles?.estado)}</span>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
                 {/* Tarjeta Observaciones */}
-                {(registro?.observaciones || registro?.detalles?.observaciones) && (
+                {(datos.observaciones || datos.observacion || datos.detalles?.observaciones) && (
                   <div className="info-card">
                     <div className="card-header">
                       <span className="card-icon">📝</span>
@@ -512,26 +590,241 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
                     </div>
                     <div className="card-content">
                       <div className="info-row">
-                        <span>{registro?.observaciones || registro?.detalles?.observaciones}</span>
+                        <span>{datos.observaciones || datos.observacion || datos.detalles?.observaciones}</span>
                       </div>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Tabla de productos */}
-              {registro?.tipo_kpi?.toLowerCase() !== 'frecuencia' && (
-                <div className="productos-section">
+              {/* Tabla de productos según KPI */}
+              {(detalles && ['IMPLEMENTACION', 'VOLUMEN / PRECIO', 'VOLUMEN', 'PRECIO'].includes((detalles.tipo_accion || '').toUpperCase())) && (
+                <div className="productos-section productos-section-bonito">
                   <div className="section-header">
-                    <span className="section-icon"></span>
+                    <span className="section-icon">🛒</span>
                     <h3>Productos Registrados</h3>
                   </div>
-                  {renderTablaProductos()}
+                  <div className="productos-lista">
+                    {productosReconstruidos.length > 0 ? (
+                      <div className="tabla-productos-modal">
+                        <table className="productos-table">
+                          <thead>
+                            <tr>
+                              <th>Referencia</th>
+                              {/* Solo mostrar Presentación si existe algún valor */}
+                              {productosReconstruidos.some(p => p.presentacion) && <th>Presentación</th>}
+                              {/* Columnas para PRECIO */}
+                              {(() => {
+                                const tipo = (detalles.tipo_accion || '').toUpperCase();
+                                if (tipo === 'PRECIO') {
+                                  return <>
+                                    <th>Precio Sugerido</th>
+                                    <th>Precio Real</th>
+                                  </>;
+                                }
+                                if (tipo === 'VOLUMEN') {
+                                  return <>
+                                    <th>Nº Cajas</th>
+                                    <th>Galones</th>
+                                  </>;
+                                }
+                                if (tipo === 'VOLUMEN / PRECIO' || tipo === 'PRECIO_VOLUMEN') {
+                                  return <>
+                                    <th>Precio Sugerido</th>
+                                    <th>Precio Real</th>
+                                    <th>Nº Cajas</th>
+                                    <th>Galones</th>
+                                  </>;
+                                }
+                                // IMPLEMENTACION: mostrar todo si hay datos
+                                if (tipo === 'IMPLEMENTACION') {
+                                  return <>
+                                    <th>Precio Sugerido</th>
+                                    <th>Precio Real</th>
+                                    <th>Nº Cajas</th>
+                                    <th>Galones</th>
+                                  </>;
+                                }
+                                return null;
+                              })()}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {productosReconstruidos.map((prod, idx) => {
+                              const tipo = (detalles.tipo_accion || '').toUpperCase();
+                              return (
+                                <tr key={idx}>
+                                  <td className="referencia-cell">{prod.referencia}</td>
+                                  {productosReconstruidos.some(p => p.presentacion) && (
+                                    <td className="presentacion-cell">{prod.presentacion}</td>
+                                  )}
+                                  {/* PRECIO */}
+                                  {(tipo === 'PRECIO') && <>
+                                    <td className="precio-cell">{prod.precio_sugerido ? `$${Number(prod.precio_sugerido).toLocaleString('es-CO')}` : '-'}</td>
+                                    <td className="precio-cell">{prod.precio_real ? `$${Number(prod.precio_real).toLocaleString('es-CO')}` : '-'}</td>
+                                  </>}
+                                  {/* VOLUMEN */}
+                                  {(tipo === 'VOLUMEN') && <>
+                                    <td className="cantidad-cell">{prod.cantidad || '-'}</td>
+                                    <td className="cantidad-cell">{prod.galones || '-'}</td>
+                                  </>}
+                                  {/* VOLUMEN / PRECIO o IMPLEMENTACION */}
+                                  {(tipo === 'VOLUMEN / PRECIO' || tipo === 'PRECIO_VOLUMEN' || tipo === 'IMPLEMENTACION') && <>
+                                    <td className="precio-cell">{prod.precio_sugerido ? `$${Number(prod.precio_sugerido).toLocaleString('es-CO')}` : '-'}</td>
+                                    <td className="precio-cell">{prod.precio_real ? `$${Number(prod.precio_real).toLocaleString('es-CO')}` : '-'}</td>
+                                    <td className="cantidad-cell">{prod.cantidad || '-'}</td>
+                                    <td className="cantidad-cell">{prod.galones || '-'}</td>
+                                  </>}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="no-productos">
+                        <div className="no-productos-icon">📦</div>
+                        <span>No hay productos registrados</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* Fotos según KPI */}
-              {renderFotos()}
+              {/* Sección de fotos en tabla */}
+              {/* Sección de fotos grandes con scroll horizontal según KPI */}
+              {(() => {
+                const getFullUrl = (ruta) => {
+                  if (!ruta) return '';
+                  if (ruta.startsWith('http')) return ruta;
+                  if (ruta.startsWith('/')) return window.location.origin + ruta;
+                  return window.location.origin + '/' + ruta;
+                };
+                const getArr = (valor) => (valor ? valor.split(',').map(f => f.trim()).filter(f => !!f) : []);
+                const arrPop = getArr(detalles?.foto_pop);
+                const arrFactura = getArr(detalles?.foto_factura);
+                const tipoKpi = (detalles?.tipo_accion || registro?.tipo_kpi || '').toLowerCase();
+
+                if (tipoKpi === 'precio_volumen' || tipoKpi === 'volumen / precio') {
+                  return (
+                    <div className="fotos-evidencia-grande">
+                      <div className="foto-section">
+                        <div className="section-header">
+                          <span className="section-icon">💰</span>
+                          <h3>Foto POP (Implementación)</h3>
+                        </div>
+                        <div className="fotos-scroll" style={{ display: 'flex', gap: 24, overflowX: 'auto', padding: '8px 0' }}>
+                          {arrPop.length > 0 ? arrPop.map((ruta, idx) => (
+                            <a
+                              key={idx}
+                              href={getFullUrl(ruta)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Ver imagen en tamaño completo"
+                              style={{ display: 'inline-block' }}
+                            >
+                              <img
+                                src={getFullUrl(ruta)}
+                                alt={`Foto POP ${idx + 1}`}
+                                style={{ maxWidth: 220, maxHeight: 220, borderRadius: 10, boxShadow: '0 2px 8px #0002', cursor: 'pointer' }}
+                                onError={e => { e.target.src = '/storage/img_productos_carrusel/img_login.png'; }}
+                              />
+                            </a>
+                          )) : <span style={{ color: '#bbb' }}>Sin imagen</span>}
+                        </div>
+                      </div>
+                      <div className="foto-section">
+                        <div className="section-header">
+                          <span className="section-icon">📋</span>
+                          <h3>Foto Factura</h3>
+                        </div>
+                        <div className="fotos-scroll" style={{ display: 'flex', gap: 24, overflowX: 'auto', padding: '8px 0' }}>
+                          {arrFactura.length > 0 ? arrFactura.map((ruta, idx) => (
+                            <a
+                              key={idx}
+                              href={getFullUrl(ruta)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Ver imagen en tamaño completo"
+                              style={{ display: 'inline-block' }}
+                            >
+                              <img
+                                src={getFullUrl(ruta)}
+                                alt={`Foto Factura ${idx + 1}`}
+                                style={{ maxWidth: 220, maxHeight: 220, borderRadius: 10, boxShadow: '0 2px 8px #0002', cursor: 'pointer' }}
+                                onError={e => { e.target.src = '/storage/img_productos_carrusel/img_login.png'; }}
+                              />
+                            </a>
+                          )) : <span style={{ color: '#bbb' }}>Sin imagen</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                if (tipoKpi === 'volumen') {
+                  return (
+                    <div className="fotos-evidencia-grande">
+                      <div className="foto-section">
+                        <div className="section-header">
+                          <span className="section-icon">📋</span>
+                          <h3>Foto Factura</h3>
+                        </div>
+                        <div className="fotos-scroll" style={{ display: 'flex', gap: 24, overflowX: 'auto', padding: '8px 0' }}>
+                          {arrFactura.length > 0 ? arrFactura.map((ruta, idx) => (
+                            <a
+                              key={idx}
+                              href={getFullUrl(ruta)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Ver imagen en tamaño completo"
+                              style={{ display: 'inline-block' }}
+                            >
+                              <img
+                                src={getFullUrl(ruta)}
+                                alt={`Foto Factura ${idx + 1}`}
+                                style={{ maxWidth: 220, maxHeight: 220, borderRadius: 10, boxShadow: '0 2px 8px #0002', cursor: 'pointer' }}
+                                onError={e => { e.target.src = '/storage/img_productos_carrusel/img_login.png'; }}
+                              />
+                            </a>
+                          )) : <span style={{ color: '#bbb' }}>Sin imagen</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                if (tipoKpi === 'precio') {
+                  return (
+                    <div className="fotos-evidencia-grande">
+                      <div className="foto-section">
+                        <div className="section-header">
+                          <span className="section-icon">💰</span>
+                          <h3>Foto POP (Implementación)</h3>
+                        </div>
+                        <div className="fotos-scroll" style={{ display: 'flex', gap: 24, overflowX: 'auto', padding: '8px 0' }}>
+                          {arrPop.length > 0 ? arrPop.map((ruta, idx) => (
+                            <a
+                              key={idx}
+                              href={getFullUrl(ruta)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Ver imagen en tamaño completo"
+                              style={{ display: 'inline-block' }}
+                            >
+                              <img
+                                src={getFullUrl(ruta)}
+                                alt={`Foto POP ${idx + 1}`}
+                                style={{ maxWidth: 220, maxHeight: 220, borderRadius: 10, boxShadow: '0 2px 8px #0002', cursor: 'pointer' }}
+                                onError={e => { e.target.src = '/storage/img_productos_carrusel/img_login.png'; }}
+                              />
+                            </a>
+                          )) : <span style={{ color: '#bbb' }}>Sin imagen</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </>
           )}
         </div>

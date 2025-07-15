@@ -79,6 +79,7 @@ export default function HistorialRegistros() {
         }
         
         const data = await response.json();
+        console.log('Respuesta completa de la API:', data); // <-- Agregado para ver todo lo que trae la API
         
         if (data.success) {
           const registrosData = data.data || [];
@@ -90,134 +91,6 @@ export default function HistorialRegistros() {
         }
       } catch (err) {
         setError(`Error al cargar registros: ${err.message}`);
-        
-        // Solo usar datos mock en desarrollo y si no hay registros reales
-        if (process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') {
-          // console.log('Usando datos mock para desarrollo');
-          const registrosMock = [
-            // 3 registros de FRECUENCIA
-            {
-              id: 1,
-              codigo_pdv: '001',
-              nombre_agente: 'Carlos Rodríguez',
-              fecha_registro: new Date(Date.now() - 86400000).toISOString(), // 1 día atrás
-              tipo_kpi: 'FRECUENCIA',
-              nombre_pdv: 'Estación Central',
-              estado: 'VALIDADO',
-              observaciones: 'Implementación exitosa de frecuencia de visitas'
-            },
-            {
-              id: 2,
-              codigo_pdv: '003',
-              nombre_agente: 'Ana Martínez',
-              fecha_registro: new Date(Date.now() - 172800000).toISOString(), // 2 días atrás
-              tipo_kpi: 'FRECUENCIA',
-              nombre_pdv: 'Estación Norte',
-              estado: 'PENDIENTE',
-              observaciones: 'Pendiente validación de visitas programadas'
-            },
-            {
-              id: 3,
-              codigo_pdv: '007',
-              nombre_agente: 'Roberto Silva',
-              fecha_registro: new Date(Date.now() - 259200000).toISOString(), // 3 días atrás
-              tipo_kpi: 'FRECUENCIA',
-              nombre_pdv: 'Estación Express',
-              estado: 'RECHAZADO',
-              observaciones: 'No cumple con la frecuencia mínima requerida'
-            },
-            
-            // 3 registros de PRECIO/VOLUMEN
-            {
-              id: 4,
-              codigo_pdv: '002',
-              nombre_agente: 'Laura González',
-              fecha_registro: new Date(Date.now() - 345600000).toISOString(), // 4 días atrás
-              tipo_kpi: 'PRECIO_VOLUMEN',
-              nombre_pdv: 'Estación Sur',
-              estado: 'VALIDADO',
-              observaciones: 'Excelente implementación de precios y volumen'
-            },
-            {
-              id: 5,
-              codigo_pdv: '009',
-              nombre_agente: 'Miguel Torres',
-              fecha_registro: new Date(Date.now() - 432000000).toISOString(), // 5 días atrás
-              tipo_kpi: 'PRECIO_VOLUMEN',
-              nombre_pdv: 'Estación Plaza',
-              estado: 'VALIDADO',
-              observaciones: 'Cumple objetivos de precio y volumen'
-            },
-            {
-              id: 6,
-              codigo_pdv: '012',
-              nombre_agente: 'Patricia Ruiz',
-              fecha_registro: new Date(Date.now() - 518400000).toISOString(), // 6 días atrás
-              tipo_kpi: 'PRECIO_VOLUMEN',
-              nombre_pdv: 'Estación Oriente',
-              estado: 'PENDIENTE',
-              observaciones: 'Revisión de precios en curso'
-            },
-            
-            // 4 registros de VOLUMEN solo
-            {
-              id: 7,
-              codigo_pdv: '004',
-              nombre_agente: 'Diego Herrera',
-              fecha_registro: new Date(Date.now() - 604800000).toISOString(), // 7 días atrás
-              tipo_kpi: 'VOLUMEN',
-              nombre_pdv: 'Estación Occidente',
-              estado: 'VALIDADO',
-              observaciones: 'Excelente volumen de ventas logrado'
-            },
-            {
-              id: 8,
-              codigo_pdv: '006',
-              nombre_agente: 'Sofía Mendoza',
-              fecha_registro: new Date(Date.now() - 691200000).toISOString(), // 8 días atrás
-              tipo_kpi: 'VOLUMEN',
-              nombre_pdv: 'Estación Zona Rosa',
-              estado: 'VALIDADO',
-              observaciones: 'Superó meta de volumen mensual'
-            },
-            {
-              id: 9,
-              codigo_pdv: '011',
-              nombre_agente: 'Alejandro Castro',
-              fecha_registro: new Date(Date.now() - 777600000).toISOString(), // 9 días atrás
-              tipo_kpi: 'VOLUMEN',
-              nombre_pdv: 'Estación Industrial',
-              estado: 'PENDIENTE',
-              observaciones: 'Evaluando incremento de volumen'
-            },
-            {
-              id: 10,
-              codigo_pdv: '015',
-              nombre_agente: 'Valeria López',
-              fecha_registro: new Date(Date.now() - 864000000).toISOString(), // 10 días atrás
-              tipo_kpi: 'VOLUMEN',
-              nombre_pdv: 'Estación Centro',
-              estado: 'RECHAZADO',
-              observaciones: 'No alcanzó el volumen mínimo requerido'
-            },
-            
-            // 1 registro de PRECIO solo
-            {
-              id: 11,
-              codigo_pdv: '008',
-              nombre_agente: 'Fernando Jiménez',
-              fecha_registro: new Date(Date.now() - 950400000).toISOString(), // 11 días atrás
-              tipo_kpi: 'PRECIO',
-              nombre_pdv: 'Estación Aeropuerto',
-              estado: 'VALIDADO',
-              observaciones: 'Implementación correcta de precios competitivos'
-            }
-          ];
-          
-          setRegistros(registrosMock);
-          setRegistrosFiltrados(registrosMock);
-          setError(null);
-        }
       } finally {
         setLoading(false);
       }
@@ -247,36 +120,27 @@ export default function HistorialRegistros() {
       });
     }
 
-    // Filtro por Actividad
+    // Filtro por Actividad usando tipo_accion directamente
     if (filtroActividad !== 'TODAS') {
       filtrados = filtrados.filter(registro => {
-        const tipoKpi = registro.tipo_kpi?.toUpperCase();
-        let actividad = '';
-        
-        switch (tipoKpi) {
-          case 'VOLUMEN':
-          case 'PRECIO': 
-          case 'PRECIO_VOLUMEN':
-          case 'PROFUNDIDAD':
-            actividad = 'IMPLEMENTACION';
-            break;
-          case 'FRECUENCIA':
-          case 'COBERTURA':
-            actividad = 'VISITA';
-            break;
-          default:
-            actividad = 'VISITA';
-        }
-        
-        return actividad === filtroActividad;
+        // tipo_accion puede venir en mayúsculas/minúsculas
+        const tipoAccion = registro.tipo_accion?.toUpperCase();
+        return tipoAccion === filtroActividad.toUpperCase();
       });
     }
 
     // Filtro por Estado
     if (filtroEstado !== 'TODOS') {
-      filtrados = filtrados.filter(registro => 
-        registro.estado?.toUpperCase() === filtroEstado
-      );
+      filtrados = filtrados.filter(registro => {
+        // Puede venir como estado o estado_id o estado_nombre
+        if (registro.estado) {
+          return registro.estado?.toUpperCase() === filtroEstado;
+        }
+        if (registro.estado_id) {
+          return registro.estado_id?.toString() === filtroEstado;
+        }
+        return false;
+      });
     }
 
     // Filtro por código PDV
@@ -354,142 +218,6 @@ export default function HistorialRegistros() {
         throw new Error(data.message || 'Error al cargar detalles');
       }
     } catch (err) {
-      // console.error('Error cargando detalles:', err);
-      // Datos mock en caso de error solo en desarrollo
-      if (process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') {
-        // console.log('Usando detalles mock para desarrollo');
-        
-        // Generar detalles específicos según el tipo de KPI y el ID del registro
-        let detallesMock = {
-          foto: `/storage/2025-07-10/ejemplo-registro-${registro.id}.png`
-        };
-
-        switch (registro.tipo_kpi) {
-          case 'FRECUENCIA':
-            detallesMock.visitas = [
-              {
-                fecha: new Date(Date.now() - 86400000).toISOString(),
-                hora: '09:30',
-                duracion: '45 min',
-                actividades: ['Verificación de productos', 'Capacitación al personal', 'Actualización de precios']
-              },
-              {
-                fecha: new Date(Date.now() - 172800000).toISOString(),
-                hora: '14:15',
-                duracion: '30 min',
-                actividades: ['Revisión de inventario', 'Asesoría comercial']
-              }
-            ];
-            detallesMock.frecuencia_programada = 'Semanal';
-            detallesMock.frecuencia_real = '2 visitas/semana';
-            detallesMock.cumplimiento = registro.estado === 'VALIDADO' ? '100%' : '75%';
-            break;
-
-          case 'PRECIO':
-          case 'PRECIO_VOLUMEN':
-            detallesMock.productos = [
-              {
-                referencia: 'TERPEL OILTEC 10W-30 TITANIO',
-                presentacion: '1L',
-                precio_sugerido: 28000,
-                precio_implementado: registro.tipo_kpi === 'PRECIO_VOLUMEN' ? 27500 : 28200,
-                cajas: registro.tipo_kpi === 'PRECIO_VOLUMEN' ? 12 : undefined,
-                galones: registro.tipo_kpi === 'PRECIO_VOLUMEN' ? 150 : undefined
-              },
-              {
-                referencia: 'TERPEL CELERITY 4T 20W-50 TITANIO',
-                presentacion: '4L',
-                precio_sugerido: 95000,
-                precio_implementado: registro.tipo_kpi === 'PRECIO_VOLUMEN' ? 94000 : 96000,
-                cajas: registro.tipo_kpi === 'PRECIO_VOLUMEN' ? 5 : undefined,
-                galones: registro.tipo_kpi === 'PRECIO_VOLUMEN' ? 85 : undefined
-              },
-              {
-                referencia: 'REFRIGERANTE LARGA VIDA',
-                presentacion: '1L',
-                precio_sugerido: 18000,
-                precio_implementado: registro.tipo_kpi === 'PRECIO_VOLUMEN' ? 17800 : 18500,
-                cajas: registro.tipo_kpi === 'PRECIO_VOLUMEN' ? 15 : undefined,
-                galones: registro.tipo_kpi === 'PRECIO_VOLUMEN' ? 200 : undefined
-              }
-            ];
-            break;
-
-          case 'VOLUMEN':
-            detallesMock.productos = [
-              {
-                referencia: 'TERPEL OILTEC 10W-40 TITANIO',
-                presentacion: '1L',
-                cajas: 18,
-                galones: 180
-              },
-              {
-                referencia: 'TERPEL CELERITY 2T BIO ANTIHUMO',
-                presentacion: '500ml',
-                cajas: 10,
-                galones: 95
-              },
-              {
-                referencia: 'REFRIGERANTE ESTÁNDAR',
-                presentacion: '1L',
-                cajas: 22,
-                galones: 220
-              }
-            ];
-            break;
-
-          default:
-            detallesMock.productos = [
-              {
-                referencia: 'Producto de ejemplo',
-                presentacion: '1L',
-                precio: 25000,
-                volumen: 1
-              }
-            ];
-        }
-
-        // Agregar información del PDV y validaciones
-        detallesMock.pdv_info = {
-          direccion: `Calle ${registro.codigo_pdv} # ${10 + parseInt(registro.id)}-${20 + parseInt(registro.id)}`,
-          ciudad: ['Bogotá', 'Medellín', 'Cali', 'Barranquilla'][registro.id % 4],
-          telefono: `300${registro.codigo_pdv}${registro.id}890`,
-          gerente: ['Ana García', 'Carlos Pérez', 'Luis Martín', 'Sandra López'][registro.id % 4]
-        };
-
-        // Estados generales
-        detallesMock.estado_general = registro.estado === 'VALIDADO' ? 'APROBADO' : 
-                                      registro.estado === 'RECHAZADO' ? 'RECHAZADO' : 'PENDIENTE';
-        
-        // Estado Mystery Shopper solo para KPIs de precio
-        if (registro.tipo_kpi === 'PRECIO' || registro.tipo_kpi === 'PRECIO_VOLUMEN') {
-          detallesMock.estado_mystery_shopper = ['APROBADO', 'PENDIENTE', 'RECHAZADO'][registro.id % 3];
-        }
-
-        // Fotos específicas según KPI
-        detallesMock.foto_pop = '/storage/img_productos_carrusel/TERPEL OILTEC 10W-30 TITANIO.png';
-        detallesMock.foto_factura = '/storage/img_productos_carrusel/REFRIGERANTE LARGA VIDA.png';
-        detallesMock.foto_evidencia = '/storage/img_productos_carrusel/TERPEL CELERITY 4T 20W-50 TITANIO.png';
-        detallesMock.foto = '/storage/img_productos_carrusel/img_login.png';
-
-        // Para volumen, agregar múltiples fotos de evidencia
-        if (registro.tipo_kpi === 'VOLUMEN') {
-          detallesMock.fotos_factura = [
-            '/storage/img_productos_carrusel/REFRIGERANTE LARGA VIDA.png',
-            '/storage/img_productos_carrusel/TERPEL CELERITY 4T 20W-50 TITANIO.png',
-            '/storage/img_productos_carrusel/TERPEL OILTEC 10W-40 TITANIO.png'
-          ];
-        }
-
-        setRegistroSeleccionado({
-          ...registro,
-          detalles: detallesMock
-        });
-      } else {
-        // En producción, mostrar error
-        setError(`Error al cargar detalles: ${err.message}`);
-        setModalOpen(false);
-      }
     } finally {
       setLoadingDetalles(false);
     }
