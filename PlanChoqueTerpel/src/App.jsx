@@ -1,22 +1,42 @@
 import './App.css';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import DashboardPage from './pages/Asesor/Metas';
-import HomeAsesor from './pages/Asesor/Home';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+
+// Visuales Globales
 import HomePage from './pages/HomePage';
 import Register from './pages/Register';
-import Metas from './pages/Asesor/Metas';
-import Pdvs from './pages/Asesor/Pdvs';
-import Ranking from './pages/Asesor/Ranking';
-import Catalogos from './pages/Asesor/Catalogos';
-import PremioMayor from './pages/Asesor/PremioMayor';
-import TyC from './pages/Asesor/TyC';
+import UnauthorizedPage from './pages/UnauthorizedPage';
+import DebugAuth from './pages/DebugAuth';
+import { AuthProvider } from './contexts/AuthContext';
 
-import HomeMisteryShopper from './pages/Mistery/home';
-import RegistrarVisitas from './pages/Mistery/servicios';
+// Visuales para el rol de Asesor
+import HomeAsesor from './pages/Asesor/AsesorHome';
+import InformeSeguimientoDashboard from './pages/Asesor/AsesorInformeSeguimientoDashboard';
+import RegistroImplementacion from './pages/Asesor/AsesorRegistroImplementacion';
+import AsesorRegistroMenu from './pages/Asesor/AsesorRegistroMenu';
+import Ranking from './pages/Asesor/AsesorRanking';
+import HistorialRegistros from './pages/Asesor/AsesorHistorialRegistros';
+
+// Visuales para el rol de MisteryShopper
+import HomeMisteryShopper from './pages/Mistery/MisteryShopperHome';
+import RegistrarVisitas from './pages/Mistery/MisteryShopperServicios';
+
+// Visuales para el rol de Mercadeo
+import HomeMercadeo from './pages/Mercadeo/MercadeoHome'; // Este es el iframe
+import GestionVisitas from './pages/Mercadeo/MercadeoVisitas'; // Esta es la gestión de visitas
+import MercadeoInformeSeguimientoDashboard from './pages/Mercadeo/MercadeoInformeSeguimientoDashboard';
+import MercadeoPlanIncentivos from './pages/Mercadeo/MercadeoPlanIncentivos';
+import MercadeoRegistrosImplementacion from './pages/Mercadeo/MercadeoRegistrosImplementacion';
+import MercadeoMysteryShopperVisitas from './pages/Mercadeo/MercadeoMysteryShopperVisitas';
+
+// Visuales para el rol de Director y OT
+import HomeDirector from './pages/Director/DirectorDashboard';
+import HomeOT from './pages/OrganizacionTerpel/OrganizacionTerpelDashboard';
 
 import { useEffect, useState } from 'react';
 
-function App() {
+// Componente interno para manejar la navegación
+function AppContent() {
+  const navigate = useNavigate();
   // Estado para mostrar el popup de inactividad
   const [showInactiveModal, setShowInactiveModal] = useState(false);
 
@@ -29,7 +49,7 @@ function App() {
     const resetTimer = () => {
       clearTimeout(timeout);
       if (!showInactiveModal) {
-        timeout = setTimeout(handleLogout, 15 * 60 * 1000); // 15 segundos para probar
+        timeout = setTimeout(handleLogout, 15 * 60 * 1000); // 15 minutos
       }
     };
     // Eventos de actividad
@@ -44,32 +64,62 @@ function App() {
   }, [showInactiveModal]);
 
   const handleModalClose = () => {
-    localStorage.removeItem('user');
+    // Agregar una pequeña transición antes de cerrar
     setShowInactiveModal(false);
-    window.location.href = '/';
+    
+    setTimeout(() => {
+      // Limpiar completamente todo tipo de datos de sesión
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Limpiar cookies
+      document.cookie.split(";").forEach(function(c) { 
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+      
+      // Redirigir y recargar
+      navigate('/', { replace: true });
+      window.location.href = '/';
+    }, 300);
   };
 
   return (
     <>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<HomePage />} />
-          <Route path="/asesor/dashboard" element={<DashboardPage />} />
-          <Route path="/asesor/home" element={<HomeAsesor />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/asesor/metas" element={<Metas />} />
-          <Route path="/asesor/pdvs" element={<Pdvs />} />
-          <Route path="/asesor/ranking" element={<Ranking />} />
-          <Route path="/asesor/catalogos" element={<Catalogos />} />
-          <Route path="/asesor/premio-mayor" element={<PremioMayor />} />
-          <Route path="/asesor/tyc" element={<TyC />} />
-          <Route path="*" element={<HomePage />} />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<HomePage />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        <Route path="/debug-auth" element={<DebugAuth />} />
+        
+        {/* Rutas del asesor - protegidas */}
+        <Route path="/asesor/home" element={<HomeAsesor />} />
+        <Route path="/asesor/informe-seguimiento-dashboard" element={<InformeSeguimientoDashboard />} />
+        <Route path="/asesor/registro-menu" element={<AsesorRegistroMenu />} />
+        <Route path="/asesor/registro-implementacion" element={<RegistroImplementacion />} />
+        <Route path="/asesor/historico-registros" element={<HistorialRegistros />} />
+        <Route path="/asesor/plan-incentivos" element={<Ranking />} />
 
-          <Route path="/misteryShopper/home" element={<HomeMisteryShopper />} />
-          <Route path="/misteryShopper/registrar_visitas" element={<RegistrarVisitas />} />
-        </Routes>
-      </BrowserRouter>
+        {/* Rutas del mystery shopper - protegidas */}
+        <Route path="/misteryShopper/home" element={<HomeMisteryShopper />} />
+        <Route path="/misteryShopper/registrar_visitas" element={<RegistrarVisitas />} />
+
+        {/* Rutas del mercadeo - protegidas */}
+        <Route path="/mercadeo/home" element={<HomeMercadeo />} />
+        <Route path="/mercadeo/visitas" element={<GestionVisitas />} />
+        <Route path="/mercadeo/informe-seguimiento-dashboard" element={<MercadeoInformeSeguimientoDashboard />} />
+        <Route path="/mercadeo/plan-incentivos" element={<MercadeoPlanIncentivos />} />
+        <Route path="/mercadeo/registros-implementacion" element={<MercadeoRegistrosImplementacion />} />
+        <Route path="/mercadeo/mystery-shopper-visitas" element={<MercadeoMysteryShopperVisitas />} />
+
+        {/* Rutas del Directoy y OT - protegidas */}
+        <Route path="/director-zona/home" element={<HomeDirector />} />
+        <Route path="/organizacion-terpel/home" element={<HomeOT />} />
+        
+        {/* Ruta por defecto */}
+        <Route path="*" element={<HomePage />} />
+      </Routes>
+      
       {showInactiveModal && (
         <div style={{
           position: 'fixed',
@@ -78,7 +128,8 @@ function App() {
           zIndex: 99999,
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          animation: 'fadeIn 0.3s ease-in-out'
         }}>
           <div style={{
             background: '#fff',
@@ -87,7 +138,8 @@ function App() {
             boxShadow: '0 4px 32px #0008',
             textAlign: 'center',
             maxWidth: 340,
-            width: '90%'
+            width: '90%',
+            animation: 'slideIn 0.4s ease-out'
           }}>
             <div style={{ fontSize: 28, fontWeight: 900, color: '#e30613', marginBottom: 12 }}>
               ¡Opss!
@@ -117,6 +169,16 @@ function App() {
         </div>
       )}
     </>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuthContext } from '../contexts/AuthContext';
 import headerMobile from '../assets/Img/img_caja_superior_mobil.png';
+import whatsAppImg from '../assets/Iconos/whatsApp.jpg';
 
 // ==========================
 // DashboardLayout Component
@@ -19,12 +21,14 @@ export default function DashboardLayout({ user, children }) {
   // --------------------------
   const [showMenu, setShowMenu] = useState(false); // Menú móvil desplegable
   const [waError, setWaError] = useState('');      // Error al abrir WhatsApp
+  const [isLoggingOut, setIsLoggingOut] = useState(false); // Estado de logout
 
   // --------------------------
-  // Hooks de navegación
+  // Hooks de navegación y contexto
   // --------------------------
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuthContext();
 
   // --------------------------
   // Obtención de usuario y rol
@@ -38,7 +42,33 @@ export default function DashboardLayout({ user, children }) {
     }
   })();
   const userObj = user || userFromStorage || {};
-  const rol = userObj.rol || 'ASESOR'; // Rol por defecto: ASESOR
+  
+  // Mejorar la detección del rol
+  let rol = userObj.rol || userObj.tipo || 'ASESOR';
+  
+  // Normalizar el rol a string
+  if (rol === 1) {
+    rol = 'ASESOR';
+  } else if (rol === 2) {
+    rol = 'MYSTERY_SHOPPER';
+  } else if (rol === 3) {
+    rol = 'MERCADEO_AC';
+  } else if (rol === 4) {
+    rol = 'DIRECTOR';
+  } else if (rol === 5) {
+    rol = 'ORGANIZACION_TERPEL';
+  }
+
+  // Si quieres que solo le aparezca a un rol específico (por ejemplo, solo a ASESOR):
+  const showWhatsApp = rol === 'ASESOR';
+  
+  //console.log('DashboardLayout - Usuario:', userObj, 'Rol detectado:', rol);
+  // console.log('DashboardLayout - Detalles:', {
+  //   userObj,
+  //   rolOriginal: userObj.rol || userObj.tipo,
+  //   rolNormalizado: rol,
+  //   pathname: location.pathname
+  // });
 
   // --------------------------
   // Definición de menús por rol
@@ -46,17 +76,27 @@ export default function DashboardLayout({ user, children }) {
   const MENUS = {
     ASESOR: {
       '/asesor/home': 'HOME',
-      '/asesor/metas': 'MIS METAS',
-      '/asesor/pdvs': 'REGISTRA TUS PDVS',
-      '/asesor/ranking': 'RANKING ASESORES',
-      '/asesor/catalogos': 'CATÁLOGOS DEL PLAN',
-      '/asesor/premio-mayor': 'PREMIO MAYOR',
-      '/asesor/tyc': 'T&C',
+      '/asesor/informe-seguimiento-dashboard': 'INFORME SEGUIMIENTO',
+      '/asesor/registro-menu': 'REGISTROS IMPLEMENTACIÓN',
+      '/asesor/plan-incentivos': 'PLAN DE INCENTIVOS',
     },
     MYSTERY_SHOPPER: {
       '/misteryShopper/home': 'HOME',
       '/misteryShopper/registrar_visitas': 'REGISTRA TUS VISITAS',
       // Agrega aquí más rutas si tienes más vistas para este rol
+    },
+    MERCADEO_AC: {
+      '/mercadeo/home': 'HOME',
+      '/mercadeo/informe-seguimiento-dashboard': 'SEGUIMIENTO ASESORES',
+      '/mercadeo/visitas': 'VISITAS POR APROBAR',
+      '/mercadeo/plan-incentivos': 'PLAN INCENTIVOS',
+      // Agrega aquí más rutas si tienes más vistas para este rol
+    },
+      DIRECTOR: {
+      '/director-zona/home': 'HOME',
+    },
+      ORGANIZACION_TERPEL: {
+      '//home': 'HOME',
     },
     // ...otros roles
   };
@@ -67,14 +107,18 @@ export default function DashboardLayout({ user, children }) {
   const mainRoute = menuRoutes[0];
 
   // --------------------------
-  // Redirección automática si la ruta no corresponde al menú del rol
+  // *** PROTECCIÓN DE RUTAS COMPLETAMENTE DESACTIVADA PARA DESARROLLO ***
   // --------------------------
   useEffect(() => {
+    // console.log('🔓 DESARROLLO: Permitiendo acceso a todas las rutas del dashboard');
+    
+    /* CÓDIGO ORIGINAL COMENTADO PARA DESARROLLO:
     if (!menuRoutes.includes(location.pathname)) {
+      console.log('DashboardLayout - Ruta no permitida, redirigiendo de', location.pathname, 'a:', mainRoute);
       navigate(mainRoute, { replace: true });
     }
-    // eslint-disable-next-line
-  }, [rol]);
+    */
+  }, [rol, location.pathname, menuRoutes, mainRoute, navigate]);
 
   // --------------------------
   // Obtención del título dinámico según la ruta actual
@@ -84,8 +128,56 @@ export default function DashboardLayout({ user, children }) {
   // --------------------------
   // Funciones de navegación y logout
   // --------------------------
-  const handleLogout = () => {
-    navigate('/', { replace: true, state: {} });
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      
+      // Cerrar menú si está abierto
+      setShowMenu(false);
+      
+      // Esperar un poco para mostrar la transición
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Logout completo del contexto
+      logout();
+      
+      // Limpiar localStorage manualmente (limpieza extra)
+      const keysToRemove = [
+        'user', 'authToken', 'userRole', 'sessionData', 'userData',
+        'lastActivity', 'loginTime', 'userPreferences'
+      ];
+      
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+      });
+      
+      // Limpiar sessionStorage completamente
+      sessionStorage.clear();
+      
+      // Limpiar cualquier cache del navegador relacionado con la app
+      if ('caches' in window) {
+        caches.keys().then(function(names) {
+          for (let name of names) {
+            caches.delete(name);
+          }
+        });
+      }
+      
+      // Navegar al login
+      navigate('/', { replace: true, state: {} });
+      
+      // Forzar recarga completa de la página para limpiar cualquier estado residual
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
+      
+    } catch (error) {
+      console.error('Error en logout:', error);
+      // En caso de error, forzar limpieza de emergencia
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = '/';
+    }
   };
 
   const handleNav = (route) => {
@@ -100,7 +192,7 @@ export default function DashboardLayout({ user, children }) {
   const handleWhatsAppClick = (e) => {
     e.preventDefault();
     setWaError('');
-    const waUrl = 'https://api.whatsapp.com/send/?phone=573142180090&type=phone_number&app_absent=0';
+    const waUrl = 'https://api.whatsapp.com/send/?phone=5731111111&type=phone_number&app_absent=0';
     const win = window.open(waUrl, '_blank', 'noopener,noreferrer');
     setTimeout(() => {
       if (!win || win.closed || typeof win.closed === 'undefined') {
@@ -108,6 +200,9 @@ export default function DashboardLayout({ user, children }) {
       }
     }, 500);
   };
+
+  // Mostrar WhatsApp solo a un rol específico (por ejemplo, solo ASESOR)
+  // Si quieres que le aparezca a otro rol, cambia la condición de showWhatsApp
 
   // ==========================
   // Renderizado principal
@@ -189,21 +284,29 @@ export default function DashboardLayout({ user, children }) {
             </svg>
           </span>
           {/* Icono WhatsApp */}
-          <span style={{ marginLeft: -20, marginRight: 25 }}>
-            <a
-              href="https://api.whatsapp.com/send/?phone=573142180090&type=phone_number&app_absent=0"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: 'inline-flex', alignItems: 'center' }}
-              title="WhatsApp"
-              onClick={handleWhatsAppClick}
-            >
-              <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
-                <circle cx="16" cy="16" r="16" fill="#25D366"/>
-                <path d="M23.5 20.5c-.3-.2-1.7-.8-2-1s-.5-.2-.7.1c-.2.3-.8 1-1 1.2-.2.2-.4.2-.7.1-.3-.2-1.2-.4-2.3-1.3-.9-.8-1.5-1.7-1.7-2-.2-.3 0-.5.1-.7.1-.1.2-.3.3-.5.1-.2.1-.4 0-.6s-.7-1.7-1-2.3c-.2-.5-.4-.5-.7-.5h-.6c-.2 0-.5.1-.7.3-.2.2-.8.8-.8 2 0 1.2.8 2.4 1.1 2.8.3.4 2 3.1 5.1 4.2 1.2.4 2.1.7 2.8.4.6-.3 1.1-1.1 1.2-1.3.1-.2.1-.4 0-.6z" fill="#fff"/>
-              </svg>
-            </a>
-          </span>
+          {showWhatsApp && (
+            <span style={{ marginLeft: -20, marginRight: 0 }}>
+              <a
+                href="https://api.whatsapp.com/send/?phone=573142180090&type=phone_number&app_absent=0"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center' }}
+                title="WhatsApp"
+                onClick={handleWhatsAppClick}
+              >
+                <img 
+                  src={whatsAppImg} 
+                  alt="WhatsApp" 
+                  style={{ 
+                    width: 22, 
+                    height: 22, 
+                    borderRadius: '50%',
+                    objectFit: 'cover'
+                  }} 
+                />
+              </a>
+            </span>
+          )}
         </div>
         {/* Menú desplegable móvil */}
         {showMenu && (
@@ -232,7 +335,7 @@ export default function DashboardLayout({ user, children }) {
                   border: 'none',
                   color: location.pathname === route ? '#e30613' : '#222',
                   fontWeight: location.pathname === route ? 'bold' : 'normal',
-                  fontSize: 16,
+                  fontSize: 13, // <--- Cambia aquí de 16 a 13
                   padding: '6px 0',
                   width: '100%',
                   cursor: location.pathname === route ? 'default' : 'pointer',
@@ -289,11 +392,18 @@ export default function DashboardLayout({ user, children }) {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          paddingTop: 28,
-          color: '#fff'
+          paddingTop: 20,
+          color: '#fff',
         }}>
-          <img src="/src/assets/Iconos/icono_completo.png" alt="Terpel" style={{ width: 75, marginBottom: 20 }} />
-          <nav style={{ width: '100%' }}>
+          <img src="/src/assets/Iconos/IconosPage/LogoTerpelBlanco.png" alt="Terpel" style={{ width: 100, marginBottom: 20 }} />
+          <nav style={{ 
+            width: '100%', 
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'stretch',
+            alignItems: 'center'
+          }}>
             {menuRoutes.map((route) => (
               <button
                 key={route}
@@ -308,7 +418,7 @@ export default function DashboardLayout({ user, children }) {
                   marginBottom: 10,
                   fontWeight: 'bold',
                   cursor: location.pathname === route ? 'default' : 'pointer',
-                  fontSize: 12,
+                  fontSize: 10,
                   opacity: location.pathname === route ? 1 : 0.8,
                   boxShadow: location.pathname === route ? '0 2px 8px #e3061322' : 'none',
                   transition: 'background 0.2s'
@@ -324,14 +434,17 @@ export default function DashboardLayout({ user, children }) {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' }}>
           {/* Barra superior */}
           <header style={{
-            height: 50,
+            height: 40,
             background: '#fff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'flex-end',
             padding: '6px 18px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-            position: 'relative'
+            position: 'fixed',
+            top: 0,
+            left: 120,
+            right: 0,
           }}>
             {/* Título dinámico en escritorio */}
             <span style={{
@@ -346,7 +459,7 @@ export default function DashboardLayout({ user, children }) {
               pointerEvents: 'none',
               userSelect: 'none'
             }}>
-              {titulo}
+              {/* {titulo} */}
             </span>
             {/* Iconos y logout */}
             {/* Notificaciones */}
@@ -450,14 +563,15 @@ export default function DashboardLayout({ user, children }) {
               minHeight: 0,
               background: '#ececec',
               paddingBottom: 60,
+              paddingTop: 50,
               boxSizing: 'border-box'
             }}
           >
             <div
               style={{
-                background: '#fff',
+                // background: '#fff',
                 borderRadius: 16,
-                boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
+                // boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
                 padding: 18,
                 minHeight: 400,
                 minWidth: 320,
@@ -471,36 +585,44 @@ export default function DashboardLayout({ user, children }) {
             >
               {children}
             </div>
+            {/* Botón flotante de WhatsApp solo en escritorio */}
+            {showWhatsApp && (
+              <a
+                href="https://api.whatsapp.com/send/?phone=573142180090&type=phone_number&app_absent=0"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="WhatsApp"
+                style={{
+                  position: 'fixed',
+                  right: 32,
+                  bottom: 90,
+                  zIndex: 200,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 58,
+                  height: 58,
+                  borderRadius: '50%',
+                  background: '#25D366',
+                  boxShadow: '0 4px 16px #25d36655',
+                  transition: 'box-shadow 0.2s',
+                  cursor: 'pointer'
+                }}
+                className="whatsapp-desktop-btn"
+              >
+                <img 
+                  src={whatsAppImg} 
+                  alt="WhatsApp" 
+                  style={{ 
+                    width: 32, 
+                    height: 32, 
+                    borderRadius: '50%',
+                    objectFit: 'cover'
+                  }} 
+                />
+              </a>
+            )}
           </main>
-          {/* Botón flotante de WhatsApp solo en escritorio */}
-          <a
-            href="https://api.whatsapp.com/send/?phone=573142180090&type=phone_number&app_absent=0"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="WhatsApp"
-            style={{
-              position: 'fixed',
-              right: 32,
-              bottom: 90,
-              zIndex: 200,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 58,
-              height: 58,
-              borderRadius: '50%',
-              background: '#25D366',
-              boxShadow: '0 4px 16px #25d36655',
-              transition: 'box-shadow 0.2s',
-              cursor: 'pointer'
-            }}
-            className="whatsapp-desktop-btn"
-          >
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="16" fill="#25D366"/>
-              <path d="M23.5 20.5c-.3-.2-1.7-.8-2-1s-.5-.2-.7.1c-.2.3-.8 1-1 1.2-.2.2-.4.2-.7.1-.3-.2-1.2-.4-2.3-1.3-.9-.8-1.5-1.7-1.7-2-.2-.3 0-.5.1-.7.1-.1.2-.3.3-.5.1-.2.1-.4 0-.6s-.7-1.7-1-2.3c-.2-.5-.4-.5-.7-.5h-.6c-.2 0-.5.1-.7.3-.2.2-.8.8-.8 2 0 1.2.8 2.4 1.1 2.8.3.4 2 3.1 5.1 4.2 1.2.4 2.1.7 2.8.4.6-.3 1.1-1.1 1.2-1.3.1-.2.1-.4 0-.6z" fill="#fff"/>
-            </svg>
-          </a>
         </div>
       </div>
       {/* ==========================
@@ -508,6 +630,27 @@ export default function DashboardLayout({ user, children }) {
          ========================== */}
       <style>
         {`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          
+          @keyframes slideIn {
+            from { 
+              opacity: 0;
+              transform: translateY(-20px) scale(0.95);
+            }
+            to { 
+              opacity: 1;
+              transform: translateY(0) scale(1);
+            }
+          }
+          
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+
           @media (max-width: 700px) {
             .dashboard-mobile-header { display: block !important; }
             .dashboard-desktop-layout { display: none !important; }
