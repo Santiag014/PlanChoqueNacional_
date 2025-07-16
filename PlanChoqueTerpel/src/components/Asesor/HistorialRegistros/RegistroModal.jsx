@@ -7,30 +7,85 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
 
   // Fetch de detalles al abrir el modal y tener registro.id
   useEffect(() => {
-    if (isOpen && registro?.id) {
+    if (isOpen && registro?.id && !loadingDetalles) {
+      console.log('Iniciando fetch de detalles para registro:', registro.id);
+      
+      // Verificamos primero si el registro ya tiene lo que necesitamos
+      if (registro.referencias || registro.cantidades_cajas || registro.galones || registro.fotos_factura || registro.fotos_pop) {
+        console.log('El registro ya contiene datos completos, usándolos directamente');
+        setDetalles(registro);
+        return;
+      }
+      
       setLoadingDetalles(true);
-      fetch(`/api/asesor/registro-detalles/${registro.id}`)
+      
+      // Obtener token de autenticación
+      const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+      
+      if (!token) {
+        console.error('No se encontró token de autenticación');
+        setLoadingDetalles(false);
+        return;
+      }
+      
+      fetch(`/api/asesor/registro-detalles/${registro.id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      })
         .then(async res => {
+          console.log('Respuesta recibida:', res.status, res.statusText);
+          
+          // Verificar que la respuesta sea JSON
           const contentType = res.headers.get('content-type');
           if (!contentType || !contentType.includes('application/json')) {
             const text = await res.text();
-            throw new Error(`La respuesta no es JSON. Respuesta: ${text.substring(0, 100)}`);
+            console.error('Respuesta no es JSON:', text.substring(0, 200));
+            throw new Error(`La respuesta no es JSON. Content-Type: ${contentType}`);
           }
+          
           if (!res.ok) {
-            const errorText = await res.text();
-            throw new Error(`Error HTTP: ${res.status} - ${errorText}`);
+            const errorData = await res.json();
+            console.error('Error en respuesta:', errorData);
+            throw new Error(errorData.message || `Error HTTP: ${res.status}`);
           }
+          
           return res.json();
         })
-        .catch(err => {
-          setDetalles(null);
-          console.error('Error fetch detalles:', err);
+        .then(data => {
+          console.log('Datos recibidos correctamente:', data);
+          
+          if (data && data.success && data.data) {
+            // Mezclamos los datos del registro original con los detalles
+            const detallesCompletos = {
+              ...registro,
+              ...data.data,
+            };
+            console.log('Detalles completos mezclados:', detallesCompletos);
+            setDetalles(detallesCompletos);
+          } else {
+            console.error('Respuesta sin datos válidos:', data);
+            throw new Error('Respuesta sin datos válidos');
+          }
         })
-        .finally(() => setLoadingDetalles(false));
+        .catch(err => {
+          console.error('Error fetch detalles:', err);
+          // En caso de error, usar al menos el registro original
+          setDetalles(registro);
+        })
+        .finally(() => {
+          setLoadingDetalles(false);
+        });
+    } else if (isOpen && registro) {
+      // Si no hay ID o ya estamos cargando, usar el registro tal como está
+      setDetalles(registro);
     } else {
       setDetalles(null);
     }
-  }, [isOpen, registro?.id]);
+  }, [isOpen, registro?.id]); // Dependencias específicas para evitar loops
 
   // Mostrar en consola el objeto registro cada vez que cambia
   useEffect(() => {
@@ -456,23 +511,46 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
   // Usar los detalles frescos si existen, si no, usar el registro original
   const datos = detalles || registro || {};
 
-  // Reconstruir productos SOLO si detalles está presente y tiene referencias
+  // Reconstruir productos usando los datos completos
   const productosReconstruidos = (() => {
-    if (!detalles || !detalles.referencias) return [];
-    const refs = detalles.referencias.split(',');
-    const presentaciones = (detalles.presentaciones || '').split(',');
-    const preciosReales = (detalles.precios_reales || '').split(',');
-    const preciosSugeridos = (detalles.precios_sugeridos || '').split(',');
-    const cantidades = (detalles.cantidades_cajas || '').split(',');
-    const galones = (detalles.galones || '').split(',');
-    return refs.map((ref, idx) => ({
-      referencia: ref.trim(),
-      presentacion: presentaciones[idx]?.trim() || '',
-      precio_real: preciosReales[idx]?.trim() || '',
-      precio_sugerido: preciosSugeridos[idx]?.trim() || '',
-      cantidad: cantidades[idx]?.trim() || '',
-      galones: galones[idx]?.trim() || '',
-    }));
+    console.log("Datos para reconstruir productos:", datos);
+
+    // Primero intentamos usar el objeto productos si existe
+    if (datos?.productos && Array.isArray(datos.productos) && datos.productos.length > 0) {
+      console.log("Usando productos del objeto datos:", datos.productos);
+      return datos.productos;
+    }
+    
+    // Si no hay objeto productos, intentamos reconstruir desde campos separados
+    if (datos?.referencias) {
+      console.log("Reconstruyendo productos desde campos separados");
+      console.log("Referencias:", datos.referencias);
+      console.log("Presentaciones:", datos.presentaciones);
+      console.log("Cantidades:", datos.cantidades_cajas);
+      console.log("Galones:", datos.galones);
+      console.log("Precios reales:", datos.precios_reales);
+      console.log("Precios sugeridos:", datos.precios_sugeridos);
+      
+      const refs = datos.referencias.split(',').map(r => r.trim());
+      const presentaciones = (datos.presentaciones || '').split(',').map(p => p.trim());
+      const preciosReales = (datos.precios_reales || '').split(',').map(p => p.trim());
+      const preciosSugeridos = (datos.precios_sugeridos || '').split(',').map(p => p.trim());
+      const cantidades = (datos.cantidades_cajas || '').split(',').map(c => c.trim());
+      const galones = (datos.galones || '').split(',').map(g => g.trim());
+      
+      const productos = refs.map((ref, idx) => ({
+        referencia: ref,
+        presentacion: presentaciones[idx] || '',
+        precio_real: preciosReales[idx] || '',
+        precio_sugerido: preciosSugeridos[idx] || '',
+        cantidad: cantidades[idx] || '',
+        galones: galones[idx] || '',
+      }));
+      
+      console.log("Productos reconstruidos:", productos);
+      return productos;
+    }
+    return [];
   })();
 
   return (

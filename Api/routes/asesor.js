@@ -20,24 +20,55 @@ router.get('/historial-registros/:user_id', authenticateToken, requireAsesor, lo
   try {
     conn = await getConnection();
 
-    // Consulta básica solicitada
+    // Consulta completa con todos los detalles para evitar consultas adicionales
     const query = `
       SELECT 
         registro_servicios.id,
-        puntos_venta.codigo, 
-        registro_servicios.fecha_registro, 
+        puntos_venta.codigo,
+        puntos_venta.descripcion,
+        puntos_venta.direccion,
+        users.name,
+        registro_servicios.fecha_registro,
         CASE
-            WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Implementacion'
-            WHEN kpi_volumen = 1 THEN 'Implementacion'
-            WHEN kpi_precio = 1 THEN 'Implementacion'
-            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Visita'
+            WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Volumen / Precio'
+            WHEN kpi_volumen = 1 THEN 'Volumen'
+            WHEN kpi_precio = 1 THEN 'Precio'
+            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Frecuencia'
             ELSE 'Otro'
         END AS tipo_accion,
+        e1.descripcion AS estado,
+        e2.descripcion AS estado_agente,
+        registro_servicios.observacion,
+        GROUP_CONCAT(registro_productos.referencia_id) AS referencias,
+        GROUP_CONCAT(registro_productos.presentacion) AS presentaciones,
+        GROUP_CONCAT(registro_productos.cantidad_cajas) AS cantidades_cajas,
+        GROUP_CONCAT(registro_productos.conversion_galonaje) AS galones,
+        GROUP_CONCAT(registro_productos.precio_sugerido) AS precios_sugeridos,
+        GROUP_CONCAT(registro_productos.precio_real) AS precios_reales,
+        GROUP_CONCAT(registro_fotografico_servicios.foto_factura) AS fotos_factura,
+        GROUP_CONCAT(registro_fotografico_servicios.foto_pop) AS fotos_pop,
+        GROUP_CONCAT(registro_fotografico_servicios.foto_seguimiento) AS fotos_seguimiento,
         estado_id,
         estado_agente_id
       FROM registro_servicios
       INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
+      INNER JOIN users ON users.id = puntos_venta.user_id
+      INNER JOIN estados e1 ON e1.id = registro_servicios.estado_id
+      INNER JOIN estados e2 ON e2.id = registro_servicios.estado_agente_id
+      LEFT JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
+      LEFT JOIN registro_fotografico_servicios ON registro_fotografico_servicios.id_registro = registro_servicios.id
       WHERE registro_servicios.user_id = ?
+      GROUP BY 
+        registro_servicios.id,
+        puntos_venta.codigo,
+        puntos_venta.descripcion,
+        puntos_venta.direccion,
+        users.name,
+        registro_servicios.fecha_registro,
+        tipo_accion,
+        e1.descripcion,
+        e2.descripcion,
+        registro_servicios.observacion
       ORDER BY registro_servicios.fecha_registro DESC
     `;
     const [rows] = await conn.execute(query, [user_id]);
@@ -64,9 +95,40 @@ router.get('/historial-registros/:user_id', authenticateToken, requireAsesor, lo
 router.get('/registro-detalles/:registro_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
   const { registro_id } = req.params;
 
+  console.log('Obteniendo detalles para registro ID:', registro_id);
+
+  // Validar que el registro_id es un número
+  if (!registro_id || isNaN(registro_id)) {
+    return res.status(400).json({
+      success: false,
+      message: 'ID de registro inválido'
+    });
+  }
+
   let conn;
   try {
     conn = await getConnection();
+
+    // Verificar que el registro existe y pertenece al usuario
+    const [registroCheck] = await conn.execute(
+      'SELECT user_id FROM registro_servicios WHERE id = ?',
+      [registro_id]
+    );
+
+    if (registroCheck.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Registro no encontrado'
+      });
+    }
+
+    // Verificar permisos (solo puede ver sus propios registros)
+    if (req.user.userId != registroCheck[0].user_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para acceder a este registro'
+      });
+    }
 
     // Consulta de detalle solicitada
     const queryDetalles = `
@@ -90,7 +152,7 @@ router.get('/registro-detalles/:registro_id', authenticateToken, requireAsesor, 
         GROUP_CONCAT(registro_productos.referencia_id) AS referencias,
         GROUP_CONCAT(registro_productos.presentacion) AS presentaciones,
         GROUP_CONCAT(registro_productos.cantidad_cajas) AS cantidades_cajas,
-        GROUP_CONCAT(registro_productos.conversion_galonaje) AS galonajes,
+        GROUP_CONCAT(registro_productos.conversion_galonaje) AS galones,
         GROUP_CONCAT(registro_productos.precio_sugerido) AS precios_sugeridos,
         GROUP_CONCAT(registro_productos.precio_real) AS precios_reales,
         GROUP_CONCAT(registro_fotografico_servicios.foto_factura) AS fotos_factura,
@@ -101,8 +163,8 @@ router.get('/registro-detalles/:registro_id', authenticateToken, requireAsesor, 
       INNER JOIN users ON users.id = puntos_venta.user_id
       INNER JOIN estados e1 ON e1.id = registro_servicios.estado_id
       INNER JOIN estados e2 ON e2.id = registro_servicios.estado_agente_id
-      INNER JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
-      INNER JOIN registro_fotografico_servicios ON registro_fotografico_servicios.id_registro = registro_servicios.id
+      LEFT JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
+      LEFT JOIN registro_fotografico_servicios ON registro_fotografico_servicios.id_registro = registro_servicios.id
       WHERE registro_servicios.id = ?
       GROUP BY 
         registro_servicios.id,
@@ -116,7 +178,10 @@ router.get('/registro-detalles/:registro_id', authenticateToken, requireAsesor, 
         e2.descripcion,
         registro_servicios.observacion
     `;
+    
     const [detalles] = await conn.execute(queryDetalles, [registro_id]);
+    
+    console.log('Detalles obtenidos de la BD:', detalles);
 
     if (detalles.length === 0) {
       return res.status(404).json({
@@ -125,6 +190,8 @@ router.get('/registro-detalles/:registro_id', authenticateToken, requireAsesor, 
       });
     }
 
+    // Asegurar que devolvemos JSON válido
+    res.setHeader('Content-Type', 'application/json');
     res.json({
       success: true,
       data: detalles[0]

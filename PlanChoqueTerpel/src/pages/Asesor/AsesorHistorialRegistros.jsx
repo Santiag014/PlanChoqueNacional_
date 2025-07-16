@@ -153,60 +153,15 @@ export default function HistorialRegistros() {
     setRegistrosFiltrados(filtrados);
   }, [registros, filtroKPI, filtroActividad, filtroEstado, busquedaCodigo]);
 
-  // Abrir modal con detalles
-  const handleVerDetalles = async (registro) => {
-    // Si ya tiene detalles, solo abre el modal y no hace fetch
-    if (registro && registro.detalles) {
-      setRegistroSeleccionado(registro);
-      setModalOpen(true);
-      setLoadingDetalles(false);
-      return;
-    }
-    try {
-      setRegistroSeleccionado(registro);
-      setModalOpen(true);
-      setLoadingDetalles(true);
-
-      // Verificar que tenemos registro válido
-      if (!registro?.id) {
-        throw new Error('Registro inválido');
-      }
-
-      // Solo un intento de fetch (authenticatedFetch si existe, si no fetch manual)
-      let response;
-      if (authenticatedFetch) {
-        response = await authenticatedFetch(`/api/asesor/registro-detalles/${registro.id}`);
-      } else {
-        const token = localStorage.getItem('authToken') || localStorage.getItem('token') || 'legacy_auth';
-        if (!token) throw new Error('No se encontró token de autenticación');
-        const fullUrl = `/api/asesor/registro-detalles/${registro.id}`.startsWith('http') 
-          ? `/api/asesor/registro-detalles/${registro.id}` 
-          : `${window.location.origin}/api/asesor/registro-detalles/${registro.id}`;
-        response = await fetch(fullUrl, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-      }
-
-      if (!response) throw new Error('No se pudo realizar la petición de detalles');
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error HTTP: ${response.status}`);
-      }
-      const data = await response.json();
-      if (data.success) {
-        setRegistroSeleccionado({ ...registro, detalles: data.data });
-      } else {
-        throw new Error(data.message || 'Error al cargar detalles');
-      }
-    } catch (err) {
-      // Puedes mostrar un mensaje de error aquí si quieres
-    } finally {
-      setLoadingDetalles(false);
-    }
+  // Abrir modal con detalles - ahora usando datos completos del historial
+  const handleVerDetalles = (registro) => {
+    console.log('Registro seleccionado con todos los detalles:', registro);
+    
+    // Los datos ya vienen completos desde la consulta inicial
+    // No necesitamos hacer fetch adicional
+    setRegistroSeleccionado(registro);
+    setModalOpen(true);
+    setLoadingDetalles(false);
   };
 
   // Limpiar filtros
