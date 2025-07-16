@@ -17,16 +17,27 @@ export const useProductSelection = () => {
   // Función para cargar marcas desde el API
   const cargarMarcas = async () => {
     setIsLoading(true);
+    setError(null);
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('No hay token de autenticación.');
+        setIsLoading(false);
+        return;
+      }
       const response = await fetch(`${API_URL}/api/marcas`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+          'Authorization': `Bearer ${token}`
         }
       });
-      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        setError('Respuesta inesperada del servidor.');
+        setIsLoading(false);
+        return;
+      }
       if (response.ok) {
         const marcasData = await response.json();
-        // console.log('Marcas cargadas:', marcasData);
         setMarcas(marcasData || []);
         if (marcasData.length > 0) {
           setMarcaActiva(0);
@@ -36,7 +47,6 @@ export const useProductSelection = () => {
         throw new Error(`Error HTTP: ${response.status}`);
       }
     } catch (err) {
-      console.error('Error cargando marcas:', err);
       setError('Error al cargar marcas');
       // Fallback con datos mock
       const marcasMock = [

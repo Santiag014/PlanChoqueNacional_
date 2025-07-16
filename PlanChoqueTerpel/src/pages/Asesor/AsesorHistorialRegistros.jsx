@@ -155,6 +155,13 @@ export default function HistorialRegistros() {
 
   // Abrir modal con detalles
   const handleVerDetalles = async (registro) => {
+    // Si ya tiene detalles, solo abre el modal y no hace fetch
+    if (registro && registro.detalles) {
+      setRegistroSeleccionado(registro);
+      setModalOpen(true);
+      setLoadingDetalles(false);
+      return;
+    }
     try {
       setRegistroSeleccionado(registro);
       setModalOpen(true);
@@ -165,28 +172,16 @@ export default function HistorialRegistros() {
         throw new Error('Registro inválido');
       }
 
-      // console.log('Cargando detalles para registro:', registro.id);
-
-      // Intentar con authenticatedFetch primero
+      // Solo un intento de fetch (authenticatedFetch si existe, si no fetch manual)
       let response;
-      try {
-        if (!authenticatedFetch) {
-          throw new Error('authenticatedFetch no está disponible');
-        }
+      if (authenticatedFetch) {
         response = await authenticatedFetch(`/api/asesor/registro-detalles/${registro.id}`);
-      } catch (authError) {
-        // console.warn('Error con authenticatedFetch en detalles, intentando fetch manual:', authError);
-        
-        // Fallback: usar fetch manual
+      } else {
         const token = localStorage.getItem('authToken') || localStorage.getItem('token') || 'legacy_auth';
-        if (!token) {
-          throw new Error('No se encontró token de autenticación');
-        }
-        
+        if (!token) throw new Error('No se encontró token de autenticación');
         const fullUrl = `/api/asesor/registro-detalles/${registro.id}`.startsWith('http') 
           ? `/api/asesor/registro-detalles/${registro.id}` 
           : `${window.location.origin}/api/asesor/registro-detalles/${registro.id}`;
-        
         response = await fetch(fullUrl, {
           method: 'GET',
           headers: {
@@ -195,29 +190,20 @@ export default function HistorialRegistros() {
           }
         });
       }
-      
-      if (!response) {
-        throw new Error('No se pudo realizar la petición de detalles');
-      }
-      
+
+      if (!response) throw new Error('No se pudo realizar la petición de detalles');
       if (!response.ok) {
         const errorText = await response.text();
-        // console.error('Error HTTP en detalles:', response.status, errorText);
         throw new Error(`Error HTTP: ${response.status}`);
       }
-      
       const data = await response.json();
-      // console.log('Detalles recibidos:', data);
-      
       if (data.success) {
-        setRegistroSeleccionado({
-          ...registro,
-          detalles: data.data
-        });
+        setRegistroSeleccionado({ ...registro, detalles: data.data });
       } else {
         throw new Error(data.message || 'Error al cargar detalles');
       }
     } catch (err) {
+      // Puedes mostrar un mensaje de error aquí si quieres
     } finally {
       setLoadingDetalles(false);
     }
