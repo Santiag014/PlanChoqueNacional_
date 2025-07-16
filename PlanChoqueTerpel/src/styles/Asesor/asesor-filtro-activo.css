@@ -1,0 +1,133 @@
+/* Estilos para el componente FiltroActivoOT */
+.filtro-activo-container {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  font-size: 13px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.filtro-activo-container.mobile {
+  padding: 6px 10px;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+
+.filtro-activo-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filtro-activo-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  color: #495057;
+  flex-shrink: 0;
+}
+
+.filtro-activo-icon {
+  font-size: 14px;
+  color: #007bff;
+}
+
+.filtro-activo-label {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.filtro-activo-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.filtro-activo-badge {
+  background: #007bff;
+  color: white;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 200px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.filtro-activo-badge:hover {
+  background: #0056b3;
+}
+
+.filtro-activo-limpiar {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.filtro-activo-limpiar:hover {
+  background: #c82333;
+}
+
+.filtro-activo-limpiar-icon {
+  font-size: 12px;
+}
+
+.filtro-activo-limpiar-text {
+  font-weight: 500;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .filtro-activo-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .filtro-activo-header {
+    width: 100%;
+  }
+  
+  .filtro-activo-badges {
+    width: 100%;
+  }
+  
+  .filtro-activo-limpiar {
+    align-self: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .filtro-activo-badge {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+  
+  .filtro-activo-limpiar {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+}

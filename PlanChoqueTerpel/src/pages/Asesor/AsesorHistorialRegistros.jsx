@@ -48,7 +48,7 @@ export default function HistorialRegistros() {
           if (!authenticatedFetch) {
             throw new Error('authenticatedFetch no está disponible');
           }
-          response = await authenticatedFetch(`/api/asesor/historial-registros/${user.id}`);
+          response = await authenticatedFetch(`/api/asesor/historial-registros-asesor/${user.id}`);
         } catch (authError) {
           // Fallback: usar fetch manual con token de localStorage
           const token = localStorage.getItem('authToken') || localStorage.getItem('token') || 'legacy_auth';
@@ -56,9 +56,9 @@ export default function HistorialRegistros() {
             throw new Error('No se encontró token de autenticación');
           }
           
-          const fullUrl = `/api/asesor/historial-registros/${user.id}`.startsWith('http') 
-            ? `/api/asesor/historial-registros/${user.id}` 
-            : `${window.location.origin}/api/asesor/historial-registros/${user.id}`;
+          const fullUrl = `/api/asesor/historial-registros-asesor/${user.id}`.startsWith('http') 
+            ? `/api/asesor/historial-registros-asesor/${user.id}` 
+            : `${window.location.origin}/api/asesor/historial-registros-asesor/${user.id}`;
           
           response = await fetch(fullUrl, {
             method: 'GET',
@@ -83,6 +83,24 @@ export default function HistorialRegistros() {
         
         if (data.success) {
           const registrosData = data.data || [];
+          
+          console.log('📊 DATOS RECIBIDOS DE LA API:', registrosData);
+          
+          // Log para ver los estados únicos
+          const estadosUnicos = [...new Set(registrosData.map(r => r.estado))];
+          const estadosAgenteUnicos = [...new Set(registrosData.map(r => r.estado_agente))];
+          
+          console.log('📊 ESTADOS ÚNICOS:', estadosUnicos);
+          console.log('📊 ESTADOS AGENTE ÚNICOS:', estadosAgenteUnicos);
+          
+          // Log para verificar observaciones
+          const observacionesEjemplo = registrosData.slice(0, 3).map(r => ({
+            id: r.id,
+            codigo: r.codigo,
+            observacion: r.observacion
+          }));
+          console.log('📊 OBSERVACIONES EJEMPLO:', observacionesEjemplo);
+          
           setRegistros(registrosData);
           setRegistrosFiltrados(registrosData);
           setError(null);
@@ -131,22 +149,55 @@ export default function HistorialRegistros() {
 
     // Filtro por Estado
     if (filtroEstado !== 'TODOS') {
+      console.log("🔍 FILTRO ESTADO - Valor seleccionado:", filtroEstado);
+      
       filtrados = filtrados.filter(registro => {
-        // Puede venir como estado o estado_id o estado_nombre
-        if (registro.estado) {
-          return registro.estado?.toUpperCase() === filtroEstado;
-        }
-        if (registro.estado_id) {
-          return registro.estado_id?.toString() === filtroEstado;
-        }
-        return false;
+        console.log("🔍 FILTRO ESTADO - Registro:", {
+          id: registro.id,
+          estado: registro.estado,
+          estado_agente: registro.estado_agente,
+          codigo: registro.codigo
+        });
+        
+        // Normalizar el estado del registro
+        const estadoRegistro = registro.estado?.toUpperCase?.().trim();
+        const estadoAgenteRegistro = registro.estado_agente?.toUpperCase?.().trim();
+        
+        console.log("🔍 FILTRO ESTADO - Estados normalizados:", {
+          estadoRegistro,
+          estadoAgenteRegistro,
+          filtroEstado
+        });
+        
+        // Mapear posibles valores de estado
+        const esValido = (estado) => {
+          if (!estado) return false;
+          
+          switch(filtroEstado) {
+            case 'VALIDADO':
+              return estado.includes('VALIDADO') || estado.includes('APROBADO') || estado.includes('APPROVED');
+            case 'PENDIENTE':
+              return estado.includes('PENDIENTE') || estado.includes('PENDING') || estado.includes('REVISION') || estado.includes('REVISIÓN');
+            case 'RECHAZADO':
+              return estado.includes('RECHAZADO') || estado.includes('REJECTED');
+            default:
+              return estado === filtroEstado;
+          }
+        };
+        
+        const cumpleCondicion = esValido(estadoRegistro) || esValido(estadoAgenteRegistro);
+        console.log("🔍 FILTRO ESTADO - Cumple condición:", cumpleCondicion);
+        
+        return cumpleCondicion;
       });
+      
+      console.log("🔍 FILTRO ESTADO - Registros filtrados:", filtrados.length);
     }
 
     // Filtro por código PDV
     if (busquedaCodigo.trim()) {
       filtrados = filtrados.filter(registro =>
-        registro.codigo_pdv?.toString().includes(busquedaCodigo.trim())
+        registro.codigo?.toString().includes(busquedaCodigo.trim())
       );
     }
 
@@ -154,73 +205,11 @@ export default function HistorialRegistros() {
   }, [registros, filtroKPI, filtroActividad, filtroEstado, busquedaCodigo]);
 
   // Abrir modal con detalles
-  const handleVerDetalles = async (registro) => {
-    try {
-      setRegistroSeleccionado(registro);
-      setModalOpen(true);
-      setLoadingDetalles(true);
-
-      // Verificar que tenemos registro válido
-      if (!registro?.id) {
-        throw new Error('Registro inválido');
-      }
-
-      // console.log('Cargando detalles para registro:', registro.id);
-
-      // Intentar con authenticatedFetch primero
-      let response;
-      try {
-        if (!authenticatedFetch) {
-          throw new Error('authenticatedFetch no está disponible');
-        }
-        response = await authenticatedFetch(`/api/asesor/registro-detalles/${registro.id}`);
-      } catch (authError) {
-        // console.warn('Error con authenticatedFetch en detalles, intentando fetch manual:', authError);
-        
-        // Fallback: usar fetch manual
-        const token = localStorage.getItem('authToken') || localStorage.getItem('token') || 'legacy_auth';
-        if (!token) {
-          throw new Error('No se encontró token de autenticación');
-        }
-        
-        const fullUrl = `/api/asesor/registro-detalles/${registro.id}`.startsWith('http') 
-          ? `/api/asesor/registro-detalles/${registro.id}` 
-          : `${window.location.origin}/api/asesor/registro-detalles/${registro.id}`;
-        
-        response = await fetch(fullUrl, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-      }
-      
-      if (!response) {
-        throw new Error('No se pudo realizar la petición de detalles');
-      }
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        // console.error('Error HTTP en detalles:', response.status, errorText);
-        throw new Error(`Error HTTP: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      // console.log('Detalles recibidos:', data);
-      
-      if (data.success) {
-        setRegistroSeleccionado({
-          ...registro,
-          detalles: data.data
-        });
-      } else {
-        throw new Error(data.message || 'Error al cargar detalles');
-      }
-    } catch (err) {
-    } finally {
-      setLoadingDetalles(false);
-    }
+  const handleVerDetalles = (registro) => {
+    // Ya tenemos todos los datos necesarios en el registro inicial
+    setRegistroSeleccionado(registro);
+    setModalOpen(true);
+    setLoadingDetalles(false);
   };
 
   // Limpiar filtros

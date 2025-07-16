@@ -2,9 +2,7 @@
 
 .dashboard-seguimiento-container {
   width: 100%;
-  min-height: 95vh;
   padding: 20px;
-  /* background: #f5f5f5; */
   overflow-x: hidden;
 }
 
@@ -545,6 +543,7 @@
   margin: 0;
   font-size: 16px;
   font-weight: 700;
+  color: white;
 }
 
 .close-btn {
@@ -1392,6 +1391,7 @@
   .metricas-container-50 {
     width: 85%;
     max-width: 1400px;
+    padding: 20px 10px;
   }
 
   .modal-detalle {
@@ -1453,4 +1453,166 @@
   .modal-body .barra-label {
     font-size: 11px;
   }
+}
+
+/* Estilos específicos para las tablas del modal */
+.tabla-detalle {
+  width: 100%;
+  margin-top: 15px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tabla-detalle table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: white;
+}
+
+.tabla-detalle thead {
+  background: #e30613;
+  color: white;
+}
+
+.tabla-detalle th {
+  padding: 12px 8px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  color: white;
+  border-bottom: 2px solid #b8050f;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.tabla-detalle tbody {
+  background: white;
+}
+
+.tabla-detalle td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #e9ecef;
+  font-size: 12px;
+  color: #495057;
+  vertical-align: middle;
+  word-wrap: break-word;
+  max-width: 200px;
+}
+
+.tabla-detalle tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.tabla-detalle tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Estados en la tabla */
+.tabla-detalle .estado {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  display: inline-block;
+  min-width: 80px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tabla-detalle .estado.implementado {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.tabla-detalle .estado.no-implementado {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.tabla-detalle .estado.reportados {
+  background: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+.tabla-detalle .estado.no-reportados {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.tabla-detalle .estado.registrado {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.tabla-detalle .estado.no-registrado {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Estilos adicionales para mejorar la presentación */
+.detalle-metrica-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.detalle-metrica-container h3 {
+  color: #e30613;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Responsivo para móvil */
+@media (max-width: 768px) {
+  .tabla-detalle th {
+    padding: 8px 6px;
+    font-size: 11px;
+  }
+  
+  .tabla-detalle td {
+    padding: 8px 6px;
+    font-size: 11px;
+    max-width: 150px;
+  }
+  
+  .tabla-detalle .estado {
+    font-size: 9px;
+    padding: 2px 6px;
+    min-width: 60px;
+  }
+}
+
+/* Scroll personalizado para la tabla */
+.tabla-detalle::-webkit-scrollbar {
+  height: 8px;
+}
+
+.tabla-detalle::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.tabla-detalle::-webkit-scrollbar-thumb {
+  background: #e30613;
+  border-radius: 4px;
+}
+
+.tabla-detalle::-webkit-scrollbar-thumb:hover {
+  background: #b8050f;
 }

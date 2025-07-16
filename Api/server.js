@@ -11,6 +11,7 @@ import mercadeoRouter from './routes/mercadeo.js';
 import asesorRouter from './routes/asesor.js';
 import publicRouter from './routes/public.js';
 import misteryShopperRouter from './routes/mistery.shopper.js';
+import otRouter from './routes/ot.js';
 import { getConnection } from './db.js';
 
 const app = express();
@@ -29,6 +30,7 @@ app.use('/api', express.json(), mercadeoRouter);
 app.use('/api', express.json(), publicRouter);
 app.use('/api/asesor', express.json(), asesorRouter);
 app.use('/api/mistery-shopper', express.json(), misteryShopperRouter);
+app.use('/api/ot', express.json(), otRouter);
 
 // --- NUEVO: servir archivos estáticos del build de React ---
 const __filename = fileURLToPath(import.meta.url);

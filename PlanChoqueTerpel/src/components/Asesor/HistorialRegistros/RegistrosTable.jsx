@@ -63,7 +63,7 @@ export default function RegistrosTable({ registros, onVerDetalles, isMobile }) {
               >
                 <td>
                   <span className="codigo-highlight">
-                    {registro.codigo || registro.codigo_pdv || '-'}
+                    {registro.codigo || '-'}
                   </span>
                 </td>
                 <td>

@@ -1,10 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
 import { useAsesorRoute } from '../../hooks/auth';
+import { useAuth } from '../../hooks/auth/useAuth';
+import { useCoberturaAsesor } from '../../hooks/asesor/useCoberturaAsesor';
+import { useVolumenAsesor } from '../../hooks/asesor/useVolumenAsesor';
+import { useVisitasAsesor } from '../../hooks/asesor/useVisitasAsesor';
+import { usePreciosAsesor } from '../../hooks/asesor/usePreciosAsesor';
+import { useProfundidadAsesor } from '../../hooks/asesor/useProfundidadAsesor';
+import { useExcelDownload } from '../../hooks/shared/useExcelDownload';
 import { useNavigate } from 'react-router-dom';
-// import '../../styles/Asesor/asesor-informe-seguimiento-dashboard.css';
+import { API_URL } from '../../config';
+import '../../styles/Asesor/asesor-informe-seguimiento-dashboard.css';
+import '../../styles/Asesor/frecuencia-visitas.css';
+import '../../styles/Asesor/precios.css';
+import '../../styles/Asesor/profundidad.css';
+import '../../styles/shared/download-buttons.css';
 import FiltrosAvanzadosAsesor from '../../components/Asesor/Filtros/FiltrosAvanzadosAsesor';
 import FiltroActivo from '../../components/Asesor/Filtros/FiltroActivo';
+import * as XLSX from 'xlsx';
 
 // Iconos para las métricas
 import IconCobertura from '../../assets/Iconos/IconosPage/Icono_Page_Mis_Metas.png';
@@ -32,79 +45,84 @@ export default function AsesorInformeSeguimientoDashboard() {
   
   // Proteger la ruta - solo asesores pueden acceder
   const { user, loading, isAuthenticated, hasRequiredRole } = useAsesorRoute();
+  
+  // Hook para obtener token de autenticación
+  const { token } = useAuth();
 
-  // PDVs reales del sistema (solo los 4 PDVs de la BD)
-  const pdvsReales = [
-    { id: 1, codigo: '1001', nombre: 'Tienda El Progreso', direccion: 'Calle 10 #5-20, Bogotá', meta_volumen: 150, segmento: 'CVL' },
-    { id: 2, codigo: '1002', nombre: 'Minimercado Don Juan', direccion: 'Carrera 8 #12-34, Medellín', meta_volumen: 120, segmento: 'MCO' },
-    { id: 3, codigo: '1003', nombre: 'Supermercado La Economía', direccion: 'Av. Principal 45-67, Cali', meta_volumen: 90, segmento: 'MCO' },
-    { id: 4, codigo: '1004', nombre: 'Tienda La Esquina', direccion: 'Cra 3 #45-67, Barranquilla', meta_volumen: 30, segmento: 'CVL' }
-  ];
+  // Hooks para datos reales
+  const { cobertura, loading: loadingCobertura, error: errorCobertura } = useCoberturaAsesor(user?.id);
+  const { volumen, loading: loadingVolumen, error: errorVolumen } = useVolumenAsesor(user?.id);
+  const { visitas, loading: loadingVisitas, error: errorVisitas } = useVisitasAsesor(user?.id);
+  const { precios, loading: loadingPrecios, error: errorPrecios } = usePreciosAsesor(user?.id);
+  const { profundidad, loading: loadingProfundidad, error: errorProfundidad } = useProfundidadAsesor(user?.id);
+  
+  // Hook para descargas Excel
+  const { downloadAllKPIData, downloadVisitasHistorial, loading: loadingDownload } = useExcelDownload();
 
-  useEffect(() => {
-    setPdvs(pdvsReales);
-  }, []);
+  // Filtrar PDVs por búsqueda (código o nombre) usando cobertura real
+  const pdvsFiltrados = cobertura.pdvs.filter(pdv => {
+    const codigoStr = pdv.codigo ? String(pdv.codigo) : '';
+    const nombreStr = pdv.nombre ? String(pdv.nombre) : '';
+    const busquedaLower = busquedaPdv.toLowerCase();
+    
+    return codigoStr.toLowerCase().includes(busquedaLower) || 
+           nombreStr.toLowerCase().includes(busquedaLower);
+  });
 
-  // Filtrar PDVs por búsqueda (código o nombre)
-  const pdvsFiltrados = pdvs.filter(pdv => 
-    pdv.codigo.toLowerCase().includes(busquedaPdv.toLowerCase()) ||
-    pdv.nombre.toLowerCase().includes(busquedaPdv.toLowerCase())
-  );
-
-  // Si está cargando la autenticación, mostrar loading
-  if (loading) {
-    return <div className="loading-container">Verificando autenticación...</div>;
+  // Si está cargando la autenticación o datos, mostrar loading
+  if (loading || loadingCobertura || loadingVolumen || loadingVisitas || loadingPrecios || loadingProfundidad) {
+    return <div className="loading-container">Verificando autenticación o cargando datos...</div>;
   }
+
+  // Manejar errores de autenticación o de datos
+  const handleError = (errorMsg) => {
+    // Si el error es de autenticación, mostrar botón para recargar/redirigir
+    if (errorMsg.includes('token') || errorMsg.includes('autenticación')) {
+      return (
+        <div className="error-container">
+          <p>{errorMsg}</p>
+          <button 
+            className="btn-reload" 
+            onClick={() => {
+              // Opción 1: Recargar la página
+              window.location.reload();
+              
+              // Opción 2: Redirigir al login (descomenta si prefieres esta opción)
+              // navigate('/login');
+            }}
+          >
+            Reintentar / Recargar
+          </button>
+        </div>
+      );
+    }
+    return <div className="error-container">{errorMsg}</div>;
+  };
+
+  // Verificar errores en los hooks
+  if (errorCobertura) return handleError(errorCobertura);
+  if (errorVolumen) return handleError(errorVolumen);
+  if (errorVisitas) return handleError(errorVisitas);
+  if (errorPrecios) return handleError(errorPrecios);
+  if (errorProfundidad) return handleError(errorProfundidad);
 
   // Si no está autenticado o no tiene el rol correcto, el hook ya redirigirá
   if (!isAuthenticated || !hasRequiredRole) {
     return null;
   }
+  
+  // Asegurar que cobertura.pdvs es un array para evitar errores
+  if (!Array.isArray(cobertura.pdvs)) {
+    console.warn('cobertura.pdvs no es un array:', cobertura.pdvs);
+    cobertura.pdvs = [];
+  }
 
-  // Datos base para cálculos (definir una sola vez)
+  // Datos base para cálculos (solo para otras métricas, cobertura ahora es real)
   const datosBase = {
-    cobertura: [
-      { codigo: '1001', nombre: 'Tienda El Progreso', estado: 'Registrado', puntos: 25 },
-      { codigo: '1002', nombre: 'Minimercado Don Juan', estado: 'Registrado', puntos: 30 },
-      { codigo: '1003', nombre: 'Supermercado La Economía', estado: 'Registrado', puntos: 28 },
-      { codigo: '1004', nombre: 'Tienda La Esquina', estado: 'No Registrado', puntos: 0 }
-    ],
-    volumen: pdvsReales.map(pdv => {
-      const real = Math.floor(pdv.meta_volumen * 0.78); // 78% de cumplimiento consistente
-      const porcentaje = 78;
-      const puntosVolumen = Math.floor(porcentaje * 0.5); // Puntos basados en porcentaje
-      return {
-        codigo: pdv.codigo,
-        nombre: pdv.nombre,
-        segmento: pdv.segmento, // Agregar segmento desde pdvsReales
-        meta: pdv.meta_volumen,
-        real: real,
-        porcentaje: porcentaje,
-        puntos: puntosVolumen
-      };
-    }),
-    frecuencia: pdvsReales.map((pdv, index) => {
-      const visitasRealizadas = 16; // Consistente con los datos del detalle
-      const puntosVisitas = visitasRealizadas * 2; // 2 puntos por visita
-      return {
-        codigo: pdv.codigo,
-        nombre: pdv.nombre,
-        visitas: visitasRealizadas,
-        puntos: puntosVisitas
-      };
-    }),
-    profundidad: [
-      { codigo: '1001', nombre: 'Tienda El Progreso', estado: 'Registrado', puntos: 22 },
-      { codigo: '1002', nombre: 'Minimercado Don Juan', estado: 'Registrado', puntos: 25 },
-      { codigo: '1003', nombre: 'Supermercado La Economía', estado: 'Registrado', puntos: 19 },
-      { codigo: '1004', nombre: 'Tienda La Esquina', estado: 'No Registrado', puntos: 0 }
-    ],
-    precios: [
-      { codigo: '1001', nombre: 'Tienda El Progreso', estado: 'Precios Reportados', puntos: 4 },
-      { codigo: '1002', nombre: 'Minimercado Don Juan', estado: 'Precios Reportados', puntos: 2 },
-      { codigo: '1003', nombre: 'Supermercado La Economía', estado: 'Precios Reportados', puntos: 4 },
-      { codigo: '1004', nombre: 'Tienda La Esquina', estado: 'Precios No Reportados', puntos: 0 }
-    ]
+    volumen: [],
+    frecuencia: [],
+    profundidad: [],
+    precios: []
   };
 
   // Función para calcular puntos específicos por KPI y PDV
@@ -140,6 +158,8 @@ export default function AsesorInformeSeguimientoDashboard() {
       return totalCobertura + totalVolumen + totalFrecuencia + totalProfundidad + totalPrecios;
     }
   };
+
+  const pdvsReales = cobertura.pdvs || [];
 
   // Manejar cambios en filtros avanzados
   const handleFiltrosChange = (nuevosFiltros) => {
@@ -187,84 +207,136 @@ export default function AsesorInformeSeguimientoDashboard() {
 
   // Datos de métricas con datos reales de PDV
   const getMetricasData = () => {
-    
     return [
       {
         id: 'cobertura',
         titulo: 'Cobertura',
         icon: IconCobertura,
-        meta: pdvSeleccionado ? 1 : 4,
-        implementado: pdvSeleccionado ? 
-          (datosBase.cobertura.find(p => p.codigo === pdvSeleccionado.codigo)?.estado === 'Registrado' ? 1 : 0) :
-          datosBase.cobertura.filter(p => p.estado === 'Registrado').length,
-        porcentaje: pdvSeleccionado ? 
-          (datosBase.cobertura.find(p => p.codigo === pdvSeleccionado.codigo)?.estado === 'Registrado' ? 100 : 0) :
-          Math.round((datosBase.cobertura.filter(p => p.estado === 'Registrado').length / 4) * 100),
+        meta: pdvSeleccionado ? 1 : cobertura.totalAsignados,
+        implementado: pdvSeleccionado
+          ? (cobertura.pdvs.find(p => p.id === pdvSeleccionado.id)?.estado === 'IMPLEMENTADO' ? 1 : 0)
+          : cobertura.totalImplementados,
+        porcentaje: pdvSeleccionado
+          ? (cobertura.pdvs.find(p => p.id === pdvSeleccionado.id)?.estado === 'IMPLEMENTADO' ? 100 : 0)
+          : (cobertura.totalAsignados > 0 ? Math.round((cobertura.totalImplementados / cobertura.totalAsignados) * 100) : 0),
         color: '#e30613',
-        puntosLabel: `${calcularPuntosKPI('cobertura', pdvSeleccionado?.codigo)} puntos obtenidos`
+        puntosLabel: `${cobertura.puntosCobertura} puntos obtenidos`
       },
+      // Métrica de volumen con datos reales
       {
         id: 'volumen',
         titulo: 'Volumen',
         icon: IconVolumen,
-        meta: pdvSeleccionado ? 
-          (datosBase.volumen.find(p => p.codigo === pdvSeleccionado.codigo)?.meta || 0) :
-          datosBase.volumen.reduce((total, pdv) => total + pdv.meta, 0),
-        implementado: pdvSeleccionado ? 
-          (datosBase.volumen.find(p => p.codigo === pdvSeleccionado.codigo)?.real || 0) :
-          datosBase.volumen.reduce((total, pdv) => total + pdv.real, 0),
-        porcentaje: pdvSeleccionado ? 
-          (datosBase.volumen.find(p => p.codigo === pdvSeleccionado.codigo)?.porcentaje || 0) :
-          78,
-        color: '#ff6b35',
-        puntosLabel: `${calcularPuntosKPI('volumen', pdvSeleccionado?.codigo)} puntos obtenidos`
+        meta: pdvSeleccionado 
+          ? (volumen?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.meta || 0)
+          : volumen?.meta_volumen || 0,
+        implementado: pdvSeleccionado
+          ? (volumen?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.real || 0)
+          : volumen?.real_volumen || 0,
+        porcentaje: pdvSeleccionado
+          ? (volumen?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.porcentaje || 0)
+          : (volumen?.meta_volumen > 0 ? ((volumen?.real_volumen / volumen?.meta_volumen) * 100).toFixed(0) : 0),
+        color: '#00a651',
+        puntosLabel: `${volumen?.puntos || 0} puntos obtenidos`
       },
       {
         id: 'visitas',
-        titulo: 'Frecuencia',
+        titulo: 'Visitas',
         icon: IconVisitas,
-        meta: pdvSeleccionado ? 20 : 80,
-        implementado: pdvSeleccionado ? 
-          (datosBase.frecuencia.find(p => p.codigo === pdvSeleccionado.codigo)?.visitas || 0) :
-          datosBase.frecuencia.reduce((total, p) => total + p.visitas, 0),
-        porcentaje: pdvSeleccionado ? 
-          Math.round(((datosBase.frecuencia.find(p => p.codigo === pdvSeleccionado.codigo)?.visitas || 0) / 20) * 100) :
-          Math.round((datosBase.frecuencia.reduce((total, p) => total + p.visitas, 0) / 80) * 100),
-        color: '#f7931e',
-        puntosLabel: `${calcularPuntosKPI('frecuencia', pdvSeleccionado?.codigo)} puntos obtenidos`
+        meta: pdvSeleccionado 
+          ? (visitas?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.meta || 0)
+          : visitas?.meta_visitas || 0,
+        implementado: pdvSeleccionado
+          ? (visitas?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.cantidadVisitas || 0)
+          : visitas?.real_visitas || 0,
+        porcentaje: pdvSeleccionado
+          ? (visitas?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.porcentaje || 0)
+          : visitas?.porcentajeCumplimiento || 0,
+        color: '#f7941d',
+        puntosLabel: `${visitas?.puntos || 0} puntos obtenidos`
       },
       {
         id: 'productividad',
         titulo: 'Profundidad',
         icon: IconProductividad,
-        meta: pdvSeleccionado ? 1 : 4,
-        implementado: pdvSeleccionado ? 
-          (datosBase.profundidad.find(p => p.codigo === pdvSeleccionado.codigo)?.estado === 'Registrado' ? 1 : 0) :
-          datosBase.profundidad.filter(p => p.estado === 'Registrado').length,
-        porcentaje: pdvSeleccionado ? 
-          (datosBase.profundidad.find(p => p.codigo === pdvSeleccionado.codigo)?.estado === 'Registrado' ? 100 : 0) :
-          Math.round((datosBase.profundidad.filter(p => p.estado === 'Registrado').length / 4) * 100),
-        color: '#00a651',
-        puntosLabel: `${calcularPuntosKPI('profundidad', pdvSeleccionado?.codigo)} puntos obtenidos`
+        meta: pdvSeleccionado 
+          ? 1
+          : profundidad?.totalAsignados || 0,
+        implementado: pdvSeleccionado
+          ? (profundidad?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.estado === 'REGISTRADO' ? 1 : 0)
+          : profundidad?.totalConProfundidad || 0,
+        porcentaje: pdvSeleccionado
+          ? (profundidad?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.estado === 'REGISTRADO' ? 100 : 0)
+          : profundidad?.porcentaje || 0,
+        color: '#2b3990',
+        puntosLabel: `${profundidad?.puntosProfundidad || 0} puntos obtenidos`
       },
       {
         id: 'precios',
         titulo: 'Precios',
         icon: IconPrecios,
-        meta: pdvSeleccionado ? 1 : 4,
-        implementado: pdvSeleccionado ? 
-          (datosBase.precios.find(p => p.codigo === pdvSeleccionado.codigo)?.estado === 'Precios Reportados' ? 1 : 0) :
-          datosBase.precios.filter(p => p.estado === 'Precios Reportados').length,
-        porcentaje: pdvSeleccionado ? 
-          (datosBase.precios.find(p => p.codigo === pdvSeleccionado.codigo)?.estado === 'Precios Reportados' ? 100 : 0) :
-          Math.round((datosBase.precios.filter(p => p.estado === 'Precios Reportados').length / 4) * 100),
-        color: '#0066cc',
-        puntosLabel: `${calcularPuntosKPI('precios', pdvSeleccionado?.codigo)} puntos obtenidos`
+        meta: pdvSeleccionado 
+          ? 1
+          : precios?.totalAsignados || 0,
+        implementado: pdvSeleccionado
+          ? (precios?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.estado === 'REPORTADOS' ? 1 : 0)
+          : precios?.totalReportados || 0,
+        porcentaje: pdvSeleccionado
+          ? (precios?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.estado === 'REPORTADOS' ? 100 : 0)
+          : precios?.porcentaje || 0,
+        color: '#e30613',
+        puntosLabel: `${precios?.puntosPrecios || 0} puntos obtenidos`
       }
     ];
   };
 
   const metricas = getMetricasData();
+
+  // Funciones para descargar datos
+  const handleDownloadAllKPIs = () => {
+    const allData = {
+      cobertura: cobertura.pdvs || [],
+      volumen: volumen.pdvs || [],
+      visitas: visitas.pdvs || [],
+      productividad: profundidad.pdvs || [],
+      precios: precios.pdvs || []
+    };
+    
+    downloadAllKPIData(allData, 'asesor');
+  };
+
+  const handleDownloadHistorial = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/asesor/historial-visitas/${user.id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al obtener el historial de visitas');
+      }
+
+      // Crear blob del archivo Excel
+      const blob = await response.blob();
+      
+      // Crear URL para descarga
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `historial_visitas_${user.id}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+    } catch (error) {
+      console.error('Error al descargar historial de visitas:', error);
+      alert('Error al descargar el historial de visitas');
+    }
+  };
 
   const handleDetalleClick = (metricId) => {
     setSelectedMetric(metricId);
@@ -306,6 +378,9 @@ export default function AsesorInformeSeguimientoDashboard() {
           filtros={filtros}
           onLimpiarFiltros={limpiarFiltros}
           isMobile={window.innerWidth <= 768}
+          onDownloadAllKPIs={handleDownloadAllKPIs}
+          onDownloadHistorial={handleDownloadHistorial}
+          loadingDownload={loadingDownload}
         />
 
         {/* Contenedor de métricas con ancho fijo del 50% */}
@@ -395,7 +470,7 @@ export default function AsesorInformeSeguimientoDashboard() {
                   >
                     <span className="pdv-codigo">{pdv.codigo}</span>
                     <span className="pdv-nombre">{pdv.nombre}</span>
-                    <span className="pdv-meta">Meta: {pdv.meta_volumen.toLocaleString()}</span>
+                    <span className="pdv-meta">Meta: {(pdv.meta_volumen || 0).toLocaleString()}</span>
                   </div>
                 ))}
               </div>
@@ -412,10 +487,26 @@ export default function AsesorInformeSeguimientoDashboard() {
                 <button className="close-btn" onClick={cerrarDetalle}>×</button>
               </div>
               <div className="modal-body">
+                <button 
+                  className="download-btn modal-download-btn"
+                  onClick={handleDownloadAllKPIs}
+                  disabled={loadingDownload}
+                >
+                  {loadingDownload ? (
+                    <div className="loading-spinner"></div>
+                  ) : (
+                    <span className="download-icon">📊</span>
+                  )}
+                  Descargar Reporte Completo
+                </button>
+                
                 <DetalleMetrica 
                   metricId={selectedMetric} 
                   pdvSeleccionado={pdvSeleccionado} 
-                  datosBase={datosBase}
+                  datosCobertura={cobertura}
+                  datosVolumen={volumen}
+                  datosVisitas={visitas}
+                  datosPrecios={precios}
                 />
               </div>
             </div>
@@ -424,543 +515,399 @@ export default function AsesorInformeSeguimientoDashboard() {
       </div>
     </DashboardLayout>
   );
-}
 
-// Componente para mostrar detalles específicos de cada métrica
-function DetalleMetrica({ metricId, pdvSeleccionado, datosBase }) {
-  // PDVs reales del sistema (solo los 4 de la BD)
-  const pdvsReales = [
-    { id: 1, codigo: '1001', nombre: 'Tienda El Progreso', direccion: 'Calle 10 #5-20, Bogotá', meta_volumen: 150, segmento: 'CVL' },
-    { id: 2, codigo: '1002', nombre: 'Minimercado Don Juan', direccion: 'Carrera 8 #12-34, Medellín', meta_volumen: 120, segmento: 'MCO' },
-    { id: 3, codigo: '1003', nombre: 'Supermercado La Economía', direccion: 'Av. Principal 45-67, Cali', meta_volumen: 90, segmento: 'MCO' },
-    { id: 4, codigo: '1004', nombre: 'Tienda La Esquina', direccion: 'Cra 3 #45-67, Barranquilla', meta_volumen: 30, segmento: 'CVL' }
-  ];
-
-  // Productos Terpel reales del sistema
-  const productosTerpel = [
-    { id: 1, nombre: 'TERPEL OILTEC 10W-30 TITANIO' },
-    { id: 2, nombre: 'TERPEL OILTEC 10W-40 TITANIO' },
-    { id: 3, nombre: 'TERPEL OILTEC 20W-50 TITANIO' },
-    { id: 4, nombre: 'TERPEL OILTEC TERGAS 20W-50' },
-    { id: 6, nombre: 'TERPEL OILTEC 20W-50 MULTIGRADO' },
-    { id: 7, nombre: 'TERPEL OILTEC 40 MONOGRADO' },
-    { id: 8, nombre: 'TERPEL OILTEC 50 MONOGRADO' },
-    { id: 10, nombre: 'REFRIGERANTE ESTÁNDAR' },
-    { id: 11, nombre: 'REFRIGERANTE LARGA VIDA' },
-    { id: 12, nombre: 'TERPEL CELERITY 4T 15W-50 SEMISINTÉTICO' },
-    { id: 13, nombre: 'TERPEL CELERITY 4T 20W-50 TITANIO' },
-    { id: 14, nombre: 'TERPEL CELERITY 2T BIO ANTIHUMO' },
-    { id: 15, nombre: 'TERPEL CELERITY 4T 25W-50 GRUESO' },
-    { id: 16, nombre: 'TERPEL CELERITY 2T FB' }
-  ];
-
-  // Datos con PDVs reales y sus metas de la columna meta_volumen
-  const datosDetalles = {
-    cobertura: {
-      puntos: datosBase.cobertura
-    },
-    volumen: {
-      puntos: datosBase.volumen,
-      productos: pdvsReales.flatMap(pdv => 
-        productosTerpel.slice(0, 3 + Math.floor(Math.random() * 3)).map(producto => {
-          const metaProducto = Math.floor(pdv.meta_volumen * (0.1 + Math.random() * 0.2)); // 10-30% del meta_volumen del PDV
-          const realProducto = Math.floor(metaProducto * (0.6 + Math.random() * 0.4)); // 60-100% de la meta
-          return {
-            codigo: pdv.codigo,
-            nombre_pdv: pdv.nombre,
-            producto: producto.nombre,
-            meta: metaProducto,
-            real: realProducto,
-            porcentaje: Math.round((realProducto / metaProducto) * 100)
-          };
-        })
-      ),
-      // Resumen de productos: galonaje proporcional a datos reales y consistente
-      productosResumen: (() => {
-        // Si hay PDV seleccionado, calcular productos solo para ese PDV
-        const pdvsParaCalcular = pdvSeleccionado ? 
-          pdvsReales.filter(pdv => pdv.codigo === pdvSeleccionado.codigo) : 
-          pdvsReales;
-
-        const resumen = {};
-        
-        // Definir distribución consistente de productos por PDV
-        const distribucionProductos = {
-          '1001': [ // Tienda El Progreso - CVL
-            { producto: 'TERPEL OILTEC 10W-30 TITANIO', porcentaje: 0.25 },
-            { producto: 'TERPEL OILTEC 20W-50 TITANIO', porcentaje: 0.20 },
-            { producto: 'REFRIGERANTE ESTÁNDAR', porcentaje: 0.15 },
-            { producto: 'TERPEL CELERITY 4T 15W-50 SEMISINTÉTICO', porcentaje: 0.12 },
-            { producto: 'TERPEL OILTEC 40 MONOGRADO', porcentaje: 0.10 },
-            { producto: 'REFRIGERANTE LARGA VIDA', porcentaje: 0.08 },
-            { producto: 'TERPEL CELERITY 2T BIO ANTIHUMO', porcentaje: 0.06 },
-            { producto: 'TERPEL OILTEC 10W-40 TITANIO', porcentaje: 0.04 }
-          ],
-          '1002': [ // Minimercado Don Juan - MCO
-            { producto: 'TERPEL OILTEC 20W-50 MULTIGRADO', porcentaje: 0.22 },
-            { producto: 'TERPEL OILTEC 10W-40 TITANIO', porcentaje: 0.18 },
-            { producto: 'TERPEL CELERITY 4T 20W-50 TITANIO', porcentaje: 0.16 },
-            { producto: 'REFRIGERANTE ESTÁNDAR', porcentaje: 0.14 },
-            { producto: 'TERPEL OILTEC 20W-50 TITANIO', porcentaje: 0.12 },
-            { producto: 'TERPEL CELERITY 4T 25W-50 GRUESO', porcentaje: 0.10 },
-            { producto: 'TERPEL OILTEC 50 MONOGRADO', porcentaje: 0.08 }
-          ],
-          '1003': [ // Supermercado La Economía - MCO
-            { producto: 'TERPEL OILTEC 10W-30 TITANIO', porcentaje: 0.24 },
-            { producto: 'TERPEL OILTEC 20W-50 MULTIGRADO', porcentaje: 0.20 },
-            { producto: 'REFRIGERANTE LARGA VIDA', porcentaje: 0.16 },
-            { producto: 'TERPEL CELERITY 4T 15W-50 SEMISINTÉTICO', porcentaje: 0.14 },
-            { producto: 'TERPEL OILTEC TERGAS 20W-50', porcentaje: 0.12 },
-            { producto: 'TERPEL CELERITY 2T FB', porcentaje: 0.08 },
-            { producto: 'TERPEL OILTEC 40 MONOGRADO', porcentaje: 0.06 }
-          ],
-          '1004': [ // Tienda La Esquina - CVL
-            { producto: 'TERPEL OILTEC 40 MONOGRADO', porcentaje: 0.30 },
-            { producto: 'TERPEL OILTEC 50 MONOGRADO', porcentaje: 0.25 },
-            { producto: 'REFRIGERANTE ESTÁNDAR', porcentaje: 0.20 },
-            { producto: 'TERPEL CELERITY 4T 25W-50 GRUESO', porcentaje: 0.15 },
-            { producto: 'TERPEL CELERITY 2T BIO ANTIHUMO', porcentaje: 0.10 }
-          ]
-        };
-        
-        // Para cada PDV, distribuir su galonaje real entre los productos definidos
-        pdvsParaCalcular.forEach(pdv => {
-          const galonajeRealPdv = datosBase.volumen.find(v => v.codigo === pdv.codigo)?.real || 0;
-          const productosDelPdv = distribucionProductos[pdv.codigo] || [];
+  // Componente para mostrar detalles de métricas
+  function DetalleMetrica({ metricId, pdvSeleccionado, datosCobertura, datosVolumen, datosVisitas, datosPrecios }) {
+    // Validar que los datos estén definidos y tengan la estructura correcta
+    const coberturaPdvs = Array.isArray(datosCobertura?.pdvs) ? datosCobertura.pdvs : [];
+    
+    // Preparar datos según la métrica seleccionada
+    let datosFiltrados = {
+      puntos: [],
+      productosResumen: [],
+      frecuencia: [],
+      visitasPorTipo: []
+    };
+    
+    if (metricId === 'cobertura' && coberturaPdvs.length > 0) {
+      // Para cobertura, usar datos reales del hook
+      try {
+        const pdvsFiltrados = pdvSeleccionado && pdvSeleccionado.id
+          ? coberturaPdvs.filter(pdv => pdv.id === pdvSeleccionado.id)
+          : coberturaPdvs;
           
-          productosDelPdv.forEach(({ producto, porcentaje }) => {
-            const galonajeProducto = Math.floor(galonajeRealPdv * porcentaje);
-            
-            if (resumen[producto]) {
-              resumen[producto] += galonajeProducto;
-            } else {
-              resumen[producto] = galonajeProducto;
-            }
-          });
-        });
-
-        return Object.keys(resumen)
-          .map(nombreProducto => ({
-            nombre: nombreProducto,
-            galonaje: resumen[nombreProducto]
-          }))
-          .filter(producto => producto.galonaje > 0) // Solo productos con galonaje
-          .sort((a, b) => b.galonaje - a.galonaje); // Ordenar por galonaje descendente
-      })()
-    },
-    visitas: {
-      frecuencia: pdvsReales.map((pdv, index) => {
-        // Distribución fija de visitas por PDV para consistencia
-        const visitasData = {
-          '1001': { visitas: 20, tipo: 'PRECIO/VOLUMEN' },
-          '1002': { visitas: 16, tipo: 'VOLUMEN' },
-          '1003': { visitas: 16, tipo: 'PRECIO' },
-          '1004': { visitas: 23, tipo: 'FRECUENCIA' }
-        };
+        datosFiltrados.puntos = pdvsFiltrados.map(pdv => ({
+          codigo: pdv.codigo ? String(pdv.codigo) : 'N/A',
+          nombre: pdv.nombre ? String(pdv.nombre) : 'Sin nombre',
+          direccion: pdv.direccion ? String(pdv.direccion) : 'No disponible',
+          estado: pdv.estado === 'IMPLEMENTADO' ? 'Registrado' : 'No Registrado',
+          puntos: pdv.puntos || 0
+        }));
+      } catch (err) {
+        console.error('Error al preparar datos de cobertura:', err);
+        datosFiltrados.puntos = [];
+      }
+    } else if (metricId === 'volumen') {
+      try {
+        // Para volumen, usar datos reales del hook de volumen
+        const volumenPdvs = Array.isArray(datosVolumen?.pdvs) ? datosVolumen.pdvs : [];
+        const segmentosData = Array.isArray(datosVolumen?.segmentos) ? datosVolumen.segmentos : [];
+        const productosData = Array.isArray(datosVolumen?.productos) ? datosVolumen.productos : [];
         
-        const dataPdv = visitasData[pdv.codigo] || { visitas: 16, tipo: 'VOLUMEN' };
-        const puntosVisitas = dataPdv.visitas * 2; // 2 puntos por visita
-        
-        return {
-          codigo: pdv.codigo,
-          nombre: pdv.nombre,
-          tipo: dataPdv.tipo,
-          visitas: dataPdv.visitas,
-          puntos: puntosVisitas
-        };
-      }),
-      // Datos para gráfica de barras por tipo de visita - Datos consistentes
-      visitasPorTipo: (() => {
-        const tipos = ['PRECIO/VOLUMEN', 'VOLUMEN', 'PRECIO', 'FRECUENCIA'];
-        
-        // Distribución fija de visitas por tipo basada en los PDVs
-        const distribucionVisitas = {
-          'PRECIO/VOLUMEN': 8,  // 1001: 20 visitas * 0.4
-          'VOLUMEN': 8,         // 1002: 16 visitas * 0.5  
-          'PRECIO': 6,          // 1003: 16 visitas * 0.375
-          'FRECUENCIA': 7       // 1004: 23 visitas * 0.3
-        };
-        
-        return tipos.map(tipo => {
-          let cantidad;
+        // Filtrar PDVs según selección
+        const pdvsFiltrados = pdvSeleccionado && pdvSeleccionado.id
+          ? volumenPdvs.filter(pdv => pdv.id === pdvSeleccionado.id)
+          : volumenPdvs;
           
-          if (pdvSeleccionado) {
-            // Si hay PDV seleccionado, calcular visitas específicas para ese PDV
-            const visitasPdv = pdvsReales
-              .filter(pdv => pdv.codigo === pdvSeleccionado.codigo)[0];
-            
-            if (visitasPdv) {
-              const visitasData = {
-                '1001': { 'PRECIO/VOLUMEN': 8, 'VOLUMEN': 5, 'PRECIO': 4, 'FRECUENCIA': 3 },
-                '1002': { 'PRECIO/VOLUMEN': 2, 'VOLUMEN': 8, 'PRECIO': 3, 'FRECUENCIA': 3 },
-                '1003': { 'PRECIO/VOLUMEN': 3, 'VOLUMEN': 3, 'PRECIO': 6, 'FRECUENCIA': 4 },
-                '1004': { 'PRECIO/VOLUMEN': 4, 'VOLUMEN': 4, 'PRECIO': 4, 'FRECUENCIA': 11 }
-              };
-              cantidad = visitasData[visitasPdv.codigo]?.[tipo] || 0;
-            } else {
-              cantidad = 0;
-            }
-          } else {
-            // Mostrar datos de todos los PDVs
-            cantidad = distribucionVisitas[tipo] || 0;
-          }
-          
-          return {
-            tipo,
-            cantidad,
-            color: ['#e30613', '#ff6b35', '#f7931e', '#00a651'][tipos.indexOf(tipo)]
-          };
-        });
-      })()
-    },
-    productividad: {
-      puntos: pdvsReales.map((pdv, index) => {
-        const estado = index < 3 ? 'Registrado' : 'No Registrado'; // 3 de 4 registrados
-        const puntosProf = estado === 'Registrado' ? (20 + Math.floor(Math.random() * 15)) : 0;
-        return {
-          codigo: pdv.codigo,
-          nombre: pdv.nombre,
-          direccion: pdv.direccion,
-          estado: estado,
-          puntos: puntosProf
+        datosFiltrados.puntos = pdvsFiltrados.map(pdv => ({
+          codigo: pdv.codigo ? String(pdv.codigo) : 'N/A',
+          nombre: pdv.nombre ? String(pdv.nombre) : 'Sin nombre',
+          segmento: pdv.segmento || 'N/A',
+          meta: pdv.meta || 0,
+          real: pdv.real || 0,
+          porcentaje: pdv.porcentaje || 0,
+          puntos: pdv.puntos || 0
+        }));
+        
+        // Datos de segmentos
+        datosFiltrados.segmentos = segmentosData.map(seg => ({
+          segmento: seg.segmento,
+          cantidadPdvs: seg.cantidadPdvs,
+          totalGalones: seg.totalGalones
+        }));
+        
+        // Datos de productos
+        datosFiltrados.productosResumen = productosData.map(prod => ({
+          nombre: prod.nombre,
+          numeroCajas: prod.numeroCajas,
+          galonaje: prod.galonaje,
+          porcentaje: prod.porcentaje
+        }));
+      } catch (err) {
+        console.error('Error al preparar datos de volumen:', err);
+        datosFiltrados = {
+          puntos: [],
+          productosResumen: [],
+          segmentos: [],
+          visitasPorTipo: []
         };
-      })
-    },
-    precios: {
-      puntos: pdvsReales.map((pdv, index) => {
-        const estado = index < 3 ? 'Precios Reportados' : 'Precios No Reportados'; // 3 de 4 reportados
-        // Puntos realistas: 2, 4 o 0
-        const puntosPrecios = estado === 'Precios Reportados' ? 
-          (index === 1 ? 2 : 4) : 0; // Don Juan: 2 puntos, otros: 4 puntos, La Esquina: 0 puntos
-        return {
-          codigo: pdv.codigo,
-          nombre: pdv.nombre,
-          direccion: pdv.direccion,
-          estado: estado,
-          puntos: puntosPrecios
+      }
+    } else if (metricId === 'visitas') {
+      try {
+        // Para visitas, usar datos reales del hook de visitas
+        const visitasPdvs = Array.isArray(datosVisitas?.pdvs) ? datosVisitas.pdvs : [];
+        const tiposVisitaData = Array.isArray(datosVisitas?.tiposVisita) ? datosVisitas.tiposVisita : [];
+        
+        // Filtrar PDVs según selección
+        const pdvsFiltrados = pdvSeleccionado && pdvSeleccionado.id
+          ? visitasPdvs.filter(pdv => pdv.id === pdvSeleccionado.id)
+          : visitasPdvs;
+        
+        datosFiltrados.puntos = pdvsFiltrados;
+        datosFiltrados.visitasPorTipo = tiposVisitaData;
+      } catch (err) {
+        console.error('Error al preparar datos de visitas:', err);
+        datosFiltrados = {
+          puntos: [],
+          productosResumen: [],
+          segmentos: [],
+          visitasPorTipo: []
         };
-      })
+      }
+    } else if (metricId === 'precios' && Array.isArray(datosPrecios?.pdvs)) {
+      try {
+        const preciosPdvs = datosPrecios.pdvs;
+        
+        // Filtrar PDVs según selección
+        const pdvsFiltrados = pdvSeleccionado && pdvSeleccionado.id
+          ? preciosPdvs.filter(pdv => pdv.id === pdvSeleccionado.id)
+          : preciosPdvs;
+        
+        datosFiltrados.puntos = pdvsFiltrados.map(pdv => ({
+          codigo: pdv.codigo ? String(pdv.codigo) : 'N/A',
+          nombre: pdv.nombre ? String(pdv.nombre) : 'Sin nombre',
+          direccion: pdv.direccion ? String(pdv.direccion) : 'No disponible',
+          estado: pdv.estado === 'REPORTADOS' ? 'Registrado' : 'No Registrado',
+          puntos: pdv.puntos || 0
+        }));
+      } catch (err) {
+        console.error('Error al preparar datos de precios:', err);
+        datosFiltrados.puntos = [];
+      }
     }
-  };
 
-  const datos = datosDetalles[metricId];
-
-  // Filtrar datos si hay un PDV seleccionado
-  const datosFiltrados = pdvSeleccionado ? {
-    ...datos,
-    puntos: datos.puntos?.filter(punto => punto.codigo === pdvSeleccionado.codigo) || datos.puntos,
-    frecuencia: datos.frecuencia?.filter(punto => punto.codigo === pdvSeleccionado.codigo) || datos.frecuencia,
-    productos: datos.productos?.filter(producto => producto.codigo === pdvSeleccionado.codigo) || datos.productos,
-    // productosResumen ya está filtrado en la lógica principal, no necesita filtrado adicional
-    productosResumen: datos.productosResumen,
-    // Para visitas por tipo, usar los datos ya calculados en visitasPorTipo
-    visitasPorTipo: datos.visitasPorTipo
-  } : datos;
-
-  return (
-    <div className="detalle-content">
-      {metricId === 'cobertura' && (
-        <div className="tabla-container">
-          <h3>Estado de Registro por PDV</h3>
-          <table className="detalle-tabla">
-            <thead>
-              <tr>
-                <th>COD</th>
-                <th>Nombre</th>
-                <th>Dirección</th>
-                <th>Estado</th>
-                <th>Puntos</th>
-              </tr>
-            </thead>
-            <tbody>
-              {datosFiltrados.puntos.map((punto, index) => (
-                <tr key={index}>
-                  <td>{punto.codigo}</td>
-                  <td>{punto.nombre}</td>
-                  <td>{punto.direccion}</td>
-                  <td>
-                    <span className={`estado ${punto.estado === 'Registrado' ? 'implementado' : 'no-implementado'}`}>
-                      {punto.estado}
-                    </span>
-                  </td>
-                  <td>
-                    <strong>{punto.puntos}</strong>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {metricId === 'volumen' && (
-        <div className="volumen-detalles">
+    return (
+      <div className="detalle-content">
+        {metricId === 'cobertura' && (
           <div className="tabla-container">
-            <h3>Galonaje por PDV</h3>
-            <table className="detalle-tabla">
-              <thead>
-                <tr>
-                  <th>COD</th>
-                  <th>Nombre PDV</th>
-                  <th>Segmento</th>
-                  <th>Meta (Gal)</th>
-                  <th>Real (Gal)</th>
-                  <th>% Cumplimiento</th>
-                  <th>Puntos</th>
-                </tr>
-              </thead>
-              <tbody>
-                {datosFiltrados.puntos.map((punto, index) => (
-                  <tr key={index}>
-                    <td>{punto.codigo}</td>
-                    <td>{punto.nombre}</td>
-                    <td>{punto.segmento}</td>
-                    <td>{punto.meta.toLocaleString()}</td>
-                    <td>{punto.real.toLocaleString()}</td>
-                    <td>
-                      <span className={`porcentaje ${punto.porcentaje >= 80 ? 'alto' : 'bajo'}`}>
-                        {punto.porcentaje}%
-                      </span>
-                    </td>
-                    <td>
-                      <strong>{punto.puntos}</strong>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          
-          <div className="grafica-segmentos">
-            <h3>Galonaje Total por Segmento{pdvSeleccionado ? ` - ${pdvSeleccionado.nombre}` : ''}</h3>
-            <div className="barras-container-popup">
-              {(() => {
-                // Calcular totales por segmento basado en datos reales filtrados
-                const segmentos = ['CVL', 'MCO'];
-                const datosSegmentos = segmentos.map(segmento => {
-                  const totalSegmento = datosFiltrados.puntos
-                    .filter(p => p.segmento === segmento)
-                    .reduce((sum, p) => sum + p.real, 0);
-                  return { segmento, total: totalSegmento };
-                }).filter(s => s.total > 0); // Solo mostrar segmentos con datos
-
-                const maxTotal = Math.max(...datosSegmentos.map(s => s.total));
-
-                return datosSegmentos.map(({ segmento, total }) => (
-                  <div key={segmento} className="barra-segmento-popup">
-                    <div className="barra-info">
-                      {datosFiltrados.puntos.filter(p => p.segmento === segmento).length} PDV{datosFiltrados.puntos.filter(p => p.segmento === segmento).length !== 1 ? 's' : ''}
-                    </div>
-                    <div className="barra-valor">{total.toLocaleString()} gal</div>
-                    <div className="barra-visual-popup">
-                      <div 
-                        className="barra-fill" 
-                        style={{
-                          height: `${(total / (maxTotal || 1)) * 100}%`,
-                          backgroundColor: segmento === 'CVL' ? '#e30613' : '#00a651'
-                        }}
-                      ></div>
-                    </div>
-                    <div className="barra-label">{segmento}</div>
-                  </div>
-                ));
-              })()}
-              {/* Mensaje cuando no hay datos */}
-              {datosFiltrados.puntos.reduce((sum, p) => sum + p.real, 0) === 0 && (
-                <div className="sin-datos-mensaje">
-                  <p>No hay datos de volumen disponibles</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="tabla-container">
-            <h3>Galonaje por Producto{pdvSeleccionado ? ` - ${pdvSeleccionado.nombre}` : ' (Todos los PDVs)'}</h3>
-            <table className="detalle-tabla tabla-productos">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th>Nro Cajas</th>
-                  <th>Galonaje Total</th>
-                  <th>% del Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {datosFiltrados.productosResumen?.length > 0 ? (
-                  datosFiltrados.productosResumen.map((producto, index) => {
-                    const totalGalonaje = datosFiltrados.productosResumen.reduce((sum, p) => sum + p.galonaje, 0);
-                    const porcentaje = totalGalonaje > 0 ? ((producto.galonaje / totalGalonaje) * 100).toFixed(1) : 0;
-                    // Calcular número de cajas (asumiendo 4 galones por caja como estándar)
-                    const numeroCajas = Math.ceil(producto.galonaje / 4);
-                    return (
-                      <tr key={index}>
-                        <td className="producto-nombre">{producto.nombre}</td>
-                        <td><strong>{numeroCajas.toLocaleString()}</strong> cajas</td>
-                        <td><strong>{producto.galonaje.toLocaleString()}</strong> gal</td>
-                        <td>{porcentaje}%</td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan="4" style={{textAlign: 'center', padding: '20px', color: '#666'}}>
-                      {pdvSeleccionado ? 
-                        `No hay datos de productos para el PDV ${pdvSeleccionado.codigo}` :
-                        'No hay datos de productos disponibles'
-                      }
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {metricId === 'visitas' && (
-        <div className="visitas-detalles">
-          <div className="tabla-container">
-            <h3>Frecuencia de Visitas por PDV</h3>
+            <h3>Estado de Registro por PDV</h3>
             <table className="detalle-tabla">
               <thead>
                 <tr>
                   <th>COD</th>
                   <th>Nombre</th>
-                  <th>Cantidad Visitas</th>
+                  <th>Dirección</th>
+                  <th>Estado</th>
                   <th>Puntos</th>
                 </tr>
               </thead>
               <tbody>
-                {datosFiltrados.frecuencia.map((punto, index) => {
-                  return (
+                {datosFiltrados.puntos.length > 0 ? (
+                  datosFiltrados.puntos.map((punto, index) => (
                     <tr key={index}>
                       <td>{punto.codigo}</td>
                       <td>{punto.nombre}</td>
-                      <td><strong>{punto.visitas}</strong></td>
+                      <td>{punto.direccion}</td>
+                      <td>
+                        <span className={`estado ${punto.estado === 'Registrado' ? 'implementado' : 'no-implementado'}`}>
+                          {punto.estado}
+                        </span>
+                      </td>
                       <td>
                         <strong>{punto.puntos}</strong>
                       </td>
                     </tr>
-                  );
-                })}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" className="sin-datos">No hay datos disponibles</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
+        )}
 
-          {/* Gráfica de barras por tipo de visita */}
-          <div className="grafica-visitas-tipo">
-            <h3>Visitas por Tipo</h3>
-            <div className="barras-container-visitas">
-              {(datosFiltrados.visitasPorTipo || datos.visitasPorTipo).map((tipoData, index) => {
-                const maxCantidad = Math.max(...(datosFiltrados.visitasPorTipo || datos.visitasPorTipo).map(t => t.cantidad));
-                const altura = maxCantidad > 0 ? (tipoData.cantidad / maxCantidad) * 100 : 0;
-                
-                return (
-                  <div key={index} className="barra-tipo-visita">
-                    <div className="barra-visual-visita">
-                      <div 
-                        className="barra-fill-visita" 
-                        style={{
-                          height: `${altura}%`,
-                          backgroundColor: tipoData.color
-                        }}
-                      ></div>
-                    </div>
-                    <div className="barra-valor-visita">{tipoData.cantidad}</div>
-                    <div className="barra-label-visita">{tipoData.tipo}</div>
-                  </div>
-                );
-              })}
+        {/* Mostrar datos reales para volumen */}
+        {metricId === 'volumen' && (
+          <div className="volumen-detalles">
+            <div className="tabla-container">
+              <h3>Galonaje por PDV</h3>
+              <table className="detalle-tabla">
+                <thead>
+                  <tr>
+                    <th>COD</th>
+                    <th>Nombre PDV</th>
+                    <th>Segmento</th>
+                    <th>Meta (Gal)</th>
+                    <th>Real (Gal)</th>
+                    <th>% Cumplimiento</th>
+                    <th>Puntos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {datosFiltrados.puntos.length > 0 ? (
+                    datosFiltrados.puntos.map((punto, index) => (
+                      <tr key={index}>
+                        <td>{punto.codigo}</td>
+                        <td>{punto.nombre}</td>
+                        <td>{punto.segmento}</td>
+                        <td>{punto.meta.toLocaleString()}</td>
+                        <td>{punto.real.toLocaleString()}</td>
+                        <td>{punto.porcentaje}%</td>
+                        <td><strong>{punto.puntos}</strong></td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="sin-datos">No hay datos disponibles</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
+            
+            {/* Tabla de segmentos */}
+            {datosFiltrados.segmentos && datosFiltrados.segmentos.length > 0 && (
+              <div className="tabla-container">
+                <h3>Resumen por Segmento</h3>
+                <table className="detalle-tabla">
+                  <thead>
+                    <tr>
+                      <th>Segmento</th>
+                      <th>Cantidad PDVs</th>
+                      <th>Total Galones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {datosFiltrados.segmentos.map((seg, index) => (
+                      <tr key={index}>
+                        <td>{seg.segmento}</td>
+                        <td>{seg.cantidadPdvs}</td>
+                        <td>{seg.totalGalones.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            
+            {/* Tabla de productos */}
+            {datosFiltrados.productosResumen && datosFiltrados.productosResumen.length > 0 && (
+              <div className="tabla-container">
+                <h3>Resumen por Producto</h3>
+                <table className="detalle-tabla">
+                  <thead>
+                    <tr>
+                      <th>Producto</th>
+                      <th>Cajas</th>
+                      <th>Galonaje</th>
+                      <th>% del Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {datosFiltrados.productosResumen.map((prod, index) => (
+                      <tr key={index}>
+                        <td>{prod.nombre}</td>
+                        <td>{prod.numeroCajas}</td>
+                        <td>{prod.galonaje.toLocaleString()}</td>
+                        <td>{prod.porcentaje}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-{/* 
-          <div className="grafica-visitas">
-            <h3>Distribución de Visitas por PDV</h3>
-            <div className="torta-container">
-              {datosFiltrados.frecuencia.map((punto, index) => (
-                <div key={index} className="torta-item">
-                  <div className="torta-color" style={{backgroundColor: `hsl(${index * 90}, 70%, 50%)`}}></div>
-                  <span>{punto.codigo}: {punto.visitas} visitas</span>
-                </div>
-              ))}
+        )}
+
+        {metricId === 'visitas' && (
+          <div className="visitas-detalles">
+            <div className="tabla-container">
+              <h3>Frecuencia de Visitas por PDV</h3>
+              <table className="detalle-tabla">
+                <thead>
+                  <tr>
+                    <th>COD</th>
+                    <th>Nombre</th>
+                    <th>Meta</th>
+                    <th>Cantidad Visitas</th>
+                    <th>% Cumplimiento</th>
+                    <th>Puntos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {datosVisitas && Array.isArray(datosVisitas.pdvs) && datosVisitas.pdvs.length > 0 ? (
+                    datosVisitas.pdvs
+                      .filter(pdv => !pdvSeleccionado || pdv.id === pdvSeleccionado.id)
+                      .map((pdv, index) => (
+                        <tr key={index}>
+                          <td>{pdv.codigo}</td>
+                          <td>{pdv.nombre}</td>
+                          <td>{pdv.meta}</td>
+                          <td>{pdv.cantidadVisitas}</td>
+                          <td>{pdv.porcentaje}%</td>
+                          <td><strong>{pdv.puntos}</strong></td>
+                        </tr>
+                      ))
+                  ) : (
+                    <tr>
+                      <td colSpan="6" className="sin-datos">No hay datos disponibles</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-          </div> */}
-        </div>
-      )}
-
-      {metricId === 'productividad' && (
-        <div className="tabla-container">
-          <h3>Estado de Profundidad por PDV{pdvSeleccionado ? ` - ${pdvSeleccionado.nombre}` : ''}</h3>
-          <div className="tabla-productos-info">
-            <p>📈 {datosFiltrados.puntos.filter(p => p.estado === 'Registrado').length} de {datosFiltrados.puntos.length} PDVs con profundidad registrada</p>
+            
+            {/* Mostrar resumen por tipo de visita si hay datos disponibles */}
+            {datosVisitas && Array.isArray(datosVisitas.tiposVisita) && datosVisitas.tiposVisita.length > 0 && (
+              <div className="tabla-container">
+                <h3>Visitas por Tipo</h3>
+                <table className="detalle-tabla">
+                  <thead>
+                    <tr>
+                      <th>Tipo de Visita</th>
+                      <th>Cantidad</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {datosVisitas.tiposVisita.map((tipo, index) => (
+                      <tr key={index}>
+                        <td>{tipo.tipo}</td>
+                        <td>{tipo.cantidad}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-          <table className="detalle-tabla">
-            <thead>
-              <tr>
-                <th>COD</th>
-                <th>Nombre</th>
-                <th>Dirección</th>
-                <th>Estado</th>
-                <th>Puntos</th>
-              </tr>
-            </thead>
-            <tbody>
-              {datosFiltrados.puntos.map((punto, index) => (
-                <tr key={index}>
-                  <td>{punto.codigo}</td>
-                  <td>{punto.nombre}</td>
-                  <td>{punto.direccion}</td>
-                  <td>
-                    <span className={`estado ${punto.estado === 'Registrado' ? 'implementado' : 'no-implementado'}`}>
-                      {punto.estado}
-                    </span>
-                  </td>
-                  <td>
-                    <strong>{punto.puntos}</strong>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+        )}
 
-      {metricId === 'precios' && (
-        <div className="tabla-container">
-          <h3>Estado de Precios por PDV{pdvSeleccionado ? ` - ${pdvSeleccionado.nombre}` : ''}</h3>
-          <div className="tabla-productos-info">
-            <p>📋 {datosFiltrados.puntos.filter(p => p.estado === 'Precios Reportados').length} de {datosFiltrados.puntos.length} PDVs con precios reportados</p>
-          </div>
-          <table className="detalle-tabla">
-            <thead>
-              <tr>
-                <th>COD</th>
-                <th>Nombre</th>
-                <th>Dirección</th>
-                <th>Estado</th>
-                <th>Puntos</th>
-              </tr>
-            </thead>
-            <tbody>
-              {datosFiltrados.puntos.map((punto, index) => (
-                <tr key={index}>
-                  <td>{punto.codigo}</td>
-                  <td>{punto.nombre}</td>
-                  <td>{punto.direccion}</td>
-                  <td>
-                    <span className={`estado ${punto.estado === 'Precios Reportados' ? 'implementado' : 'no-implementado'}`}>
-                      {punto.estado}
-                    </span>
-                  </td>
-                  <td>
-                    <strong>{punto.puntos}</strong>
-                  </td>
+        {metricId === 'productividad' && (
+          <div className="tabla-container">
+            <h3>Estado de Profundidad por PDV{pdvSeleccionado ? ` - ${pdvSeleccionado.nombre}` : ''}</h3>
+            <table className="detalle-tabla">
+              <thead>
+                <tr>
+                  <th>COD</th>
+                  <th>Nombre</th>
+                  <th>Dirección</th>
+                  <th>Estado</th>
+                  <th>Puntos</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
+              </thead>
+              <tbody>
+                <tr>
+                  <td colSpan="5" className="sin-datos">Funcionalidad en implementación</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Mostrar datos reales para precios */}
+        {metricId === 'precios' && (
+          <div className="precios-detalles">
+            <div className="estado-precios-resumen">
+              <h4>Estado de Precios por PDV</h4>
+              <span className="pdvs-con-precio">
+                {datosPrecios.totalReportados} de {datosPrecios.totalAsignados} PDVs con precios reportados
+              </span>
+              <span className="porcentaje-precio">
+                {datosPrecios.porcentaje}%
+              </span>
+            </div>
+            
+            <div className="tabla-container">
+              <table className="tabla-precios">
+                <thead>
+                  <tr>
+                    <th>COD</th>
+                    <th>NOMBRE</th>
+                    <th>DIRECCIÓN</th>
+                    <th>ESTADO</th>
+                    <th>PUNTOS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {datosFiltrados.puntos.length > 0 ? (
+                    datosFiltrados.puntos.map((punto, index) => (
+                      <tr key={index}>
+                        <td>{punto.codigo}</td>
+                        <td>{punto.nombre}</td>
+                        <td>{punto.direccion}</td>
+                        <td>
+                          <span className={`estado-precio ${punto.estado === 'Registrado' ? 'reportados' : 'no-reportados'}`}>
+                            {punto.estado === 'Registrado' ? 'PRECIOS REPORTADOS' : 'NO REPORTADOS'}
+                          </span>
+                        </td>
+                        <td>{punto.puntos}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="5" className="sin-datos">No hay datos disponibles</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* No necesitamos mostrar últimos precios reportados ni productos */}
+          </div>
+        )}
+      </div>
+    );
+  }
 }
