@@ -129,7 +129,6 @@ const PdvInfoPopup = ({ isOpen, onClose, userId, onSelectPdv }) => {
                   <tr>
                     <th>Código</th>
                     <th>Descripción</th>
-                    <th>Segmento</th>
                     <th>Dirección</th>
                     <th>Acción</th>
                   </tr>
@@ -139,7 +138,6 @@ const PdvInfoPopup = ({ isOpen, onClose, userId, onSelectPdv }) => {
                     <tr key={pdv.id}>
                       <td>{pdv.codigo}</td>
                       <td>{pdv.descripcion}</td>
-                      <td>{pdv.segmento}</td>
                       <td>{pdv.direccion}</td>
                       <td>
                         <button 

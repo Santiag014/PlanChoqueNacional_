@@ -286,7 +286,7 @@ const ImplementationSection = ({
     <div className={`implementation-section ${kpiTransition ? 'kpi-transition' : ''}`}>
       {/* Tabla de productos */}
       <div className="implementation-table-container">
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8, gap: 8 }}>
+        {/* <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8, gap: 8 }}>
           <button
             type="button"
             className="btn-secondary"
@@ -295,7 +295,7 @@ const ImplementationSection = ({
           >
             Ver Detalles Registro
           </button>
-        </div>
+        </div> */}
       {/* Modal de detalles de registro acumulado */}
       {showAcumuladosModal && createPortal(
         <div className="modal-overlay" style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',background:'rgba(0,0,0,0.5)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={handleCerrarAcumuladosModal}>

@@ -18,8 +18,8 @@ export default function FilterButtons({
 
   const estadoOptions = [
     { value: 'TODOS', label: 'Todos los Estados' },
-    { value: 'VALIDADO', label: 'VALIDADO' },
-    { value: 'PENDIENTE', label: 'PENDIENTE' },
+    { value: 'VALIDADO', label: 'VALIDADO / APROBADO' },
+    { value: 'PENDIENTE', label: 'PENDIENTE / EN REVISIÓN' },
     { value: 'RECHAZADO', label: 'RECHAZADO' }
   ];
 

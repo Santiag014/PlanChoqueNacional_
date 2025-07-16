@@ -1,10 +1,48 @@
 /* Estilos para el Dashboard de Informe de Seguimiento */
 
+/* Asegurar scroll suave en todos los navegadores */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: hidden;
+}
+
 .dashboard-seguimiento-container {
   width: 100%;
-  min-height: 95vh;
   padding: 20px;
   overflow-x: hidden;
+  overflow-y: auto;
+  /* Scroll personalizado para el contenedor principal */
+  scrollbar-width: thin;
+  scrollbar-color: #e30613 #f0f0f0;
+  /* Asegurar que el contenedor use todo el viewport disponible */
+  position: relative;
+}
+
+/* Estilos para webkit (Chrome, Safari, Edge) */
+.dashboard-seguimiento-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dashboard-seguimiento-container::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 4px;
+}
+
+.dashboard-seguimiento-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #e30613, #a1000b);
+  border-radius: 4px;
+  border: 1px solid #d4d4d4;
+}
+
+.dashboard-seguimiento-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #a1000b, #e30613);
 }
 
 /* Contenedor de métricas con ancho fijo del 50% */
@@ -12,7 +50,28 @@
   width: 80%; /* Más ancho que el 50% original */
   margin: 0 auto;
   padding: 0 10px;
-  
+  /* Scroll horizontal para casos donde el contenido sea muy ancho */
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+/* Estilos para scroll horizontal del contenedor de métricas */
+.metricas-container-50::-webkit-scrollbar {
+  height: 6px;
+}
+
+.metricas-container-50::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.metricas-container-50::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #e30613, #a1000b);
+  border-radius: 3px;
+}
+
+.metricas-container-50::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #a1000b, #e30613);
 }
 
 /* Grid de métricas principales */
@@ -22,6 +81,33 @@
   gap: 15px; /* Menos gap */
   max-width: 100%;
   margin: 0 auto;
+  min-width: fit-content; /* Evita que el grid se comprima demasiado */
+}
+
+/* Indicador sutil de scroll para desktop */
+@media (min-width: 1025px) {
+  .metricas-container-50::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 30px;
+    background: linear-gradient(to bottom, transparent, rgba(227, 6, 19, 0.3), transparent);
+    border-radius: 2px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+  
+  .metricas-container-50:hover::after {
+    opacity: 1;
+  }
+  
+  .metricas-container-50 {
+    position: relative;
+  }
 }
 
 /* Información del PDV seleccionado - Estilo Elegante */
@@ -415,6 +501,11 @@
   margin-bottom: 10px; /* Reducir espacio entre tarjetas */
   position: relative;
   cursor: pointer;
+  /* Asegurar tamaño mínimo para evitar desbordamiento */
+  min-width: 200px;
+  min-height: 120px;
+  /* Prevenir que las tarjetas se compriman demasiado */
+  flex-shrink: 0;
 }
 
 .metrica-card-kpi:hover {
@@ -1088,7 +1179,7 @@
 @media (max-width: 768px) {
   .metricas-container-50 {
     width: 100%;
-    padding: 0 3px;
+    padding: 20px 3px;
   }
   
   .metricas-grid {
@@ -1645,6 +1736,7 @@
 @media (min-width: 769px) and (max-width: 1024px) {
   .metricas-container-50 {
     width: 90%;
+        padding: 20px 15px;
   }
   
   .metricas-grid {
@@ -1657,6 +1749,7 @@
 @media (min-width: 1025px) {
   .metricas-container-50 {
     width: 85%;
+    padding: 20px 15px;
   }
   
   .metricas-grid {
@@ -1666,6 +1759,41 @@
   
   .metrica-card-kpi {
     margin-bottom: 12px;
+  }
+  
+  /* Asegurar que el contenedor principal tenga scroll en escritorio */
+  .dashboard-seguimiento-container {
+    max-height: 95vh;
+    overflow-y: auto;
+  }
+  
+  /* Mejorar scroll en escritorio */
+  .dashboard-seguimiento-container::-webkit-scrollbar {
+    width: 10px;
+  }
+  
+  .dashboard-seguimiento-container::-webkit-scrollbar-track {
+    background: #f8f9fa;
+    border-radius: 5px;
+    border: 1px solid #e9ecef;
+  }
+  
+  .dashboard-seguimiento-container::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #e30613, #a1000b);
+    border-radius: 5px;
+    border: 1px solid #d4d4d4;
+  }
+  
+  .dashboard-seguimiento-container::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #a1000b, #e30613);
+    box-shadow: 0 2px 4px rgba(227, 6, 19, 0.3);
+  }
+  
+  /* Scroll horizontal para métricas en escritorio si es necesario */
+  .metricas-container-50 {
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #e30613 #f0f0f0;
   }
 }
 
@@ -2098,4 +2226,70 @@
   border-radius: 8px;
   margin: 20px auto;
   max-width: 600px;
+}
+
+/* ========== ESTILOS ADICIONALES PARA SCROLL ========== */
+
+/* Forzar scroll cuando sea necesario */
+.dashboard-seguimiento-container {
+  /* Forzar el scroll cuando el contenido exceda el viewport */
+  height: 95vh;
+  overflow-y: scroll !important;
+}
+
+/* Mejorar visibilidad del scroll en diferentes navegadores */
+.dashboard-seguimiento-container::-webkit-scrollbar {
+  width: 12px;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.dashboard-seguimiento-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  margin: 4px 0;
+}
+
+.dashboard-seguimiento-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #e30613, #a1000b);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.dashboard-seguimiento-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #a1000b, #e30613);
+}
+
+/* Mejorar scroll en Firefox */
+@supports (scrollbar-width: thin) {
+  .dashboard-seguimiento-container {
+    scrollbar-width: thin;
+    scrollbar-color: #e30613 rgba(0, 0, 0, 0.05);
+  }
+}
+
+/* Estilos para pantallas muy anchas */
+@media (min-width: 1400px) {
+  .metricas-container-50 {
+    width: 90%;
+    max-width: 1200px;
+  }
+  
+  .metricas-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 20px;
+  }
+}
+
+/* Asegurar que el contenido no se corte en pantallas pequeñas */
+@media (max-width: 768px) {
+  .dashboard-seguimiento-container {
+    height: calc(100vh - 60px);
+    padding: 10px;
+  }
+  
+  .metricas-container-50 {
+    width: 100%;
+    padding: 0 5px;
+  }
 }

@@ -1,11 +1,12 @@
 import express from 'express';
 import { getConnection } from '../db.js';
 import { authenticateToken, requireAsesor, logAccess } from '../middleware/auth.js';
+import XLSX from 'xlsx';
 
 const router = express.Router();
 
 // Consulta básica de historial
-router.get('/historial-registros/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
+router.get('/historial-registros-asesor/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
   const { user_id } = req.params;
 
   // Solo permitir ver sus propios registros
@@ -20,7 +21,7 @@ router.get('/historial-registros/:user_id', authenticateToken, requireAsesor, lo
   try {
     conn = await getConnection();
 
-    // Consulta completa con todos los detalles para evitar consultas adicionales
+    // Consulta básica solicitada
     const query = `
       SELECT 
         registro_servicios.id,
@@ -35,6 +36,13 @@ router.get('/historial-registros/:user_id', authenticateToken, requireAsesor, lo
             WHEN kpi_precio = 1 THEN 'Precio'
             WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Frecuencia'
             ELSE 'Otro'
+        END AS tipo_kpi,
+        CASE
+            WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Implementacion'
+            WHEN kpi_volumen = 1 THEN 'Implementacion'
+            WHEN kpi_precio = 1 THEN 'Implementacion'
+            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Visita'
+            ELSE 'Otro'
         END AS tipo_accion,
         e1.descripcion AS estado,
         e2.descripcion AS estado_agente,
@@ -42,17 +50,15 @@ router.get('/historial-registros/:user_id', authenticateToken, requireAsesor, lo
         GROUP_CONCAT(registro_productos.referencia_id) AS referencias,
         GROUP_CONCAT(registro_productos.presentacion) AS presentaciones,
         GROUP_CONCAT(registro_productos.cantidad_cajas) AS cantidades_cajas,
-        GROUP_CONCAT(registro_productos.conversion_galonaje) AS galones,
+        GROUP_CONCAT(registro_productos.conversion_galonaje) AS galonajes,
         GROUP_CONCAT(registro_productos.precio_sugerido) AS precios_sugeridos,
         GROUP_CONCAT(registro_productos.precio_real) AS precios_reales,
         GROUP_CONCAT(registro_fotografico_servicios.foto_factura) AS fotos_factura,
         GROUP_CONCAT(registro_fotografico_servicios.foto_pop) AS fotos_pop,
-        GROUP_CONCAT(registro_fotografico_servicios.foto_seguimiento) AS fotos_seguimiento,
-        estado_id,
-        estado_agente_id
+        GROUP_CONCAT(registro_fotografico_servicios.foto_seguimiento) AS fotos_seguimiento
       FROM registro_servicios
       INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
-      INNER JOIN users ON users.id = puntos_venta.user_id
+      INNER JOIN users ON users.id = registro_servicios.user_id
       INNER JOIN estados e1 ON e1.id = registro_servicios.estado_id
       INNER JOIN estados e2 ON e2.id = registro_servicios.estado_agente_id
       LEFT JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
@@ -69,7 +75,6 @@ router.get('/historial-registros/:user_id', authenticateToken, requireAsesor, lo
         e1.descripcion,
         e2.descripcion,
         registro_servicios.observacion
-      ORDER BY registro_servicios.fecha_registro DESC
     `;
     const [rows] = await conn.execute(query, [user_id]);
 
@@ -84,124 +89,6 @@ router.get('/historial-registros/:user_id', authenticateToken, requireAsesor, lo
     res.status(500).json({
       success: false,
       message: 'Error al obtener historial de registros',
-      error: err.message
-    });
-  } finally {
-    if (conn) conn.release();
-  }
-});
-
-// Consulta de detalle
-router.get('/registro-detalles/:registro_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
-  const { registro_id } = req.params;
-
-  console.log('Obteniendo detalles para registro ID:', registro_id);
-
-  // Validar que el registro_id es un número
-  if (!registro_id || isNaN(registro_id)) {
-    return res.status(400).json({
-      success: false,
-      message: 'ID de registro inválido'
-    });
-  }
-
-  let conn;
-  try {
-    conn = await getConnection();
-
-    // Verificar que el registro existe y pertenece al usuario
-    const [registroCheck] = await conn.execute(
-      'SELECT user_id FROM registro_servicios WHERE id = ?',
-      [registro_id]
-    );
-
-    if (registroCheck.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Registro no encontrado'
-      });
-    }
-
-    // Verificar permisos (solo puede ver sus propios registros)
-    if (req.user.userId != registroCheck[0].user_id) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para acceder a este registro'
-      });
-    }
-
-    // Consulta de detalle solicitada
-    const queryDetalles = `
-      SELECT 
-        registro_servicios.id,
-        puntos_venta.codigo,
-        puntos_venta.descripcion,
-        puntos_venta.direccion,
-        users.name,
-        registro_servicios.fecha_registro,
-        CASE
-            WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Volumen / Precio'
-            WHEN kpi_volumen = 1 THEN 'Volumen'
-            WHEN kpi_precio = 1 THEN 'Precio'
-            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Frecuencia'
-            ELSE 'Otro'
-        END AS tipo_accion,
-        e1.descripcion AS estado,
-        e2.descripcion AS estado_agente,
-        registro_servicios.observacion,
-        GROUP_CONCAT(registro_productos.referencia_id) AS referencias,
-        GROUP_CONCAT(registro_productos.presentacion) AS presentaciones,
-        GROUP_CONCAT(registro_productos.cantidad_cajas) AS cantidades_cajas,
-        GROUP_CONCAT(registro_productos.conversion_galonaje) AS galones,
-        GROUP_CONCAT(registro_productos.precio_sugerido) AS precios_sugeridos,
-        GROUP_CONCAT(registro_productos.precio_real) AS precios_reales,
-        GROUP_CONCAT(registro_fotografico_servicios.foto_factura) AS fotos_factura,
-        GROUP_CONCAT(registro_fotografico_servicios.foto_pop) AS fotos_pop,
-        GROUP_CONCAT(registro_fotografico_servicios.foto_seguimiento) AS fotos_seguimiento
-      FROM registro_servicios
-      INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
-      INNER JOIN users ON users.id = puntos_venta.user_id
-      INNER JOIN estados e1 ON e1.id = registro_servicios.estado_id
-      INNER JOIN estados e2 ON e2.id = registro_servicios.estado_agente_id
-      LEFT JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
-      LEFT JOIN registro_fotografico_servicios ON registro_fotografico_servicios.id_registro = registro_servicios.id
-      WHERE registro_servicios.id = ?
-      GROUP BY 
-        registro_servicios.id,
-        puntos_venta.codigo,
-        puntos_venta.descripcion,
-        puntos_venta.direccion,
-        users.name,
-        registro_servicios.fecha_registro,
-        tipo_accion,
-        e1.descripcion,
-        e2.descripcion,
-        registro_servicios.observacion
-    `;
-    
-    const [detalles] = await conn.execute(queryDetalles, [registro_id]);
-    
-    console.log('Detalles obtenidos de la BD:', detalles);
-
-    if (detalles.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Detalles del registro no encontrados'
-      });
-    }
-
-    // Asegurar que devolvemos JSON válido
-    res.setHeader('Content-Type', 'application/json');
-    res.json({
-      success: true,
-      data: detalles[0]
-    });
-
-  } catch (err) {
-    console.error('Error obteniendo detalles del registro:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener detalles del registro',
       error: err.message
     });
   } finally {
@@ -587,6 +474,191 @@ router.get('/profundidad/:user_id', authenticateToken, requireAsesor, logAccess,
       success: false,
       message: 'Error al consultar información de profundidad',
       error: error.message
+    });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// Endpoint específico para historial de visitas (descarga Excel con información completa)
+router.get('/historial-visitas/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
+  const { user_id } = req.params;
+
+  // Solo permitir ver sus propios registros
+  if (req.user.userId != user_id) {
+    return res.status(403).json({
+      success: false,
+      message: 'No tienes permisos para acceder a los datos de otro usuario'
+    });
+  }
+
+  let conn;
+  try {
+    conn = await getConnection();
+
+    // Consulta completa combinando historial de visitas con detalles completos (basada en registro-detalles)
+    const query = `
+      SELECT 
+        registro_servicios.id,
+        registro_servicios.user_id,
+        puntos_venta.codigo,
+        puntos_venta.descripcion,
+        puntos_venta.direccion,
+        puntos_venta.coordenadas,
+        puntos_venta.segmento,
+        puntos_venta.meta_volumen,
+        users.name as nombre_usuario,
+        users.email as email_usuario,
+        registro_servicios.fecha_registro,
+        registro_servicios.created_at,
+        registro_servicios.updated_at,
+        registro_servicios.kpi_volumen,
+        registro_servicios.kpi_precio,
+        registro_servicios.kpi_frecuencia,
+        CASE
+            WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Volumen / Precio'
+            WHEN kpi_volumen = 1 THEN 'Volumen'
+            WHEN kpi_precio = 1 THEN 'Precio'
+            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Frecuencia'
+            ELSE 'Otro'
+        END AS tipo_accion,
+        e1.descripcion AS estado,
+        e2.descripcion AS estado_agente,
+        registro_servicios.observacion,
+        -- Información de productos con más detalles
+        GROUP_CONCAT(registro_productos.referencia_id) AS referencias,
+        GROUP_CONCAT(registro_productos.presentacion) AS presentaciones,
+        GROUP_CONCAT(registro_productos.cantidad_cajas) AS cantidades_cajas,
+        GROUP_CONCAT(registro_productos.conversion_galonaje) AS galones,
+        GROUP_CONCAT(registro_productos.precio_sugerido) AS precios_sugeridos,
+        GROUP_CONCAT(registro_productos.precio_real) AS precios_reales,
+        -- Información fotográfica
+        GROUP_CONCAT(registro_fotografico_servicios.foto_factura) AS fotos_factura,
+        GROUP_CONCAT(registro_fotografico_servicios.foto_pop) AS fotos_pop,
+        GROUP_CONCAT(registro_fotografico_servicios.foto_seguimiento) AS fotos_seguimiento,
+        -- Totales calculados
+        SUM(registro_productos.cantidad_cajas) as total_cajas,
+        SUM(registro_productos.conversion_galonaje) as total_galones,
+        SUM(registro_productos.precio_real * registro_productos.cantidad_cajas) as valor_total_implementado,
+        -- Puntos obtenidos
+        COALESCE(SUM(registro_puntos.puntos), 0) AS puntos_obtenidos
+      FROM registro_servicios
+      INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
+      INNER JOIN users ON users.id = puntos_venta.user_id
+      INNER JOIN estados e1 ON e1.id = registro_servicios.estado_id
+      INNER JOIN estados e2 ON e2.id = registro_servicios.estado_agente_id
+      LEFT JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
+      LEFT JOIN registro_fotografico_servicios ON registro_fotografico_servicios.id_registro = registro_servicios.id
+      LEFT JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id
+      WHERE registro_servicios.user_id = ?
+      GROUP BY 
+        registro_servicios.id,
+        registro_servicios.user_id,
+        puntos_venta.codigo,
+        puntos_venta.descripcion,
+        puntos_venta.direccion,
+        puntos_venta.coordenadas,
+        puntos_venta.segmento,
+        puntos_venta.meta_volumen,
+        users.name,
+        users.email,
+        registro_servicios.fecha_registro,
+        registro_servicios.created_at,
+        registro_servicios.updated_at,
+        registro_servicios.kpi_volumen,
+        registro_servicios.kpi_precio,
+        registro_servicios.kpi_frecuencia,
+        tipo_accion,
+        e1.descripcion,
+        e2.descripcion,
+        registro_servicios.observacion
+      ORDER BY registro_servicios.fecha_registro DESC, registro_servicios.created_at DESC
+    `;
+
+    const [rows] = await conn.execute(query, [user_id]);
+
+    // Procesar datos para coordenadas
+    const datosProcessados = rows.map(row => {
+      let lat = null, lng = null;
+      if (row.coordenadas) {
+        const coordenadas = row.coordenadas.split(',');
+        if (coordenadas.length === 2) {
+          lat = parseFloat(coordenadas[0].trim());
+          lng = parseFloat(coordenadas[1].trim());
+        }
+      }
+
+      return {
+        ...row,
+        latitud: lat,
+        longitud: lng,
+        // Procesar KPIs como texto legible
+        kpi_volumen_activo: row.kpi_volumen === 1 ? 'Sí' : 'No',
+        kpi_precio_activo: row.kpi_precio === 1 ? 'Sí' : 'No',
+        kpi_frecuencia_activo: row.kpi_frecuencia === 1 ? 'Sí' : 'No',
+        // Formatear fechas
+        fecha_hora_creacion: row.created_at ? new Date(row.created_at).toLocaleString() : 'N/A',
+        fecha_hora_actualizacion: row.updated_at ? new Date(row.updated_at).toLocaleString() : 'N/A'
+      };
+    });
+
+    // Generar respuesta con formato Excel
+    
+    // Crear el workbook
+    const wb = XLSX.utils.book_new();
+    
+    // Preparar datos para Excel con nombres de columnas más descriptivos
+    const excelData = datosProcessados.map(row => ({
+      'Código PDV': row.codigo,
+      'Nombre PDV': row.descripcion,
+      'Dirección': row.direccion,
+      'Segmento': row.segmento,
+      'Meta Volumen': row.meta_volumen,
+      'Asesor': row.nombre_usuario,
+      'Email Asesor': row.email_usuario,
+      'Fecha Visita': row.fecha_registro,
+      'Fecha/Hora Creación': row.fecha_hora_creacion,
+      'Tipo Acción': row.tipo_accion,
+      'Estado': row.estado,
+      'Estado Agente': row.estado_agente,
+      'Observaciones': row.observacion || 'Sin observaciones',
+      'Referencias Productos': row.referencias,
+      'Presentaciones': row.presentaciones,
+      'Cantidades Cajas': row.cantidades_cajas,
+      'Conversión Galones': row.galones,
+      'Precios Sugeridos': row.precios_sugeridos,
+      'Precios Reales': row.precios_reales,
+      'Fotos Factura': row.fotos_factura,
+      'Fotos POP': row.fotos_pop,
+      'Fotos Seguimiento': row.fotos_seguimiento
+    }));
+    
+    // Crear la hoja de trabajo
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    
+    // Agregar la hoja al workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Historial de Visitas');
+    
+    // Generar el buffer del archivo Excel
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
+    
+    // Configurar headers para descarga
+    const fechaActual = new Date().toISOString().split('T')[0];
+    const fileName = `historial_visitas_${user_id}_${fechaActual}.xlsx`;
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', excelBuffer.length);
+    
+    // Enviar el archivo Excel
+    res.send(excelBuffer);
+
+  } catch (err) {
+    console.error('Error generando Excel de historial de visitas:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error al generar Excel de historial de visitas',
+      error: err.message
     });
   } finally {
     if (conn) conn.release();

@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
 import { useAsesorRoute } from '../../hooks/auth';
+import { useAuth } from '../../hooks/auth/useAuth';
 import { useCoberturaAsesor } from '../../hooks/asesor/useCoberturaAsesor';
 import { useVolumenAsesor } from '../../hooks/asesor/useVolumenAsesor';
 import { useVisitasAsesor } from '../../hooks/asesor/useVisitasAsesor';
 import { usePreciosAsesor } from '../../hooks/asesor/usePreciosAsesor';
 import { useProfundidadAsesor } from '../../hooks/asesor/useProfundidadAsesor';
+import { useExcelDownload } from '../../hooks/shared/useExcelDownload';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../../config';
 import '../../styles/Asesor/asesor-informe-seguimiento-dashboard.css';
 import '../../styles/Asesor/frecuencia-visitas.css';
 import '../../styles/Asesor/precios.css';
 import '../../styles/Asesor/profundidad.css';
+import '../../styles/shared/download-buttons.css';
 import FiltrosAvanzadosAsesor from '../../components/Asesor/Filtros/FiltrosAvanzadosAsesor';
 import FiltroActivo from '../../components/Asesor/Filtros/FiltroActivo';
 import * as XLSX from 'xlsx';
@@ -41,6 +45,9 @@ export default function AsesorInformeSeguimientoDashboard() {
   
   // Proteger la ruta - solo asesores pueden acceder
   const { user, loading, isAuthenticated, hasRequiredRole } = useAsesorRoute();
+  
+  // Hook para obtener token de autenticación
+  const { token } = useAuth();
 
   // Hooks para datos reales
   const { cobertura, loading: loadingCobertura, error: errorCobertura } = useCoberturaAsesor(user?.id);
@@ -48,6 +55,9 @@ export default function AsesorInformeSeguimientoDashboard() {
   const { visitas, loading: loadingVisitas, error: errorVisitas } = useVisitasAsesor(user?.id);
   const { precios, loading: loadingPrecios, error: errorPrecios } = usePreciosAsesor(user?.id);
   const { profundidad, loading: loadingProfundidad, error: errorProfundidad } = useProfundidadAsesor(user?.id);
+  
+  // Hook para descargas Excel
+  const { downloadAllKPIData, downloadVisitasHistorial, loading: loadingDownload } = useExcelDownload();
 
   // Filtrar PDVs por búsqueda (código o nombre) usando cobertura real
   const pdvsFiltrados = cobertura.pdvs.filter(pdv => {
@@ -282,6 +292,52 @@ export default function AsesorInformeSeguimientoDashboard() {
 
   const metricas = getMetricasData();
 
+  // Funciones para descargar datos
+  const handleDownloadAllKPIs = () => {
+    const allData = {
+      cobertura: cobertura.pdvs || [],
+      volumen: volumen.pdvs || [],
+      visitas: visitas.pdvs || [],
+      productividad: profundidad.pdvs || [],
+      precios: precios.pdvs || []
+    };
+    
+    downloadAllKPIData(allData, 'asesor');
+  };
+
+  const handleDownloadHistorial = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/asesor/historial-visitas/${user.id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al obtener el historial de visitas');
+      }
+
+      // Crear blob del archivo Excel
+      const blob = await response.blob();
+      
+      // Crear URL para descarga
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `historial_visitas_${user.id}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+    } catch (error) {
+      console.error('Error al descargar historial de visitas:', error);
+      alert('Error al descargar el historial de visitas');
+    }
+  };
+
   const handleDetalleClick = (metricId) => {
     setSelectedMetric(metricId);
   };
@@ -322,6 +378,9 @@ export default function AsesorInformeSeguimientoDashboard() {
           filtros={filtros}
           onLimpiarFiltros={limpiarFiltros}
           isMobile={window.innerWidth <= 768}
+          onDownloadAllKPIs={handleDownloadAllKPIs}
+          onDownloadHistorial={handleDownloadHistorial}
+          loadingDownload={loadingDownload}
         />
 
         {/* Contenedor de métricas con ancho fijo del 50% */}
@@ -428,6 +487,19 @@ export default function AsesorInformeSeguimientoDashboard() {
                 <button className="close-btn" onClick={cerrarDetalle}>×</button>
               </div>
               <div className="modal-body">
+                <button 
+                  className="download-btn modal-download-btn"
+                  onClick={handleDownloadAllKPIs}
+                  disabled={loadingDownload}
+                >
+                  {loadingDownload ? (
+                    <div className="loading-spinner"></div>
+                  ) : (
+                    <span className="download-icon">📊</span>
+                  )}
+                  Descargar Reporte Completo
+                </button>
+                
                 <DetalleMetrica 
                   metricId={selectedMetric} 
                   pdvSeleccionado={pdvSeleccionado} 

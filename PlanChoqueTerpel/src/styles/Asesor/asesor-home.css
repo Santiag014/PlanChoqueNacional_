@@ -304,14 +304,12 @@
 /* Responsive para desktop */
 @media (min-width: 901px) {
   .home-navigation-container {
-    height: 70vh;
+    /* height: 70vh; */
     padding: 0 25px;
     background: none;
   }
   
   .home-navigation-grid {
-    /* max-width: 450px;
-    gap: 30px; */
     background: none;
   }
   
