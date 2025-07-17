@@ -28,6 +28,7 @@ import MercadeoPlanIncentivos from './pages/Mercadeo/MercadeoPlanIncentivos';
 
 // Visuales para el rol de Director y OT
 import HomeDirector from './pages/Director/DirectorDashboard';
+import BulkUploadPage from './pages/Director/BulkUploadPage';
 import HomeOT from './pages/OrganizacionTerpel/OrganizacionTerpelDashboard';
 
 import { useEffect, useState } from 'react';
@@ -110,6 +111,7 @@ function AppContent() {
 
         {/* Rutas del Directoy y OT - protegidas */}
         <Route path="/director-zona/home" element={<HomeDirector />} />
+        <Route path="/director-zona/carga-masiva" element={<BulkUploadPage />} />
         <Route path="/organizacion-terpel/home" element={<HomeOT />} />
         
         {/* Ruta por defecto */}

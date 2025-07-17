@@ -12,6 +12,7 @@ import asesorRouter from './routes/asesor.js';
 import publicRouter from './routes/public.js';
 import misteryShopperRouter from './routes/mistery.shopper.js';
 import otRouter from './routes/ot.js';
+import bulkUploadRouter from './routes/bulk-upload.js';
 import { getConnection } from './db.js';
 
 const app = express();
@@ -22,6 +23,7 @@ app.use(cors());
 // Primero, rutas que reciben archivos (FormData), NO uses express.json()
 app.use('/api', cargarVisitas);
 app.use('/api', cargarVisitas_Frecuencia);
+app.use('/api/bulk-upload', bulkUploadRouter);
 
 // Luego, rutas que reciben JSON
 app.use('/api', express.json(), authRouter);

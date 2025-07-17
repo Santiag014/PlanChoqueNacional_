@@ -94,6 +94,7 @@ export default function DashboardLayout({ user, children }) {
     },
       DIRECTOR: {
       '/director-zona/home': 'HOME',
+      '/director-zona/carga-masiva': 'CARGA MASIVA USUARIOS',
     },
       ORGANIZACION_TERPEL: {
       '//home': 'HOME',
