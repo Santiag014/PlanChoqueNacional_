@@ -198,14 +198,6 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
                       <label>Dirección:</label>
                       <span>{datos.direccion || 'N/A'}</span>
                     </div>
-                    <div className="info-row">
-                      <label>Segmento:</label>
-                      <span>{datos.segmento || 'N/A'}</span>
-                    </div>
-                    <div className="info-row">
-                      <label>Meta Volumen:</label>
-                      <span>{datos.meta_volumen || 'N/A'}</span>
-                    </div>
                   </div>
                 </div>
 
@@ -219,10 +211,6 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
                     <div className="info-row">
                       <label>Agente:</label>
                       <span className="agente-value">{datos.nombre_usuario || datos.name || 'N/A'}</span>
-                    </div>
-                    <div className="info-row">
-                      <label>Email:</label>
-                      <span>{datos.email_usuario || datos.email || 'N/A'}</span>
                     </div>
                     <div className="info-row">
                       <label>KPI:</label>
@@ -256,12 +244,12 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
                         {datos.estado || 'N/A'}
                       </span>
                     </div>
-                    <div className="info-row">
+                    {/* <div className="info-row">
                       <label>Estado Agente:</label>
                       <span className={`estado-badge ${getEstadoClass(datos.estado_agente)}`}>
                         {datos.estado_agente || 'N/A'}
                       </span>
-                    </div>
+                    </div> */}
                     <div className="info-row">
                       <label>Fecha:</label>
                       <span className="fecha-value">{formatearFecha(datos.fecha_registro)}</span>

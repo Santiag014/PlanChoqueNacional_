@@ -42,7 +42,6 @@
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  font-family: 'Terpel Sans', Arial, sans-serif;
 }
 
 .confirmation-modal-close {
@@ -82,7 +81,6 @@
   font-size: 16px;
   line-height: 1.5;
   color: #333;
-  font-family: 'Terpel Sans', Arial, sans-serif;
 }
 
 .confirmation-modal-actions {
@@ -98,7 +96,6 @@
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
-  font-family: 'Terpel Sans', Arial, sans-serif;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
@@ -301,7 +298,6 @@
   font-weight: 700;
   color: #2e7d32;
   margin: 0 0 12px 0;
-  font-family: 'Terpel Sans', Arial, sans-serif;
 }
 
 .success-message {
@@ -309,7 +305,6 @@
   color: #666;
   margin: 0 0 24px 0;
   line-height: 1.5;
-  font-family: 'Terpel Sans', Arial, sans-serif;
 }
 
 .success-progress {

@@ -40,14 +40,14 @@ export const requireRole = (allowedRoles) => {
     // Mapear IDs de rol a nombres de rol
     const roleMapping = {
       1: 'asesor',
-      2: 'pdv', 
-      3: 'misteryshopper',
-      4: 'mercadeo_ac',
+      2: 'misteryshopper', 
+      3: 'mercadeo_ac',
+      4: 'director',
       5: 'ot', // Organización Terpel
       'asesor': 'asesor',
-      'pdv': 'pdv',
       'misteryshopper': 'misteryshopper',
       'mercadeo_ac': 'mercadeo_ac',
+      'director': 'director',
       'ot': 'ot'
     };
 
@@ -71,14 +71,14 @@ export const requireRole = (allowedRoles) => {
 // Middleware específico para asesores
 export const requireAsesor = requireRole('asesor');
 
-// Middleware específico para PDVs
-export const requirePdv = requireRole('pdv');
-
 // Middleware específico para Mystery Shoppers
 export const requireMisteryShopper = requireRole('misteryshopper');
 
 // Middleware específico para Mercadeo AC
 export const requireMercadeo = requireRole('mercadeo_ac');
+
+// Middleware específico para Director
+export const requireDirector = requireRole('director');
 
 // Middleware específico para Organización Terpel
 export const requireOT = requireRole('ot');

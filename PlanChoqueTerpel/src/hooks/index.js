@@ -12,5 +12,8 @@ export * from './mystery';
 // Hooks específicos de Organización Terpel
 export * from './ot';
 
+// Hooks específicos de Mercadeo
+export * from './mercadeo';
+
 // Hooks compartidos
 export * from './shared';

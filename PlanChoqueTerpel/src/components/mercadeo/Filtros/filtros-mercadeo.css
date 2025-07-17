@@ -1,0 +1,219 @@
+/* Estilos para FiltrosAvanzadosMercadeo */
+.filtros-avanzados-container {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.filtros-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.filtros-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.btn-limpiar-filtros {
+  background: #e30613;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.btn-limpiar-filtros:hover {
+  background: #c20510;
+}
+
+.filtros-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  align-items: end;
+}
+
+.filtro-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filtro-item label {
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+
+.filtro-select {
+  padding: 10px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.3s;
+}
+
+.filtro-select:focus {
+  outline: none;
+  border-color: #e30613;
+}
+
+.filtro-select:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.filtros-activos {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.filtros-activos-label {
+  font-weight: 500;
+  color: #333;
+  margin-right: 10px;
+}
+
+.filtros-activos-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.filtro-activo {
+  background: #e30613;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-quitar-filtro {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.3s;
+}
+
+.btn-quitar-filtro:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Estilos para FiltroActivoMercadeo */
+.filtro-activo-container {
+  background: #f8f9fa;
+  border-left: 4px solid #e30613;
+  padding: 15px;
+  margin-bottom: 20px;
+  border-radius: 0 8px 8px 0;
+}
+
+.filtro-activo-container.mobile {
+  padding: 10px;
+  font-size: 14px;
+}
+
+.filtro-activo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.filtro-activo-titulo {
+  font-weight: 600;
+  color: #333;
+  font-size: 16px;
+}
+
+.btn-limpiar-filtros-activos {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.3s;
+}
+
+.btn-limpiar-filtros-activos:hover {
+  background: #5a6268;
+}
+
+.filtro-activo-contenido {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.filtro-activo-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filtro-activo-tipo {
+  font-weight: 500;
+  color: #666;
+  font-size: 14px;
+}
+
+.filtro-activo-valor {
+  background: #e30613;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .filtros-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .filtros-activos-lista {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .filtro-activo-contenido {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .filtro-activo-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}

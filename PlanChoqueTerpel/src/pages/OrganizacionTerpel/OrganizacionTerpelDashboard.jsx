@@ -379,7 +379,7 @@ export default function OrganizacionTerpelDashboard() {
           </div>
           
           {/* Sección de Historial de Visitas */}
-          <div className="historial-download-container">
+          {/* <div className="historial-download-container">
             <div className="historial-download-title">
               Historial de Implementaciones
             </div>
@@ -395,7 +395,7 @@ export default function OrganizacionTerpelDashboard() {
               )}
               Descargar Historial Completo de Visitas
             </button>
-          </div>
+          </div> */}
         </div>
 
         {/* Información del asesor seleccionado */}

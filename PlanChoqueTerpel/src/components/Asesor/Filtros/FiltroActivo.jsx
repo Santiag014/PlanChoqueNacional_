@@ -137,35 +137,18 @@ export default function FiltroActivo({
         boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        justifyContent: 'center',
         gap: 12,
         overflowX: 'auto',
         minHeight: 'fit-content'
       }}>
         <div style={{
           display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          flexShrink: 0,
-          minWidth: 'fit-content'
-        }}>
-          <span style={{ fontSize: '18px' }}>📊</span>
-          <span style={{
-            fontSize: isMobile ? 14 : 16,
-            fontWeight: 600,
-            color: '#495057',
-            whiteSpace: 'nowrap'
-          }}>
-            Descargar Reportes
-          </span>
-        </div>
-        
-        <div style={{
-          display: 'flex',
           gap: 10,
           flexShrink: 0,
           minWidth: 'fit-content',
-          justifyContent: 'flex-end'
+          justifyContent: 'center',
+          alignContent: 'center'
         }}>
           <button
             onClick={onDownloadAllKPIs}

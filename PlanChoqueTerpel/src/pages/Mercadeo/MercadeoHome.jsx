@@ -43,7 +43,7 @@ export default function MercadeoHome() {
   // Define los tres botones principales para mercadeo
   const botonesMenu = [
     { icon: iconMisMetas, label: 'INFORME SEGUIMIENTO', to: '/mercadeo/informe-seguimiento-dashboard' },
-    { icon: RegistroPDV, label: 'REGISTROS IMPLEMENTACIÓN', to: '/mercadeo/visitas' },
+    { icon: RegistroPDV, label: 'GESTIÓN DE REGISTROS', to: '/mercadeo/visitas' },
     { icon: RankingAsesores, label: 'PLAN DE INCENTIVOS', to: '/mercadeo/plan-incentivos' },
   ];
 

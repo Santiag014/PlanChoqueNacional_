@@ -645,7 +645,7 @@ function DetalleMetricaMercadeo({ metricId, asesorSeleccionado, datosBase, aseso
               <tr>
                 <th>Código PDV</th>
                 <th>Nombre PDV</th>
-                <th>Asesor</th>
+                {/* <th>Asesor</th> */}
                 <th>Estado</th>
                 <th>Puntos</th>
               </tr>
@@ -657,7 +657,7 @@ function DetalleMetricaMercadeo({ metricId, asesorSeleccionado, datosBase, aseso
                   <tr key={index}>
                     <td>{punto.codigo}</td>
                     <td>{punto.nombre}</td>
-                    <td>{asesor?.nombre || 'N/A'}</td>
+                    {/* <td>{asesor?.nombre || 'N/A'}</td> */}
                     <td>
                       <span className={`estado ${punto.estado === 'Registrado' ? 'implementado' : 'no-implementado'}`}>
                         {punto.estado}

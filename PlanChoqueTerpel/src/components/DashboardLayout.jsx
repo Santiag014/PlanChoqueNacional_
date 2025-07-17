@@ -87,8 +87,8 @@ export default function DashboardLayout({ user, children }) {
     },
     MERCADEO_AC: {
       '/mercadeo/home': 'HOME',
-      '/mercadeo/informe-seguimiento-dashboard': 'SEGUIMIENTO ASESORES',
-      '/mercadeo/visitas': 'VISITAS POR APROBAR',
+      '/mercadeo/informe-seguimiento-dashboard': 'INFORME SEGUIMIENTO',
+      '/mercadeo/visitas': 'GESTIÓN DE REGISTROS',
       '/mercadeo/plan-incentivos': 'PLAN INCENTIVOS',
       // Agrega aquí más rutas si tienes más vistas para este rol
     },
@@ -370,7 +370,7 @@ export default function DashboardLayout({ user, children }) {
           style={{
             width: '100%',
             maxHeight: 'calc(100vh - 204px)',
-            overflowY: 'auto',
+            // overflowY: 'auto',
             overflowX: 'hidden',
             background: '#ececec',
             boxSizing: 'border-box'

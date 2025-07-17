@@ -21,12 +21,10 @@ import HomeMisteryShopper from './pages/Mistery/MisteryShopperHome';
 import RegistrarVisitas from './pages/Mistery/MisteryShopperServicios';
 
 // Visuales para el rol de Mercadeo
+import MercadeoInformeSeguimientoDashboard from './pages/Mercadeo/MercadeoInformeSeguimientoDashboard';
 import HomeMercadeo from './pages/Mercadeo/MercadeoHome'; // Este es el iframe
 import GestionVisitas from './pages/Mercadeo/MercadeoVisitas'; // Esta es la gestión de visitas
-import MercadeoInformeSeguimientoDashboard from './pages/Mercadeo/MercadeoInformeSeguimientoDashboard';
 import MercadeoPlanIncentivos from './pages/Mercadeo/MercadeoPlanIncentivos';
-import MercadeoRegistrosImplementacion from './pages/Mercadeo/MercadeoRegistrosImplementacion';
-import MercadeoMysteryShopperVisitas from './pages/Mercadeo/MercadeoMysteryShopperVisitas';
 
 // Visuales para el rol de Director y OT
 import HomeDirector from './pages/Director/DirectorDashboard';
@@ -106,11 +104,9 @@ function AppContent() {
 
         {/* Rutas del mercadeo - protegidas */}
         <Route path="/mercadeo/home" element={<HomeMercadeo />} />
-        <Route path="/mercadeo/visitas" element={<GestionVisitas />} />
         <Route path="/mercadeo/informe-seguimiento-dashboard" element={<MercadeoInformeSeguimientoDashboard />} />
+        <Route path="/mercadeo/visitas" element={<GestionVisitas />} />
         <Route path="/mercadeo/plan-incentivos" element={<MercadeoPlanIncentivos />} />
-        <Route path="/mercadeo/registros-implementacion" element={<MercadeoRegistrosImplementacion />} />
-        <Route path="/mercadeo/mystery-shopper-visitas" element={<MercadeoMysteryShopperVisitas />} />
 
         {/* Rutas del Directoy y OT - protegidas */}
         <Route path="/director-zona/home" element={<HomeDirector />} />

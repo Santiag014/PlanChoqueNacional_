@@ -1,17 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import '../../../styles/Mercadeo/filtros-avanzados.css';
+import { useAsesoresMercadeo, usePuntosVentaMercadeo } from '../../../hooks/mercadeo';
 
 /**
- * Componente de filtros avanzados para mercadeo
- * Permite filtrar por asesor, PDV y ciudad
+ * Componente de filtros avanzados para mercadeo con datos reales
+ * Permite filtrar por asesor, PDV, segmento, fechas y métricas
  * Incluye funcionalidad de colapso/expansión mejorada
  */
 export default function FiltrosAvanzados({ 
-  asesores = [], 
   filtros = {}, 
   onFiltrosChange, 
   className = '' 
 }) {
+  // Usar hooks para obtener datos reales
+  const { asesores, loading: loadingAsesores, error: errorAsesores } = useAsesoresMercadeo();
+  const { puntosVenta, loading: loadingPdvs, error: errorPdvs } = usePuntosVentaMercadeo();
+
+  // Debug: Verificar datos recibidos
+  useEffect(() => {
+    console.log('FiltrosAvanzados - Asesores:', asesores);
+    console.log('FiltrosAvanzados - Puntos de Venta:', puntosVenta);
+    console.log('FiltrosAvanzados - Errores:', { errorAsesores, errorPdvs });
+  }, [asesores, puntosVenta, errorAsesores, errorPdvs]);
+
   const [filtrosLocal, setFiltrosLocal] = useState({
     asesor: '',
     pdv: '',
@@ -20,6 +31,7 @@ export default function FiltrosAvanzados({
   });
   
   const [pdvsDisponibles, setPdvsDisponibles] = useState([]);
+  const [segmentosDisponibles, setSegmentosDisponibles] = useState([]);
   const [ciudadesDisponibles, setCiudadesDisponibles] = useState([]);
   
   // Estado de expansión mejorado - recordar preferencia del usuario
@@ -43,25 +55,27 @@ export default function FiltrosAvanzados({
     setFiltrosExpanded(!filtrosExpanded);
   };
 
-  // Obtener PDVs únicos de todos los asesores
+  // Actualizar PDVs y segmentos disponibles basado en el asesor seleccionado
   useEffect(() => {
-    const todosPdvs = [];
-    asesores.forEach(asesor => {
-      if (asesor.pdvs) {
-        asesor.pdvs.forEach(pdv => {
-          if (!todosPdvs.find(p => p.codigo === pdv.codigo)) {
-            todosPdvs.push({
-              ...pdv,
-              asesorNombre: asesor.nombre
-            });
-          }
-        });
-      }
-    });
-    setPdvsDisponibles(todosPdvs);
-  }, [asesores]);
+    if (filtrosLocal.asesor) {
+      // Filtrar PDVs por el asesor seleccionado (buscar por nombre)
+      const pdvsFiltrados = puntosVenta.filter(pdv => 
+        pdv.nombre_asesor === filtrosLocal.asesor
+      );
+      setPdvsDisponibles(pdvsFiltrados);
+      
+      // Obtener segmentos únicos de los PDVs filtrados
+      const segmentosFiltrados = [...new Set(pdvsFiltrados.map(pdv => pdv.segmento))].filter(Boolean);
+      setSegmentosDisponibles(segmentosFiltrados);
+    } else {
+      // Mostrar todos los PDVs y segmentos
+      setPdvsDisponibles(puntosVenta);
+      const todosSegmentos = [...new Set(puntosVenta.map(pdv => pdv.segmento))].filter(Boolean);
+      setSegmentosDisponibles(todosSegmentos);
+    }
+  }, [filtrosLocal.asesor, puntosVenta]);
 
-  // Obtener ciudades únicas de los PDVs
+  // Obtener ciudades únicas de los PDVs disponibles
   useEffect(() => {
     const ciudades = new Set();
     pdvsDisponibles.forEach(pdv => {
@@ -79,7 +93,7 @@ export default function FiltrosAvanzados({
 
   // Filtrar PDVs según el asesor seleccionado
   const pdvsFiltrados = filtrosLocal.asesor 
-    ? pdvsDisponibles.filter(pdv => pdv.asesorNombre === filtrosLocal.asesor)
+    ? pdvsDisponibles.filter(pdv => pdv.nombre_asesor === filtrosLocal.asesor)
     : pdvsDisponibles;
 
   // Manejar cambio en los filtros
@@ -97,7 +111,7 @@ export default function FiltrosAvanzados({
       nuevosFiltros.pdv = valor;
       // Si se selecciona un PDV, también filtrar por ciudad automáticamente
       if (valor) {
-        const pdvSeleccionado = pdvsDisponibles.find(p => p.nombre === valor);
+        const pdvSeleccionado = pdvsDisponibles.find(p => p.descripcion === valor);
         if (pdvSeleccionado && pdvSeleccionado.direccion) {
           const partes = pdvSeleccionado.direccion.split(',');
           if (partes.length > 1) {
@@ -184,13 +198,19 @@ export default function FiltrosAvanzados({
               value={filtrosLocal.asesor}
               onChange={(e) => handleFiltroChange('asesor', e.target.value)}
               className="filtro-select"
+              disabled={loadingAsesores}
             >
-              <option value="">Todos los asesores</option>
-              {asesores.map(asesor => (
-                <option key={asesor.id} value={asesor.nombre}>
-                  {asesor.nombre} ({asesor.codigo})
+              <option value="">
+                {loadingAsesores ? 'Cargando asesores...' : 'Todos los asesores'}
+              </option>
+              {!loadingAsesores && !errorAsesores && asesores.map(asesor => (
+                <option key={asesor.id} value={asesor.name}>
+                  {asesor.name}
                 </option>
               ))}
+              {errorAsesores && (
+                <option value="" disabled>Error al cargar asesores</option>
+              )}
             </select>
           </div>
 
@@ -207,13 +227,19 @@ export default function FiltrosAvanzados({
               value={filtrosLocal.pdv}
               onChange={(e) => handleFiltroChange('pdv', e.target.value)}
               className="filtro-select"
+              disabled={loadingPdvs}
             >
-              <option value="">Todos los PDVs</option>
-              {pdvsFiltrados.map(pdv => (
-                <option key={pdv.id} value={pdv.nombre}>
-                  {pdv.nombre} ({pdv.codigo})
+              <option value="">
+                {loadingPdvs ? 'Cargando PDVs...' : 'Todos los PDVs'}
+              </option>
+              {!loadingPdvs && !errorPdvs && pdvsFiltrados.map(pdv => (
+                <option key={pdv.id} value={pdv.descripcion}>
+                  {pdv.descripcion} ({pdv.codigo})
                 </option>
               ))}
+              {errorPdvs && (
+                <option value="" disabled>Error al cargar PDVs</option>
+              )}
             </select>
           </div>
 

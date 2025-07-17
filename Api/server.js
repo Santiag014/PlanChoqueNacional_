@@ -26,7 +26,7 @@ app.use('/api', cargarVisitas_Frecuencia);
 // Luego, rutas que reciben JSON
 app.use('/api', express.json(), authRouter);
 app.use('/api', express.json(), usersRouter);
-app.use('/api', express.json(), mercadeoRouter);
+app.use('/api/mercadeo', express.json(), mercadeoRouter);
 app.use('/api', express.json(), publicRouter);
 app.use('/api/asesor', express.json(), asesorRouter);
 app.use('/api/mistery-shopper', express.json(), misteryShopperRouter);
