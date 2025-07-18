@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
+import { API_URL } from '../../config';
 
 // Puedes ajustar la URL base según tu entorno
-const API_BASE = 'http://localhost:3001/api/mistery-shopper';
+const API_BASE = `${API_URL}/api/mistery-shopper`;
 
 export default function Servicios() {
   const [pdvs, setPdvs] = useState([]);

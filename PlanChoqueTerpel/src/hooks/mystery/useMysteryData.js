@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_URL } from '../../config.js';
 
 /**
  * Hook personalizado para manejar los datos del Mystery Shopper
@@ -19,7 +20,7 @@ export const useMysteryData = (userId) => {
     setError(null);
     
     try {
-      const response = await fetch(`/api/mystery-visits/${userId}`, {
+      const response = await fetch(`${API_URL}/api/mystery-visits/${userId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -125,7 +126,7 @@ export const useMysteryData = (userId) => {
         completed_at: new Date().toISOString()
       };
       
-      const response = await fetch('/api/mystery-visits', {
+      const response = await fetch(`${API_URL}/api/mystery-visits`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

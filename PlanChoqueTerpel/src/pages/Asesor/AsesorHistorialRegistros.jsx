@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAsesorRoute } from '../../hooks/auth';
 import { useResponsive } from '../../hooks/shared';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { API_URL } from '../../config.js';
 import DashboardLayout from '../../components/DashboardLayout';
 import RegistrosTable from '../../components/Asesor/HistorialRegistros/RegistrosTable';
 import RegistroModal from '../../components/Asesor/HistorialRegistros/RegistroModal';
@@ -48,7 +49,7 @@ export default function HistorialRegistros() {
           if (!authenticatedFetch) {
             throw new Error('authenticatedFetch no está disponible');
           }
-          response = await authenticatedFetch(`/api/asesor/historial-registros-asesor/${user.id}`);
+          response = await authenticatedFetch(`${API_URL}/api/asesor/historial-registros-asesor/${user.id}`);
         } catch (authError) {
           // Fallback: usar fetch manual con token de localStorage
           const token = localStorage.getItem('authToken') || localStorage.getItem('token') || 'legacy_auth';
@@ -56,9 +57,9 @@ export default function HistorialRegistros() {
             throw new Error('No se encontró token de autenticación');
           }
           
-          const fullUrl = `/api/asesor/historial-registros-asesor/${user.id}`.startsWith('http') 
-            ? `/api/asesor/historial-registros-asesor/${user.id}` 
-            : `${window.location.origin}/api/asesor/historial-registros-asesor/${user.id}`;
+          const fullUrl = `${API_URL}/api/asesor/historial-registros-asesor/${user.id}`.startsWith('http') 
+            ? `${API_URL}/api/asesor/historial-registros-asesor/${user.id}` 
+            : `${API_URL}/api/asesor/historial-registros-asesor/${user.id}`;
           
           response = await fetch(fullUrl, {
             method: 'GET',

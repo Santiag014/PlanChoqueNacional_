@@ -14,23 +14,29 @@ export const useCatalogos = () => {
     {
       titulo: 'CATÁLOGO OILTEC',
       img: '/src/assets/Iconos/IconosCatalogos/OILTEC.png',
-      link: '/catalogos/oiltec.pdf'
+      link: 'https://drive.google.com/uc?export=download&id=1WkqETK73HcfUBoI0s_UUF1vlBsgKQCGT'
     },
     {
       titulo: 'CATÁLOGO CELERITY',
       img: '/src/assets/Iconos/IconosCatalogos/CELERITY.png',
-      link: '/catalogos/celerity.pdf'
+      link: 'https://drive.google.com/uc?export=download&id=1gR79U5ciRXYCVy0lOFEqeuXuf57mt7vg'
     }
   ]);
 
-  const handleDownload = (link) => {
-    const linkElement = document.createElement('a');
-    linkElement.href = '/docs/catalogos.pdf'; // Ruta real del PDF
-    linkElement.download = '';
-    linkElement.target = '_blank';
-    document.body.appendChild(linkElement);
-    linkElement.click();
-    document.body.removeChild(linkElement);
+  const handleDownload = (link, titulo) => {
+    // Si es una URL de Google Drive, abrir en nueva pestaña para descarga directa
+    if (link.includes('drive.google.com')) {
+      window.open(link, '_blank');
+    } else {
+      // Para otros enlaces, usar el método tradicional
+      const linkElement = document.createElement('a');
+      linkElement.href = link;
+      linkElement.download = titulo || '';
+      linkElement.target = '_blank';
+      document.body.appendChild(linkElement);
+      linkElement.click();
+      document.body.removeChild(linkElement);
+    }
   };
 
   return {

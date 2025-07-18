@@ -148,20 +148,19 @@ const catalogos = [
     id: 2,
     titulo: 'CATÁLOGO OILTEC',
     imagen: oiltecImg,
-    pdfUrl: '/catalogos/pdfs/catalogo-oiltec.pdf'
+    pdfUrl: 'https://drive.google.com/uc?export=download&id=1WkqETK73HcfUBoI0s_UUF1vlBsgKQCGT'
   },
   {
     id: 3,
     titulo: 'CATÁLOGO CELERITY',
     imagen: celerityImg,
-    pdfUrl: '/catalogos/pdfs/catalogo-celerity.pdf'
+    pdfUrl: 'https://drive.google.com/uc?export=download&id=1gR79U5ciRXYCVy0lOFEqeuXuf57mt7vg'
   }
 ];
 
 export default function Ranking() {
   const [infoExpanded, setInfoExpanded] = useState(false);
   const [showPremiosModal, setShowPremiosModal] = useState(false);
-  const [showTycModal, setShowTycModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showCatalogosModal, setShowCatalogosModal] = useState(false);
   const [departamentoSeleccionado, setDepartamentoSeleccionado] = useState('Todos los departamentos');
@@ -208,13 +207,19 @@ export default function Ranking() {
   // Función para descargar PDFs
   const handleDownloadPDF = (pdfUrl, titulo) => {
     try {
-      const link = document.createElement('a');
-      link.href = pdfUrl;
-      link.download = `${titulo.replace(/\s+/g, '_')}.pdf`;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Si es una URL de Google Drive, abrir directamente en nueva pestaña
+      if (pdfUrl.includes('drive.google.com')) {
+        window.open(pdfUrl, '_blank');
+      } else {
+        // Para otros PDFs, usar el método tradicional de descarga
+        const link = document.createElement('a');
+        link.href = pdfUrl;
+        link.download = `${titulo.replace(/\s+/g, '_')}.pdf`;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     } catch (error) {
       console.error('Error al descargar el PDF:', error);
       // Fallback: abrir en nueva pestaña
@@ -257,7 +262,7 @@ export default function Ranking() {
 
                 <div className="info-item">
                   <h4>🔧 Mecánica:</h4>
-                  <p>Lorem ipsum dolor sit amet consectetur adipiscing elit fringilla montes, vivamus maecenas praesent non integer sollicitudin id cras mus ligula, mi lobortis lacinia hac dignissim et libero nulla.</p>
+                  <p>El Plan de la Mejor Energía es una estrategia de Trade Marketing Nacional​ para asegurar la correcta implementación de precios y consolidar el posicionamiento deseado de Lubricantes Terpel en el canal, impactando a la fuerza de ventas, los PDV y el consumidor final.</p>
                 </div>
 
                 <div className="info-item">
@@ -269,23 +274,12 @@ export default function Ranking() {
                     Ver más...
                   </span>
                 </div>
-
-
-                <div className="info-item">
-                  <h4>📄 Conoce más:</h4>
-                  <span 
-                    className="link-text"
-                    onClick={() => setShowTycModal(true)}
-                  >
-                    (TyC) - Términos y Condiciones
-                  </span>
-                </div>
               
               
                 
                 <div className="info-item">
                   <h4>�📅 Vigencia:</h4>
-                  <p>Campaña vigente desde el 01 de enero hasta el 31 de diciembre de 2025</p>
+                  <p>Campaña vigente desde el 01 de agosto hasta el 31 de diciembre de 2025</p>
                 </div>
               </div>
             </div>
@@ -401,51 +395,6 @@ export default function Ranking() {
                   <div className="premio-recuadro">
                     {slides[currentSlide].recuadro}
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Modal de Términos y Condiciones */}
-        {showTycModal && (
-          <div className="modal-overlay" onClick={() => setShowTycModal(false)}>
-            <div className="modal-content tyc-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <h2>📄 Términos y Condiciones</h2>
-                <button 
-                  className="close-btn"
-                  onClick={() => setShowTycModal(false)}
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <div className="modal-body">
-                <div className="tyc-content">
-                  <h3>Condiciones Generales</h3>
-                  <p>La campaña "Visionarios de la Mejor Energía" está dirigida a todos los asesores de ventas autorizados de Terpel a nivel nacional.</p>
-                  
-                  <h4>Elegibilidad:</h4>
-                  <ul>
-                    <li>Ser asesor de ventas activo durante toda la campaña</li>
-                    <li>Cumplir con los KPIs establecidos</li>
-                    <li>Mantener un desempeño consistente</li>
-                  </ul>
-                  
-                  <h4>Evaluación:</h4>
-                  <ul>
-                    <li>Los puntos se calculan según cumplimiento de metas</li>
-                    <li>Se evalúa mensualmente el desempeño</li>
-                    <li>Los rankings se actualizan semanalmente</li>
-                  </ul>
-                  
-                  <h4>Premios:</h4>
-                  <ul>
-                    <li>Los premios no son transferibles</li>
-                    <li>Los ganadores serán notificados oficialmente</li>
-                    <li>Terpel se reserva el derecho de modificar los premios</li>
-                  </ul>
                 </div>
               </div>
             </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { API_URL } from '../../config.js';
 
 export const useResultadosAuditorias = (userId) => {
   const [registrosAuditorias, setRegistrosAuditorias] = useState([]);
@@ -23,16 +24,16 @@ export const useResultadosAuditorias = (userId) => {
           throw new Error('authenticatedFetch no está disponible');
         }
         // Usar el nuevo endpoint específico para auditorias
-        response = await authenticatedFetch(`/api/asesor/resultados-auditorias/${userId}`);
+        response = await authenticatedFetch(`${API_URL}/api/asesor/resultados-auditorias/${userId}`);
       } catch (authError) {
         const token = localStorage.getItem('authToken') || localStorage.getItem('token') || 'legacy_auth';
         if (!token) {
           throw new Error('No se encontró token de autenticación');
         }
         
-        const fullUrl = `/api/asesor/resultados-auditorias/${userId}`.startsWith('http') 
-          ? `/api/asesor/resultados-auditorias/${userId}` 
-          : `${window.location.origin}/api/asesor/resultados-auditorias/${userId}`;
+        const fullUrl = `${API_URL}/api/asesor/resultados-auditorias/${userId}`.startsWith('http') 
+          ? `${API_URL}/api/asesor/resultados-auditorias/${userId}` 
+          : `${API_URL}/api/asesor/resultados-auditorias/${userId}`;
         
         response = await fetch(fullUrl, {
           method: 'GET',

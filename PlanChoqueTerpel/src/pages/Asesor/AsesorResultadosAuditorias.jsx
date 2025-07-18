@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAsesorRoute } from '../../hooks/auth';
 import { useResponsive } from '../../hooks/shared';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { API_URL } from '../../config.js';
 import DashboardLayout from '../../components/DashboardLayout';
 import RegistrosAuditoriaTable from '../../components/Asesor/ResultadosAuditorias/RegistrosAuditoriaTable';
 import RegistroAuditoriaModal from '../../components/Asesor/ResultadosAuditorias/RegistroAuditoriaModal';
@@ -48,7 +49,7 @@ export default function ResultadosAuditorias() {
           if (!authenticatedFetch) {
             throw new Error('authenticatedFetch no está disponible');
           }
-          response = await authenticatedFetch(`/api/asesor/resultados-auditorias/${user.id}`);
+          response = await authenticatedFetch(`${API_URL}/api/asesor/resultados-auditorias/${user.id}`);
         } catch (authError) {
           console.warn('authenticatedFetch falló, usando fetch directo:', authError.message);
           
@@ -59,7 +60,7 @@ export default function ResultadosAuditorias() {
           }
           
           // Usar la URL relativa directamente - Vite manejará el proxy
-          response = await fetch(`/api/asesor/resultados-auditorias/${user.id}`, {
+          response = await fetch(`${API_URL}/api/asesor/resultados-auditorias/${user.id}`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${token}`,

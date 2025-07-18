@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { API_URL } from '../config.js';
 import './BulkUpload.css';
 
 const BulkUpload = () => {
@@ -87,7 +88,7 @@ const BulkUpload = () => {
       formData.append('file', file);
 
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/bulk-upload/users', {
+      const response = await fetch(`${API_URL}/api/bulk-upload/users`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -116,7 +117,7 @@ const BulkUpload = () => {
   const handleDownloadTemplate = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/bulk-upload/template', {
+      const response = await fetch(`${API_URL}/api/bulk-upload/template`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

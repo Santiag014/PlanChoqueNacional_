@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { API_URL } from '../../config.js';
 
 export function useHistorialRegistrosMercadeo() {
   const { authenticatedFetch, user } = useAuthContext();
@@ -23,7 +24,7 @@ export function useHistorialRegistrosMercadeo() {
         if (!authenticatedFetch) {
           throw new Error('authenticatedFetch no está disponible');
         }
-        response = await authenticatedFetch('/api/mercadeo/historial-registros-mercadeo');
+        response = await authenticatedFetch(`${API_URL}/api/mercadeo/historial-registros-mercadeo`);
       } catch (authError) {
         // Fallback: usar fetch manual con token de localStorage
         const token = localStorage.getItem('authToken') || localStorage.getItem('token') || 'legacy_auth';
@@ -31,9 +32,9 @@ export function useHistorialRegistrosMercadeo() {
           throw new Error('No se encontró token de autenticación');
         }
         
-        const fullUrl = `/api/mercadeo/historial-registros-mercadeo`.startsWith('http') 
-          ? `/api/mercadeo/historial-registros-mercadeo` 
-          : `${window.location.origin}/api/mercadeo/historial-registros-mercadeo`;
+        const fullUrl = `${API_URL}/api/mercadeo/historial-registros-mercadeo`.startsWith('http') 
+          ? `${API_URL}/api/mercadeo/historial-registros-mercadeo` 
+          : `${API_URL}/api/mercadeo/historial-registros-mercadeo`;
         
         response = await fetch(fullUrl, {
           method: 'GET',
@@ -82,7 +83,7 @@ export function useHistorialRegistrosMercadeo() {
         if (!authenticatedFetch) {
           throw new Error('authenticatedFetch no está disponible');
         }
-        response = await authenticatedFetch(`/api/mercadeo/actualizar-estado-registro/${registroId}`, {
+        response = await authenticatedFetch(`${API_URL}/api/mercadeo/actualizar-estado-registro/${registroId}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

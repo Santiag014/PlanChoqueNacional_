@@ -15,7 +15,10 @@ const CatalogCard = ({ catalogo, onDownload }) => {
       <a href={catalogo.link} download className="catalogo-link">
         <button
           className="catalogo-btn"
-          onClick={() => onDownload(catalogo.link)}
+          onClick={(e) => {
+            e.preventDefault();
+            onDownload(catalogo.link, catalogo.titulo);
+          }}
         >
           DESCARGA
         </button>

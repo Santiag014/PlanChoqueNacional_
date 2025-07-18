@@ -3,6 +3,7 @@ import DashboardLayout from '../../components/DashboardLayout';
 import { useMercadeoRoute } from '../../hooks/auth';
 import { useAuth } from '../../hooks/auth/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../../config.js';
 
 // Importar hooks de mercadeo
 import {
@@ -1073,7 +1074,7 @@ function ResumenVolumenMercadeo({ datos, filtros, asesorSeleccionado }) {
         if (filtros.asesor_id) params.append('asesor_id', filtros.asesor_id);
         if (filtros.pdv_id) params.append('pdv_id', filtros.pdv_id);
         
-        const response = await fetch(`/api/mercadeo/volumen-detalles?${params}`, {
+        const response = await fetch(`${API_URL}/api/mercadeo/volumen-detalles?${params}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }

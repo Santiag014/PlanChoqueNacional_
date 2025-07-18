@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { API_URL } from '../../../config.js';
 import '../../../styles/Asesor/asesor-seccion-implementacion.css';
 
 /**
@@ -91,7 +92,7 @@ const ImplementationSection = ({
   // Cargar marcas al abrir el popup
   const cargarMarcas = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/marcas');
+      const response = await fetch(`${API_URL}/api/marcas`);
       const data = await response.json();
       setMarcas(data);
       
@@ -114,7 +115,7 @@ const ImplementationSection = ({
   // Cargar referencias según la marca seleccionada
   const cargarReferencias = async (marcaId) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/referencias?marca_id=${marcaId}`);
+      const response = await fetch(`${API_URL}/api/referencias?marca_id=${marcaId}`);
       const data = await response.json();
       if (data.success) {
         setReferencias(data.data);
