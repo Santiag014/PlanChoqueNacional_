@@ -19,19 +19,22 @@ const app = express();
 
 app.use(cors());
 
-// Primero, rutas que reciben archivos (FormData), NO uses express.json()
+// Middleware para parsear JSON (aplicar globalmente)
+app.use(express.json());
+
+// Primero, rutas que reciben archivos (FormData)
 app.use('/api', cargarVisitas);
 app.use('/api', cargarVisitas_Frecuencia);
 app.use('/api/bulk-upload', bulkUploadRouter);
 
 // Luego, rutas que reciben JSON
-app.use('/api', express.json(), authRouter);
-app.use('/api', express.json(), usersRouter);
-app.use('/api/mercadeo', express.json(), mercadeoRouter);
-app.use('/api', express.json(), publicRouter);
-app.use('/api/asesor', express.json(), asesorRouter);
-app.use('/api/mistery-shopper', express.json(), misteryShopperRouter);
-app.use('/api/ot', express.json(), otRouter);
+app.use('/api', authRouter);
+app.use('/api', usersRouter);
+app.use('/api/mercadeo', mercadeoRouter);
+app.use('/api', publicRouter);
+app.use('/api/asesor', asesorRouter);
+app.use('/api/mistery-shopper', misteryShopperRouter);
+app.use('/api/ot', otRouter);
 
 // --- NUEVO: servir archivos estáticos del build de React ---
 const __filename = fileURLToPath(import.meta.url);
@@ -51,8 +54,17 @@ app.get('/api/check-db', async (req, res) => {
   }
 });
 
-// Servir la carpeta /public/storage para archivos subidos
-app.use('/storage', express.static(path.join(process.cwd(), 'public', 'storage')));
+// Endpoint para verificar la configuración de storage
+app.get('/api/storage-info', (req, res) => {
+  res.json({
+    storageBasePath: '/home/u123456789/sub/public_html/storage',
+    publicUrl: 'https://api.plandelamejorenergia.com/storage',
+    message: 'Configuración de storage para VPS Hostinger'
+  });
+});
+
+// Servir la carpeta de storage para archivos subidos (VPS Hostinger)
+app.use('/storage', express.static('/home/u123456789/sub/public_html/storage'));
 
 // --- ESTA LÍNEA DEBE IR AL FINAL ---
 app.use(express.static(distPath));

@@ -6,19 +6,17 @@ import { getConnection } from '../db.js';
 
 const router = express.Router();
 
-// Configuración de multer para guardar la foto en /public/storage/YYYY-MM-DD
+// Configuración de multer para guardar la foto en VPS Hostinger
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const today = new Date();
     const folder = today.toISOString().slice(0, 10); // YYYY-MM-DD
-    const publicDir = path.join(process.cwd(), 'public');
-    const storageDir = path.join(publicDir, 'storage');
-    const dayDir = path.join(storageDir, folder);
+    const baseDir = '/home/u123456789/sub/public_html/storage';
+    const dayDir = path.join(baseDir, folder);
 
     // Crea las carpetas si no existen
-    if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir);
-    if (!fs.existsSync(storageDir)) fs.mkdirSync(storageDir);
-    if (!fs.existsSync(dayDir)) fs.mkdirSync(dayDir);
+    if (!fs.existsSync(baseDir)) fs.mkdirSync(baseDir, { recursive: true });
+    if (!fs.existsSync(dayDir)) fs.mkdirSync(dayDir, { recursive: true });
 
     cb(null, dayDir);
   },
