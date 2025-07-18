@@ -730,7 +730,6 @@ function DetalleMetricaMercadeo({ metricId, asesorSeleccionado, datosBase, aseso
             <h3>Galonaje Total por Segmento{asesorSeleccionado ? ` - ${asesorSeleccionado.nombre}` : ' (Todos los Asesores)'}</h3>
             <div className="barras-container-popup">
               {(() => {
-                // Calcular totales por segmento basado en datos reales filtrados
                 const segmentos = ['CVL', 'MCO'];
                 const datosSegmentos = segmentos.map(segmento => {
                   const totalSegmento = Array.isArray(datos) ? datos
@@ -738,7 +737,7 @@ function DetalleMetricaMercadeo({ metricId, asesorSeleccionado, datosBase, aseso
                     .reduce((sum, p) => sum + (p.real || 0), 0) : 0;
                   const cantidadPdvs = Array.isArray(datos) ? datos.filter(p => p.segmento === segmento).length : 0;
                   return { segmento, total: totalSegmento, cantidadPdvs };
-                }).filter(s => s.total > 0); // Solo mostrar segmentos con datos
+                }).filter(s => s.total > 0); 
 
                 if (datosSegmentos.length === 0) {
                   return (

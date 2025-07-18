@@ -368,9 +368,9 @@ const ImplementationSection = ({
                 <th>Referencia</th>
                 <th>Presentación</th>
                 <th>N° Cajas</th>
-                <th>Volumen (glns)</th>
-                <th>PVP Sugerido</th>
-                <th>PVP Real</th>
+                <th>Volumen (gal)</th>
+                <th>Precio de Venta Sugerido</th>
+                <th>Precio de Venta al Público</th>
               </tr>
             </thead>
             <tbody>

@@ -111,6 +111,10 @@ export default function AsesorInformeSeguimientoDashboard() {
     return null;
   }
   
+  // Verificar si es promotoria para restringir KPIs
+  const esPromotoria = user?.IsPromotoria === 1;
+  console.log('👤 Usuario es promotoria:', esPromotoria, 'IsPromotoria:', user?.IsPromotoria);
+  
   // Asegurar que cobertura.pdvs es un array para evitar errores
   if (!Array.isArray(cobertura.pdvs)) {
     console.warn('cobertura.pdvs no es un array:', cobertura.pdvs);
@@ -207,7 +211,7 @@ export default function AsesorInformeSeguimientoDashboard() {
 
   // Datos de métricas con datos reales de PDV
   const getMetricasData = () => {
-    return [
+    const todasLasMetricas = [
       {
         id: 'cobertura',
         titulo: 'Cobertura',
@@ -220,9 +224,10 @@ export default function AsesorInformeSeguimientoDashboard() {
           ? (cobertura.pdvs.find(p => p.id === pdvSeleccionado.id)?.estado === 'IMPLEMENTADO' ? 100 : 0)
           : (cobertura.totalAsignados > 0 ? Math.round((cobertura.totalImplementados / cobertura.totalAsignados) * 100) : 0),
         color: '#e30613',
-        puntosLabel: `${cobertura.puntosCobertura} puntos obtenidos`
+        puntosLabel: `${cobertura.puntosCobertura} puntos obtenidos`,
+        restrictedForPromotoria: true
       },
-      // Métrica de volumen con datos reales
+      // Métrica de volumen con datos reales - SIEMPRE VISIBLE
       {
         id: 'volumen',
         titulo: 'Volumen',
@@ -237,7 +242,8 @@ export default function AsesorInformeSeguimientoDashboard() {
           ? (volumen?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.porcentaje || 0)
           : (volumen?.meta_volumen > 0 ? ((volumen?.real_volumen / volumen?.meta_volumen) * 100).toFixed(0) : 0),
         color: '#00a651',
-        puntosLabel: `${volumen?.puntos || 0} puntos obtenidos`
+        puntosLabel: `${volumen?.puntos || 0} puntos obtenidos`,
+        restrictedForPromotoria: false
       },
       {
         id: 'visitas',
@@ -253,7 +259,8 @@ export default function AsesorInformeSeguimientoDashboard() {
           ? (visitas?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.porcentaje || 0)
           : visitas?.porcentajeCumplimiento || 0,
         color: '#f7941d',
-        puntosLabel: `${visitas?.puntos || 0} puntos obtenidos`
+        puntosLabel: `${visitas?.puntos || 0} puntos obtenidos`,
+        restrictedForPromotoria: true
       },
       {
         id: 'productividad',
@@ -269,7 +276,8 @@ export default function AsesorInformeSeguimientoDashboard() {
           ? (profundidad?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.estado === 'REGISTRADO' ? 100 : 0)
           : profundidad?.porcentaje || 0,
         color: '#2b3990',
-        puntosLabel: `${profundidad?.puntosProfundidad || 0} puntos obtenidos`
+        puntosLabel: `${profundidad?.puntosProfundidad || 0} puntos obtenidos`,
+        restrictedForPromotoria: true
       },
       {
         id: 'precios',
@@ -285,9 +293,19 @@ export default function AsesorInformeSeguimientoDashboard() {
           ? (precios?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.estado === 'REPORTADOS' ? 100 : 0)
           : precios?.porcentaje || 0,
         color: '#e30613',
-        puntosLabel: `${precios?.puntosPrecios || 0} puntos obtenidos`
+        puntosLabel: `${precios?.puntosPrecios || 0} puntos obtenidos`,
+        restrictedForPromotoria: true
       }
     ];
+
+    // Si es promotoria, filtrar solo volumen
+    if (esPromotoria) {
+      console.log('🚫 Filtrando métricas para promotoria - solo volumen visible');
+      return todasLasMetricas.filter(metrica => !metrica.restrictedForPromotoria);
+    }
+
+    // Si no es promotoria, mostrar todas las métricas
+    return todasLasMetricas;
   };
 
   const metricas = getMetricasData();

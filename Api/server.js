@@ -1,4 +1,4 @@
-import 'dotenv/config'; // <--- Agrega esta línea al inicio
+import 'dotenv/config'; 
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -16,7 +16,6 @@ import bulkUploadRouter from './routes/bulk-upload.js';
 import { getConnection } from './db.js';
 
 const app = express();
-
 
 app.use(cors());
 
@@ -44,7 +43,7 @@ app.get('/api/check-db', async (req, res) => {
   let conn;
   try {
     conn = await getConnection();
-    conn.release(); // <-- Cambia esto
+    conn.release(); 
     res.json({ connected: true, message: 'Conexión exitosa a la base de datos' });
   } catch (err) {
     if (conn) conn.release();

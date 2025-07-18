@@ -39,7 +39,8 @@ router.post('/login', async (req, res) => {
           tipo: user.tipo || user.rol || user.rol_id,
           nombre: user.nombre || user.name,
           apellido: user.apellido,
-          agente_id: user.agente_id
+          agente_id: user.agente_id,
+          IsPromotoria: user.IsPromotoria 
         },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
@@ -57,7 +58,8 @@ router.post('/login', async (req, res) => {
           tipo: user.tipo || user.rol || user.rol_id,
           zona_id: user.zona_id,
           regional_id: user.regional_id,
-          agente_id: user.agente_id
+          agente_id: user.agente_id,
+          IsPromotoria: user.IsPromotoria
         }
       });
     } else {

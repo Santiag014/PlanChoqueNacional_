@@ -27,20 +27,7 @@ export const useProtectedRoute = (allowedRoles = [], redirectTo = '/') => {
       });
       return;
     }
-
-    // *** MODO DESARROLLO: PROTECCIÓN DE ROLES DESACTIVADA ***
-    // console.log('🔓 DESARROLLO: Acceso permitido a todas las rutas autenticadas');
     
-    /* CÓDIGO ORIGINAL COMENTADO PARA DESARROLLO:
-    if (allowedRoles.length > 0) {
-      const hasRequiredRole = hasRole(allowedRoles);
-      if (!hasRequiredRole) {
-        console.log(`Usuario sin permisos para acceder a ${location.pathname}`);
-        navigate('/unauthorized', { replace: true });
-        return;
-      }
-    }
-    */
   }, [
     user, 
     isAuthenticated, 

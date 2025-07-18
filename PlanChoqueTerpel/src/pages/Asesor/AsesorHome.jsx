@@ -33,19 +33,42 @@ export default function DashboardAsesor() {
     return null;
   }
 
-  // Define los 5 botones con el 5to en el centro
-  const botonesPaginas = [
-    [
-      { icon: iconMisMetas, label: 'INFORME SEGUIMIENTO', to: '/asesor/informe-seguimiento-dashboard' },
-      { icon: RegistroPDV, label: 'REGISTRO IMPLEMENTACIÓN', to: '/asesor/registro-menu' },
-      { icon: RankingAsesores, label: 'PLAN DE INCENTIVOS', to: '/asesor/plan-incentivos' },
-      { icon: PremioMayor, label: 'RESULTADOS AUDITORIA', to: '/asesor/home' },
-      { empty: true }, // Espacio vacío
-    ],
+  // Verificar si es promotoria para ocultar ciertos botones
+  const esPromotoria = user?.IsPromotoria === 1;
+  console.log('👤 Usuario es promotoria:', esPromotoria, 'IsPromotoria:', user?.IsPromotoria);
+
+  // Define los botones - algunos se ocultan si es promotoria
+  const todosLosBotones = [
+    { icon: iconMisMetas, label: 'INFORME SEGUIMIENTO', to: '/asesor/informe-seguimiento-dashboard' },
+    { icon: RegistroPDV, label: 'REGISTRO IMPLEMENTACIÓN', to: '/asesor/registro-menu' },
+    { icon: RankingAsesores, label: 'PLAN DE INCENTIVOS', to: '/asesor/plan-incentivos' },
+    { icon: PremioMayor, label: 'RESULTADOS AUDITORIA', to: '/asesor/resultados-auditorias', restrictedForPromotoria: true },
   ];
+
+  // Filtrar botones según si es promotoria
+  const botonesPermitidos = todosLosBotones.filter(boton => {
+    if (esPromotoria && boton.restrictedForPromotoria) {
+      console.log('🚫 Ocultando botón para promotoria:', boton.label);
+      return false;
+    }
+    return true;
+  });
+
+  // Agregar espacios vacíos hasta completar 5 elementos
+  while (botonesPermitidos.length < 5) {
+    botonesPermitidos.push({ empty: true });
+  }
+
+  const botonesPaginas = [botonesPermitidos];
 
   // Función para manejar clicks en botones
   const handleButtonClick = (btn) => {
+    // Verificar restricciones adicionales
+    if (esPromotoria && btn.restrictedForPromotoria) {
+      console.log('🚫 Acceso denegado para promotoria a:', btn.label);
+      return;
+    }
+    
     console.log('🔄 Navegando a:', btn.to);
     navigate(btn.to);
   };

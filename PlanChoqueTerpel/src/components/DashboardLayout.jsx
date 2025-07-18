@@ -78,6 +78,7 @@ export default function DashboardLayout({ user, children }) {
       '/asesor/home': 'HOME',
       '/asesor/informe-seguimiento-dashboard': 'INFORME SEGUIMIENTO',
       '/asesor/registro-menu': 'REGISTROS IMPLEMENTACIÓN',
+      '/asesor/resultados-auditorias': 'RESULTADOS AUDITORIAS',
       '/asesor/plan-incentivos': 'PLAN DE INCENTIVOS',
     },
     MYSTERY_SHOPPER: {

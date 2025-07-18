@@ -13,35 +13,35 @@ import celerityImg from '../../assets/Iconos/IconosCatalogos/CELERITY.png';
 const podio = [
   {
     puesto: 2,
-    nombre: 'Santiago Párraga',
-    puntos: 15483,
+    nombre: '#$NOMBRE',
+    puntos: 14,
     color: '#b0b0b0',
     trofeo: '🥈',
   },
   {
     puesto: 1,
-    nombre: 'Ana María González',
-    puntos: 16847,
+    nombre: '#$NOMBRE',
+    puntos: 15,
     color: '#ffd700',
     trofeo: '🥇',
   },
   {
     puesto: 3,
-    nombre: 'María Fernanda López',
-    puntos: 12234,
+    nombre: '#$NOMBRE',
+    puntos: 13,
     color: '#cd7f32',
     trofeo: '🥉',
   }
 ];
 
 const tabla = [
-  { puesto: 4, nombre: 'Luis Fernando Silva', puntos: 11756 },
-  { puesto: 5, nombre: 'Carmen Elena Torres', puntos: 11052 },
-  { puesto: 6, nombre: 'Roberto Andrés Mesa', puntos: 10850 },
-  { puesto: 7, nombre: 'Patricia Morales', puntos: 10648 },
-  { puesto: 8, nombre: 'Miguel Ángel Castro', puntos: 10445 },
-  { puesto: 9, nombre: 'Diana Patricia Ruiz', puntos: 10243 },
-  { puesto: 10, nombre: 'Carlos Eduardo Ramírez', puntos: 10040 },
+  { puesto: 4, nombre: '#$NOMBRE', puntos: 12 },
+  { puesto: 5, nombre: '#$NOMBRE', puntos: 11 },
+  { puesto: 6, nombre: '#$NOMBRE', puntos: 10 },
+  { puesto: 7, nombre: '#$NOMBRE', puntos: 9 },
+  { puesto: 8, nombre: '#$NOMBRE', puntos: 8 },
+  { puesto: 9, nombre: '#$NOMBRE', puntos: 7 },
+  { puesto: 10, nombre: '#$NOMBRE', puntos: 6 },
 ];
 
 const departamentos = [

@@ -6,4 +6,5 @@ export { useProductSelection } from './useProductSelection';
 
 export { useReportSubmission } from './useReportSubmission';
 export { useVisitaSubmission } from './useVisitaSubmission';
+export { useResultadosAuditorias } from './useResultadosAuditorias';
 

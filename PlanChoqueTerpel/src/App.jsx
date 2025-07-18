@@ -15,6 +15,7 @@ import RegistroImplementacion from './pages/Asesor/AsesorRegistroImplementacion'
 import AsesorRegistroMenu from './pages/Asesor/AsesorRegistroMenu';
 import Ranking from './pages/Asesor/AsesorRanking';
 import HistorialRegistros from './pages/Asesor/AsesorHistorialRegistros';
+import ResultadosAuditorias from './pages/Asesor/AsesorResultadosAuditorias';
 
 // Visuales para el rol de MisteryShopper
 import HomeMisteryShopper from './pages/Mistery/MisteryShopperHome';
@@ -97,6 +98,7 @@ function AppContent() {
         <Route path="/asesor/registro-menu" element={<AsesorRegistroMenu />} />
         <Route path="/asesor/registro-implementacion" element={<RegistroImplementacion />} />
         <Route path="/asesor/historico-registros" element={<HistorialRegistros />} />
+        <Route path="/asesor/resultados-auditorias" element={<ResultadosAuditorias />} />
         <Route path="/asesor/plan-incentivos" element={<Ranking />} />
 
         {/* Rutas del mystery shopper - protegidas */}

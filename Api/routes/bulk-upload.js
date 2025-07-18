@@ -3,7 +3,6 @@ import multer from 'multer';
 import XLSX from 'xlsx';
 import bcrypt from 'bcrypt';
 import { getConnection } from '../db.js';
-import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -28,43 +27,49 @@ const upload = multer({
   }
 });
 
-// Función para validar email
+// Función para validar email (opcional, mantenida por si acaso)
 const isValidEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 };
 
-// Función para generar contraseña aleatoria
-const generateRandomPassword = (length = 8) => {
-  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-  let password = '';
-  for (let i = 0; i < length; i++) {
-    password += charset.charAt(Math.floor(Math.random() * charset.length));
-  }
-  return password;
-};
-
 // Endpoint para procesar carga masiva de usuarios
-router.post('/users', authenticateToken, upload.single('file'), async (req, res) => {
+router.post('/users', upload.single('file'), async (req, res) => {
   let conn;
+  
+  // Tiempo de inicio para medir duración total del proceso
+  const startTime = Date.now();
+  
+  console.log('\n====== INICIO CARGA MASIVA DE USUARIOS ======');
+  console.log(`📅 Fecha y hora: ${new Date().toLocaleString()}`);
+  console.log('📋 Recibiendo solicitud de carga masiva...');
   
   try {
     if (!req.file) {
+      console.log('❌ Error: No se proporcionó ningún archivo');
       return res.status(400).json({ 
         success: false, 
         message: 'No se ha proporcionado ningún archivo' 
       });
     }
+    
+    console.log(`📁 Archivo recibido: ${req.file.originalname} (${(req.file.size / 1024).toFixed(2)} KB)`);
+    console.log('📄 Procesando archivo Excel...');
 
     // Leer el archivo Excel
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
     
+    console.log(`📊 Hoja de cálculo encontrada: "${sheetName}"`);
+    
     // Convertir a JSON
     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
     
+    console.log(`🔢 Filas encontradas en el archivo: ${jsonData.length - 1} (excluyendo encabezados)`);
+    
     if (jsonData.length < 2) {
+      console.log('❌ Error: El archivo no tiene suficientes filas');
       return res.status(400).json({ 
         success: false, 
         message: 'El archivo debe contener al menos una fila de encabezados y una fila de datos' 
@@ -74,16 +79,16 @@ router.post('/users', authenticateToken, upload.single('file'), async (req, res)
     // Obtener encabezados (primera fila)
     const headers = jsonData[0].map(header => header.toString().toLowerCase().trim());
     
-    // Mapear columnas requeridas
+    // Mapear columnas requeridas - ajustado a la estructura real de la tabla users
     const requiredColumns = {
       name: ['nombre', 'name', 'usuario', 'nombres'],
       email: ['email', 'correo', 'correo_electronico', 'e-mail'],
       documento: ['documento', 'cedula', 'cc', 'identificacion'],
-      apellido: ['apellido', 'apellidos', 'lastname'],
       rol_id: ['rol_id', 'rol', 'role_id', 'tipo_usuario'],
-      zona_id: ['zona_id', 'zona', 'zone_id'],
-      regional_id: ['regional_id', 'regional', 'region_id'],
-      agente_id: ['agente_id', 'agente', 'agent_id']
+      IsPromotoria: ['ispromotoria', 'is_promotoria', 'promotoria', 'es_promotoria'],
+      agente_id: ['agente_id', 'agente', 'agent_id'],
+      ciudad_id: ['ciudad_id', 'ciudad', 'city_id']
+      // NOTA: Password NO se incluye porque se genera automáticamente por seguridad
     };
 
     // Encontrar índices de columnas
@@ -97,7 +102,7 @@ router.post('/users', authenticateToken, upload.single('file'), async (req, res)
       }
     }
 
-    // Verificar campos obligatorios
+    // Verificar campos obligatorios - solo nombre, email y documento
     const missingFields = [];
     if (columnIndices.name === undefined) missingFields.push('nombre');
     if (columnIndices.email === undefined) missingFields.push('email');
@@ -113,244 +118,158 @@ router.post('/users', authenticateToken, upload.single('file'), async (req, res)
 
     // Procesar datos
     const users = [];
-    const errors = [];
-    const generatedPasswords = [];
+    
+    console.log('🔌 Estableciendo conexión con la base de datos...');
+    
+    try {
+      // Establecer conexión simple
+      conn = await getConnection();
+      await conn.execute('SELECT 1');
+      console.log('✅ Conexión a la base de datos establecida correctamente');
+      
+    } catch (connError) {
+      console.error('❌ Error al establecer conexión con la base de datos:', connError);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Error al conectar con la base de datos', 
+        error: connError.message
+      });
+    }
+    
+    // No consultamos tablas de referencia ya que usaremos los IDs directamente
+    // Los valores textuales en el Excel se considerarán como IDs
 
-    conn = await getConnection();
-
-    // Obtener datos de referencia para validación
-    const [roles] = await conn.execute('SELECT id, descripcion FROM rol');
-    const [zonas] = await conn.execute('SELECT id, descripcion FROM zona');
-    const [regionales] = await conn.execute('SELECT id, descripcion FROM regional');
-    const [agentes] = await conn.execute('SELECT id, descripcion FROM agente');
-
-    const roleMap = new Map(roles.map(r => [r.descripcion.toLowerCase(), r.id]));
-    const zonaMap = new Map(zonas.map(z => [z.descripcion.toLowerCase(), z.id]));
-    const regionalMap = new Map(regionales.map(r => [r.descripcion.toLowerCase(), r.id]));
-    const agenteMap = new Map(agentes.map(a => [a.descripcion.toLowerCase(), a.id]));
-
-    for (let i = 1; i < jsonData.length; i++) { // Empezar desde 1 para saltar encabezados
+    for (let i = 1; i < jsonData.length; i++) {
       const row = jsonData[i];
       
       if (!row || row.length === 0 || !row[columnIndices.name]) {
-        continue; // Saltar filas vacías
+        continue;
       }
+
+      const documentoValue = row[columnIndices.documento]?.toString().trim();
+      const hashedPassword = await bcrypt.hash(documentoValue, 12); // Hashear el documento
 
       const user = {
         name: row[columnIndices.name]?.toString().trim(),
         email: row[columnIndices.email]?.toString().trim().toLowerCase(),
-        documento: row[columnIndices.documento]?.toString().trim(),
-        apellido: row[columnIndices.apellido]?.toString().trim() || '',
+        documento: documentoValue,
+        password: hashedPassword, // Documento hasheado como contraseña
         rol_id: null,
-        zona_id: null,
-        regional_id: null,
-        agente_id: null
+        IsPromotoria: null,
+        agente_id: null,
+        ciudad_id: null
       };
-
-      // Validar email
-      if (!isValidEmail(user.email)) {
-        errors.push(`Fila ${i + 1}: Email inválido (${user.email})`);
-        continue;
-      }
 
       // Procesar rol_id
       if (columnIndices.rol_id !== undefined && row[columnIndices.rol_id]) {
         const rolValue = row[columnIndices.rol_id].toString().trim();
-        if (!isNaN(rolValue)) {
-          user.rol_id = parseInt(rolValue);
-        } else {
-          user.rol_id = roleMap.get(rolValue.toLowerCase()) || 1; // Default a rol 1
-        }
+        user.rol_id = !isNaN(rolValue) ? parseInt(rolValue) : 1;
       } else {
-        user.rol_id = 1; // Default
+        user.rol_id = 1;
       }
 
-      // Procesar zona_id
-      if (columnIndices.zona_id !== undefined && row[columnIndices.zona_id]) {
-        const zonaValue = row[columnIndices.zona_id].toString().trim();
-        if (!isNaN(zonaValue)) {
-          user.zona_id = parseInt(zonaValue);
-        } else {
-          user.zona_id = zonaMap.get(zonaValue.toLowerCase()) || 1; // Default a zona 1
-        }
+      // Procesar IsPromotoria
+      if (columnIndices.IsPromotoria !== undefined && row[columnIndices.IsPromotoria]) {
+        const promotoriaValue = row[columnIndices.IsPromotoria].toString().trim().toLowerCase();
+        user.IsPromotoria = (promotoriaValue === '1' || promotoriaValue === 'si' || promotoriaValue === 'sí') ? 1 : 0;
       } else {
-        user.zona_id = 1; // Default
-      }
-
-      // Procesar regional_id
-      if (columnIndices.regional_id !== undefined && row[columnIndices.regional_id]) {
-        const regionalValue = row[columnIndices.regional_id].toString().trim();
-        if (!isNaN(regionalValue)) {
-          user.regional_id = parseInt(regionalValue);
-        } else {
-          user.regional_id = regionalMap.get(regionalValue.toLowerCase()) || 1; // Default a regional 1
-        }
-      } else {
-        user.regional_id = 1; // Default
+        user.IsPromotoria = 0;
       }
 
       // Procesar agente_id
       if (columnIndices.agente_id !== undefined && row[columnIndices.agente_id]) {
         const agenteValue = row[columnIndices.agente_id].toString().trim();
-        if (!isNaN(agenteValue)) {
-          user.agente_id = parseInt(agenteValue);
-        } else {
-          user.agente_id = agenteMap.get(agenteValue.toLowerCase()) || 1; // Default a agente 1
-        }
+        user.agente_id = !isNaN(agenteValue) ? parseInt(agenteValue) : 1;
       } else {
-        user.agente_id = 1; // Default
+        user.agente_id = 1;
       }
 
-      // Generar contraseña aleatoria
-      const plainPassword = generateRandomPassword();
-      user.password = await bcrypt.hash(plainPassword, 12);
+      // Procesar ciudad_id
+      if (columnIndices.ciudad_id !== undefined && row[columnIndices.ciudad_id]) {
+        const ciudadValue = row[columnIndices.ciudad_id].toString().trim();
+        user.ciudad_id = !isNaN(ciudadValue) ? parseInt(ciudadValue) : 1;
+      } else {
+        user.ciudad_id = 1;
+      }
 
       users.push(user);
-      generatedPasswords.push({
-        email: user.email,
-        password: plainPassword,
-        name: user.name
-      });
     }
 
     if (users.length === 0) {
       return res.status(400).json({ 
         success: false, 
-        message: 'No se encontraron usuarios válidos para procesar',
-        errors: errors 
+        message: 'No se encontraron usuarios válidos para procesar'
       });
     }
 
-    // Verificar emails duplicados en el archivo y en la base de datos
-    const emailCounts = {};
-    const duplicateEmails = [];
-    
-    for (const user of users) {
-      if (emailCounts[user.email]) {
-        duplicateEmails.push(user.email);
-      } else {
-        emailCounts[user.email] = 1;
-      }
-    }
-
-    if (duplicateEmails.length > 0) {
-      errors.push(`Emails duplicados en el archivo: ${duplicateEmails.join(', ')}`);
-    }
-
-    // Verificar emails existentes en BD
-    const emailList = users.map(u => u.email);
-    const [existingUsers] = await conn.execute(
-      `SELECT email FROM users WHERE email IN (${emailList.map(() => '?').join(',')})`,
-      emailList
-    );
-
-    const existingEmails = existingUsers.map(u => u.email);
-    if (existingEmails.length > 0) {
-      errors.push(`Emails ya registrados: ${existingEmails.join(', ')}`);
-    }
-
-    // Filtrar usuarios con emails existentes o duplicados
-    const validUsers = users.filter(user => 
-      !existingEmails.includes(user.email) && 
-      !duplicateEmails.includes(user.email)
-    );
-
-    const validPasswords = generatedPasswords.filter(pass => 
-      !existingEmails.includes(pass.email) && 
-      !duplicateEmails.includes(pass.email)
-    );
-
-    if (validUsers.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No hay usuarios válidos para crear después de las validaciones',
-        errors: errors 
-      });
-    }
-
-    // Insertar usuarios en la base de datos
-    await conn.beginTransaction();
-
+    // Insertar usuarios en la base de datos - TODOS DE UNA VEZ
     try {
-      const insertPromises = validUsers.map(user => 
-        conn.execute(
-          `INSERT INTO users (name, email, documento, apellido, password, rol_id, zona_id, regional_id, agente_id, created_at, update_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-          [user.name, user.email, user.documento, user.apellido, user.password, user.rol_id, user.zona_id, user.regional_id, user.agente_id]
-        )
-      );
-
-      await Promise.all(insertPromises);
+      console.log('🔄 Iniciando transacción en la base de datos...');
+      await conn.beginTransaction();
+      
+      let successCount = 0;
+      console.log(`\n----- Insertando ${users.length} usuarios -----\n`);
+      
+      for (const user of users) {
+        try {
+          await conn.execute(
+            `INSERT IGNORE INTO users (name, email, documento, password, rol_id, IsPromotoria, agente_id, ciudad_id, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+            [user.name, user.email, user.documento, user.password, user.rol_id, user.IsPromotoria, user.agente_id, user.ciudad_id]
+          );
+          successCount++;
+          console.log(`✅ Usuario insertado: ${user.name} (${user.email})`);
+        } catch (insertError) {
+          console.log(`⚠️ Error al insertar ${user.name}: ${insertError.message}`);
+        }
+      }
+      
       await conn.commit();
+      console.log(`\n✅ Proceso completado: ${successCount}/${users.length} usuarios insertados\n`);
 
       res.json({
         success: true,
-        message: `Se crearon ${validUsers.length} usuarios exitosamente`,
+        message: `Se procesaron ${successCount} usuarios exitosamente. La contraseña de cada usuario es su número de documento.`,
         data: {
-          created: validUsers.length,
+          created: successCount,
           total: users.length,
-          errors: errors,
-          passwords: validPasswords // En producción, envía por email en lugar de retornar
+          usuarios_creados: users.map(u => ({
+            nombre: u.name,
+            email: u.email,
+            documento: u.documento,
+            password_original: u.documento // Mostramos el documento original (la contraseña sin hashear)
+          }))
         }
       });
 
-    } catch (insertError) {
-      await conn.rollback();
-      throw insertError;
+    } catch (transactionError) {
+      console.error('❌ Error durante la transacción:', transactionError.message);
+      if (conn) {
+        try {
+          await conn.rollback();
+        } catch (rollbackError) {
+          console.error('Error en rollback:', rollbackError);
+        }
+      }
+      throw transactionError;
     }
 
   } catch (err) {
-    if (conn) {
-      try {
-        await conn.rollback();
-      } catch (rollbackError) {
-        console.error('Error en rollback:', rollbackError);
-      }
-    }
+    console.error('❌ Error general:', err.message);
     
     res.status(500).json({ 
       success: false, 
       message: 'Error al procesar la carga masiva', 
-      error: err.message 
+      error: err.message
     });
   } finally {
-    if (conn) conn.release();
-  }
-});
-
-// Endpoint para descargar plantilla de Excel
-router.get('/template', authenticateToken, async (req, res) => {
-  try {
-    // Crear un nuevo workbook
-    const wb = XLSX.utils.book_new();
-    
-    // Datos de ejemplo
-    const templateData = [
-      ['nombre', 'email', 'documento', 'apellido', 'rol_id', 'zona_id', 'regional_id', 'agente_id'],
-      ['Juan', 'juan@ejemplo.com', '12345678', 'Pérez', '1', '1', '1', '1'],
-      ['María', 'maria@ejemplo.com', '87654321', 'González', '2', '1', '1', '1']
-    ];
-    
-    const ws = XLSX.utils.aoa_to_sheet(templateData);
-    
-    // Añadir la hoja al workbook
-    XLSX.utils.book_append_sheet(wb, ws, 'Plantilla Usuarios');
-    
-    // Generar buffer
-    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    
-    // Configurar headers para descarga
-    res.setHeader('Content-Disposition', 'attachment; filename=plantilla_usuarios.xlsx');
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    
-    res.send(buffer);
-    
-  } catch (err) {
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error al generar plantilla', 
-      error: err.message 
-    });
+    if (conn) {
+      try {
+        conn.release();
+      } catch (releaseError) {
+        console.error('Error al liberar conexión:', releaseError);
+      }
+    }
   }
 });
 

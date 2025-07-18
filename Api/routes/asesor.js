@@ -665,4 +665,160 @@ router.get('/historial-visitas/:user_id', authenticateToken, requireAsesor, logA
   }
 });
 
+// Endpoint específico para resultados de auditorias
+router.get('/resultados-auditorias/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
+  const { user_id } = req.params;
+
+  // Solo permitir ver sus propios registros
+  if (req.user.userId != user_id) {
+    return res.status(403).json({
+      success: false,
+      message: 'No tienes permisos para acceder a los datos de otro usuario'
+    });
+  }
+
+  let conn;
+  try {
+    conn = await getConnection();
+
+    // Consulta específica para auditorias (registros con kpi_precio = 1)
+    const query = `
+      SELECT 
+        registro_servicios.id,
+        registro_servicios.user_id,
+        puntos_venta.codigo,
+        puntos_venta.descripcion,
+        puntos_venta.direccion,
+        puntos_venta.segmento,
+        users.name AS nombre_usuario,
+        users.email AS email_usuario,
+        registro_servicios.fecha_registro,
+        registro_servicios.kpi_volumen,
+        registro_servicios.kpi_precio,
+        registro_servicios.kpi_frecuencia,
+
+        CASE
+            WHEN kpi_precio = 1 THEN 'Precio'
+            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Frecuencia'
+            ELSE 'Otro'
+        END AS tipo_accion,
+
+        -- Si no hay registro asociado, el estado será 1 (En Revisión)
+        IFNULL(registros_mistery_shopper.id_estado, 1) AS estado_mystery,
+
+        -- Si no hay hallazgo registrado, mostrar 'Ninguno'
+        IFNULL(registros_mistery_shopper.hallazgo, 'Ninguno') AS hallazgo,
+
+        registro_servicios.observacion,
+
+        -- Información de productos
+        GROUP_CONCAT(registro_productos.referencia_id) AS referencias,
+        GROUP_CONCAT(registro_productos.presentacion) AS presentaciones,
+        GROUP_CONCAT(registro_productos.precio_sugerido) AS precios_sugeridos,
+        GROUP_CONCAT(registro_productos.precio_real) AS precios_reales,
+
+        -- Información fotográfica
+        GROUP_CONCAT(registro_fotografico_servicios.foto_pop) AS fotos_pop
+
+      FROM registro_servicios
+
+      INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
+      INNER JOIN users ON users.id = puntos_venta.user_id
+
+      LEFT JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
+      LEFT JOIN registro_fotografico_servicios ON registro_fotografico_servicios.id_registro = registro_servicios.id
+
+      LEFT JOIN registros_mistery_shopper 
+          ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
+
+      WHERE registro_servicios.kpi_precio = 1 AND registro_servicios.user_id = ?
+
+      GROUP BY
+          registro_servicios.id,
+          registro_servicios.user_id,
+          puntos_venta.codigo,
+          puntos_venta.descripcion,
+          puntos_venta.direccion,
+          puntos_venta.segmento,
+          users.name,
+          users.email,
+          registro_servicios.fecha_registro,
+          registro_servicios.kpi_volumen,
+          registro_servicios.kpi_precio,
+          registro_servicios.kpi_frecuencia,
+          tipo_accion,
+          estado_mystery,
+          hallazgo,
+          registro_servicios.observacion
+
+      ORDER BY
+          registro_servicios.fecha_registro DESC,
+          registro_servicios.created_at DESC
+    `;
+
+    const [rows] = await conn.execute(query, [user_id]);
+
+    // Procesar datos para incluir información adicional de auditorias
+    const datosProcessados = rows.map(row => {
+      // Procesar fotos en formato de array si hay datos
+      const fotos = [];
+      if (row.fotos_pop) {
+        const fotosArray = row.fotos_pop.split(',');
+        fotosArray.forEach(foto => {
+          if (foto.trim()) {
+            fotos.push({
+              ruta_archivo: foto.trim(),
+              tipo: 'foto_pop'
+            });
+          }
+        });
+      }
+
+      // Procesar productos en formato de array si hay datos
+      const productos = [];
+      if (row.referencias) {
+        const referencias = row.referencias.split(',');
+        const presentaciones = row.presentaciones ? row.presentaciones.split(',') : [];
+        const preciosSugeridos = row.precios_sugeridos ? row.precios_sugeridos.split(',') : [];
+        const preciosReales = row.precios_reales ? row.precios_reales.split(',') : [];
+
+        referencias.forEach((ref, index) => {
+          productos.push({
+            referencia: ref.trim(),
+            presentacion: presentaciones[index] ? presentaciones[index].trim() : 'N/A',
+            precio_sugerido: preciosSugeridos[index] ? preciosSugeridos[index].trim() : 'N/A',
+            precio_real: preciosReales[index] ? preciosReales[index].trim() : 'N/A'
+          });
+        });
+      }
+
+      return {
+        ...row,
+        fotos,
+        productos,
+        estado: row.estado_mystery === 1 ? 'En Revisión' : 
+                row.estado_mystery === 2 ? 'Aprobado' : 
+                row.estado_mystery === 3 ? 'Rechazado' : 'En Revisión',
+        estado_agente: row.hallazgo !== 'Ninguno' ? 'Con Hallazgos' : 'Sin Hallazgos'
+      };
+    });
+
+    res.json({
+      success: true,
+      data: datosProcessados,
+      total: datosProcessados.length
+    });
+
+  } catch (err) {
+    console.error('Error obteniendo resultados de auditorias:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener resultados de auditorias',
+      error: err.message
+    });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 export default router;

@@ -157,7 +157,6 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
         {/* Header del modal */}
         <div className="modal-header">
           <div className="modal-title">
-            <span className="modal-icon">📋</span>
             <div className="title-content">
               <h2>Detalles del Registro</h2>
               <small>

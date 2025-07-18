@@ -204,6 +204,7 @@
   flex-wrap: wrap;
   justify-content: center;
   align-items: end;
+  padding: 0px 20px;
 }
 
 .filter-group {
