@@ -1,35 +1,11 @@
 import express from 'express';
-import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { getConnection } from '../db.js';
+import { upload } from '../config/multer.js';
+import { buildFileUrl, getCurrentStorageConfig } from '../config/storage.js';
 
 const router = express.Router();
-
-// Configuración de multer para guardar la foto en VPS Hostinger
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const today = new Date();
-    const folder = today.toISOString().slice(0, 10); // YYYY-MM-DD
-    const baseDir = '/home/u123456789/sub/public_html/storage';
-    const dayDir = path.join(baseDir, folder);
-
-    // Crea las carpetas si no existen
-    if (!fs.existsSync(baseDir)) fs.mkdirSync(baseDir, { recursive: true });
-    if (!fs.existsSync(dayDir)) fs.mkdirSync(dayDir, { recursive: true });
-
-    cb(null, dayDir);
-  },
-  filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname);
-    const now = new Date();
-    const timestamp = Date.now();
-    const hora = now.toTimeString().slice(0,8).replace(/:/g, '-'); // HH-MM-SS
-    const name = `${timestamp}-${hora}${ext}`;
-    cb(null, name);
-  }
-});
-const upload = multer({ storage });
 
 // Alrededor de la línea 40, cambiar el JSON.parse por una función segura
 const parseJSONSafely = (data) => {
@@ -90,25 +66,22 @@ router.post('/cargar-registro-pdv', upload.any(), async (req, res) => {
 
     conn = await getConnection();
 
-    // 1. Guardar fotos en carpetas por día y obtener URLs
+    // 1. Procesar fotos subidas y construir URLs completas
     const today = new Date();
     const folder = today.toISOString().slice(0, 10); // YYYY-MM-DD
-    const publicDir = path.join(process.cwd(), 'public');
-    const storageDir = path.join(publicDir, 'storage');
-    const dayDir = path.join(storageDir, folder);
-    if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir);
-    if (!fs.existsSync(storageDir)) fs.mkdirSync(storageDir);
-    if (!fs.existsSync(dayDir)) fs.mkdirSync(dayDir);
 
     // Ajuste: Mapear los archivos subidos a los arrays correctos de nombres, aceptando fieldnames con índice (ej: factura_0, implementacion_0)
     const facturaNombres = [];
     const implementacionNombres = [];
+    
     if (Array.isArray(req.files)) {
       for (const file of req.files) {
         if (file.fieldname.startsWith('factura')) {
           facturaNombres.push(file.filename);
+          console.log(`📸 Foto factura guardada: ${file.path}`);
         } else if (file.fieldname.startsWith('implementacion')) {
           implementacionNombres.push(file.filename);
+          console.log(`📸 Foto implementación guardada: ${file.path}`);
         }
       }
     }
@@ -135,9 +108,14 @@ router.post('/cargar-registro-pdv', upload.any(), async (req, res) => {
       }
     }
 
-    // Armar arrays de URLs definitivos
-    const facturaUrls = facturaNombres.map(nombre => `storage/${folder}/${nombre}`);
-    const implementacionUrls = implementacionNombres.map(nombre => `storage/${folder}/${nombre}`);
+    // Armar arrays de rutas relativas para guardar en BD (no URLs completas)
+    const facturaUrls = facturaNombres.map(nombre => `/uploads/${folder}/${nombre}`);
+    const implementacionUrls = implementacionNombres.map(nombre => `/uploads/${folder}/${nombre}`);
+
+    console.log(`💾 Rutas factura en BD:`, facturaUrls);
+    console.log(`💾 Rutas implementación en BD:`, implementacionUrls);
+    console.log(`🌐 URLs públicas factura:`, facturaUrls.map(ruta => buildFileUrl(ruta.replace('/uploads/', ''))));
+    console.log(`🌐 URLs públicas implementación:`, implementacionUrls.map(ruta => buildFileUrl(ruta.replace('/uploads/', ''))));
 
     // 2. Insertar en registro_servicios
     // Determinar los KPIs

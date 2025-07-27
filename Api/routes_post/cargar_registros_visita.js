@@ -1,35 +1,11 @@
 import express from 'express';
-import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { getConnection } from '../db.js';
+import { upload } from '../config/multer.js';
+import { buildFileUrl, getCurrentStorageConfig } from '../config/storage.js';
 
 const router = express.Router();
-
-// Configuración de multer para guardar la foto en VPS Hostinger
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const today = new Date();
-    const folder = today.toISOString().slice(0, 10); // YYYY-MM-DD
-    const baseDir = '/home/u123456789/sub/public_html/storage';
-    const dayDir = path.join(baseDir, folder);
-
-    // Crea las carpetas si no existen
-    if (!fs.existsSync(baseDir)) fs.mkdirSync(baseDir, { recursive: true });
-    if (!fs.existsSync(dayDir)) fs.mkdirSync(dayDir, { recursive: true });
-
-    cb(null, dayDir);
-  },
-  filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname);
-    const now = new Date();
-    const timestamp = Date.now();
-    const hora = now.toTimeString().slice(0,8).replace(/:/g, '-'); // HH-MM-SS
-    const name = `${timestamp}-${hora}${ext}`;
-    cb(null, name);
-  }
-});
-const upload = multer({ storage });
 
 // Alrededor de la línea 40, cambiar el JSON.parse por una función segura
 const parseJSONSafely = (data) => {
@@ -55,6 +31,11 @@ router.post('/cargar-registros-visita', upload.any(), async (req, res) => {
     let registro = req.body;
     console.log('req.body:', req.body);
     console.log('req.files:', req.files);
+    
+    // Capturar is_seguimiento directamente desde req.body
+    const is_seguimiento = req.body.is_seguimiento;
+    console.log('🔍 is_seguimiento recibido:', is_seguimiento, 'tipo:', typeof is_seguimiento);
+    
     // Forzar que productos sea array aunque venga null/undefined
     if (!Array.isArray(registro.productos)) {
       registro.productos = [];
@@ -67,6 +48,7 @@ router.post('/cargar-registros-visita', upload.any(), async (req, res) => {
       }
     }
     const { pdv_id, fecha, fotos, productos, user_id } = registro;
+    
     if (!registro || typeof registro !== 'object') {
       return res.status(400).json({ success: false, message: 'El objeto de registro es inválido' });
     }
@@ -79,15 +61,19 @@ router.post('/cargar-registros-visita', upload.any(), async (req, res) => {
 
     conn = await getConnection();
 
-    // 1. Guardar foto de seguimiento en carpeta y obtener URL
+    // 1. Guardar foto de seguimiento y obtener ruta relativa para BD
     let fotoSeguimientoUrl = null;
     if (req.files && req.files.length > 0) {
       // Solo tomamos la primera foto subida (foto_seguimiento)
       const file = req.files.find(f => f.fieldname === 'foto_seguimiento');
       if (file) {
-        // Guardar la ruta relativa para la BD
+        // Guardar solo la ruta relativa en BD (no URL completa)
         const folder = new Date().toISOString().slice(0, 10);
-        fotoSeguimientoUrl = `storage/${folder}/${file.filename}`;
+        fotoSeguimientoUrl = `/uploads/${folder}/${file.filename}`;
+        
+        console.log(`📸 Foto guardada: ${file.path}`);
+        console.log(`� Ruta en BD: ${fotoSeguimientoUrl}`);
+        console.log(`🌐 URL pública será: ${buildFileUrl(`${folder}/${file.filename}`)}`);
       }
     }
 
@@ -113,9 +99,12 @@ router.post('/cargar-registros-visita', upload.any(), async (req, res) => {
 
     // 3. Insertar foto en registro_fotografico_servicios (campo foto_seguimiento)
     if (fotoSeguimientoUrl) {
+      // Convertir is_seguimiento a entero (puede venir como string desde FormData)
+      const isSeguimientoValue = parseInt(is_seguimiento) === 1 ? 1 : 0;
+      console.log('📷 Guardando foto con IsSeguimiento:', isSeguimientoValue, 'Original:', is_seguimiento, 'Tipo original:', typeof is_seguimiento);
       await conn.execute(
-        `INSERT INTO registro_fotografico_servicios (id_registro, foto_seguimiento) VALUES (?, ?)`,
-        [registro_id, fotoSeguimientoUrl]
+        `INSERT INTO registro_fotografico_servicios (id_registro, foto_seguimiento, IsSeguimiento) VALUES (?, ?, ?)`,
+        [registro_id, fotoSeguimientoUrl, isSeguimientoValue]
       );
     }
 

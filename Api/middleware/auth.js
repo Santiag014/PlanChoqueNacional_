@@ -91,7 +91,5 @@ export const logAccess = (req, res, next) => {
   const timestamp = new Date().toISOString();
   const user = req.user ? `${req.user.nombre} (${req.user.email})` : 'Usuario no autenticado';
   const route = `${req.method} ${req.originalUrl}`;
-  
-  //console.log(`[${timestamp}] ${user} - ${route}`);
   next();
 };

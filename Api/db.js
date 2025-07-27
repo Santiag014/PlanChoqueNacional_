@@ -7,8 +7,9 @@ const dbConfig = {
   database: 'u315067549_terpel_dev',
   port: 3306,
   waitForConnections: true,
-  connectionLimit: 50,
+  connectionLimit: 500,
   queueLimit: 0,
+  
   // Configuración de timeouts corregida para MySQL2
   connectTimeout: 60000, // 60 segundos para conexión inicial
   idleTimeout: 300000,   // 5 minutos para conexiones inactivas

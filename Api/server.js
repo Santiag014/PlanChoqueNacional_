@@ -4,7 +4,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import authRouter from './routes/auth.js';
-import usersRouter from './routes/users.js';
+// import usersRouter from './routes/users.js'; // Comentado temporalmente - archivo no existe
 import cargarVisitas from './routes_post/cargar_registros_pdv.js';
 import cargarVisitas_Frecuencia from './routes_post/cargar_registros_visita.js';
 import mercadeoRouter from './routes/mercadeo.js';
@@ -14,10 +14,44 @@ import misteryShopperRouter from './routes/mistery.shopper.js';
 import otRouter from './routes/ot.js';
 import bulkUploadRouter from './routes/bulk-upload.js';
 import { getConnection } from './db.js';
+import { getCurrentStorageConfig, ensureStorageDirectories } from './config/storage.js';
 
 const app = express();
 
-app.use(cors());
+// Configurar CORS para permitir el frontend remoto
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:5173', // Frontend local
+      'http://localhost:3000', // Frontend local alternativo
+      'https://plandelamejorenergia.com', // Frontend en producción
+      'https://www.plandelamejorenergia.com' // Con www
+    ];
+    
+    // Permitir requests sin origin (móviles, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('No permitido por CORS'));
+    }
+  },
+  credentials: true
+};
+
+app.use(cors(corsOptions));
+
+// Inicializar configuración de storage
+const storageConfig = getCurrentStorageConfig();
+console.log(`🔧 Configuración de storage (${process.env.NODE_ENV || 'development'}):`, storageConfig);
+
+// Asegurar que existan las carpetas de storage
+try {
+  ensureStorageDirectories(storageConfig.basePath);
+} catch (error) {
+  console.error('❌ Error inicializando storage:', error);
+}
 
 // Middleware para parsear JSON (aplicar globalmente)
 app.use(express.json());
@@ -29,7 +63,7 @@ app.use('/api/bulk-upload', bulkUploadRouter);
 
 // Luego, rutas que reciben JSON
 app.use('/api', authRouter);
-app.use('/api', usersRouter);
+// app.use('/api', usersRouter); // Comentado temporalmente - archivo no existe
 app.use('/api/mercadeo', mercadeoRouter);
 app.use('/api', publicRouter);
 app.use('/api/asesor', asesorRouter);
@@ -56,15 +90,19 @@ app.get('/api/check-db', async (req, res) => {
 
 // Endpoint para verificar la configuración de storage
 app.get('/api/storage-info', (req, res) => {
+  const config = getCurrentStorageConfig();
   res.json({
-    storageBasePath: '/home/u123456789/sub/public_html/storage',
-    publicUrl: 'https://api.plandelamejorenergia.com/storage',
-    message: 'Configuración de storage para VPS Hostinger'
+    environment: process.env.NODE_ENV || 'development',
+    storageBasePath: config.basePath,
+    publicUrl: config.publicUrl,
+    webUrl: config.webUrl,
+    message: 'Configuración de storage actualizada'
   });
 });
 
-// Servir la carpeta de storage para archivos subidos (VPS Hostinger)
-app.use('/storage', express.static('/home/u123456789/sub/public_html/storage'));
+// Servir la carpeta de storage para archivos subidos
+app.use('/uploads', express.static(storageConfig.basePath));
+app.use('/storage', express.static(storageConfig.basePath));
 
 // --- ESTA LÍNEA DEBE IR AL FINAL ---
 app.use(express.static(distPath));

@@ -5,96 +5,9 @@ import XLSX from 'xlsx';
 
 const router = express.Router();
 
-// Consulta básica de historial
-router.get('/historial-registros-asesor/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
-  const { user_id } = req.params;
-
-  // Solo permitir ver sus propios registros
-  if (req.user.userId != user_id) {
-    return res.status(403).json({
-      success: false,
-      message: 'No tienes permisos para acceder a los datos de otro usuario'
-    });
-  }
-
-  let conn;
-  try {
-    conn = await getConnection();
-
-    // Consulta básica solicitada
-    const query = `
-      SELECT 
-        registro_servicios.id,
-        puntos_venta.codigo,
-        puntos_venta.descripcion,
-        puntos_venta.direccion,
-        users.name,
-        registro_servicios.fecha_registro,
-        CASE
-            WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Volumen / Precio'
-            WHEN kpi_volumen = 1 THEN 'Volumen'
-            WHEN kpi_precio = 1 THEN 'Precio'
-            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Frecuencia'
-            ELSE 'Otro'
-        END AS tipo_kpi,
-        CASE
-            WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Implementacion'
-            WHEN kpi_volumen = 1 THEN 'Implementacion'
-            WHEN kpi_precio = 1 THEN 'Implementacion'
-            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Visita'
-            ELSE 'Otro'
-        END AS tipo_accion,
-        e1.descripcion AS estado,
-        e2.descripcion AS estado_agente,
-        registro_servicios.observacion,
-        GROUP_CONCAT(registro_productos.referencia_id) AS referencias,
-        GROUP_CONCAT(registro_productos.presentacion) AS presentaciones,
-        GROUP_CONCAT(registro_productos.cantidad_cajas) AS cantidades_cajas,
-        GROUP_CONCAT(registro_productos.conversion_galonaje) AS galonajes,
-        GROUP_CONCAT(registro_productos.precio_sugerido) AS precios_sugeridos,
-        GROUP_CONCAT(registro_productos.precio_real) AS precios_reales,
-        GROUP_CONCAT(registro_fotografico_servicios.foto_factura) AS fotos_factura,
-        GROUP_CONCAT(registro_fotografico_servicios.foto_pop) AS fotos_pop,
-        GROUP_CONCAT(registro_fotografico_servicios.foto_seguimiento) AS fotos_seguimiento
-      FROM registro_servicios
-      INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
-      INNER JOIN users ON users.id = registro_servicios.user_id
-      INNER JOIN estados e1 ON e1.id = registro_servicios.estado_id
-      INNER JOIN estados e2 ON e2.id = registro_servicios.estado_agente_id
-      LEFT JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
-      LEFT JOIN registro_fotografico_servicios ON registro_fotografico_servicios.id_registro = registro_servicios.id
-      WHERE registro_servicios.user_id = ?
-      GROUP BY 
-        registro_servicios.id,
-        puntos_venta.codigo,
-        puntos_venta.descripcion,
-        puntos_venta.direccion,
-        users.name,
-        registro_servicios.fecha_registro,
-        tipo_accion,
-        e1.descripcion,
-        e2.descripcion,
-        registro_servicios.observacion
-    `;
-    const [rows] = await conn.execute(query, [user_id]);
-
-    res.json({
-      success: true,
-      data: rows,
-      total: rows.length
-    });
-
-  } catch (err) {
-    console.error('Error obteniendo historial de registros:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener historial de registros',
-      error: err.message
-    });
-  } finally {
-    if (conn) conn.release();
-  }
-});
+// ========================================================================
+// 📊 ENDPOINTS PARA DASHBOARD ASESOR - MÉTRICAS PRINCIPALES
+// ========================================================================
 
 // ENDPOINT DE COBERTURA REAL PARA DASHBOARD ASESOR
 router.get('/cobertura/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
@@ -342,7 +255,7 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
   }
 });
 
-// Endpoint para consultar información de precios por PDV
+// ENDPOINT DE PRECIOS PARA DASHBOARD ASESOR
 router.get('/precios/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
   const { user_id } = req.params;
 
@@ -407,8 +320,12 @@ router.get('/precios/:user_id', authenticateToken, requireAsesor, logAccess, asy
   }
 });
 
-// Endpoint para consultar información de profundidad por PDV
-router.get('/profundidad/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
+// ========================================================================
+// 📋 ENDPOINTS DE HISTORIAL Y CONSULTAS BÁSICAS
+// ========================================================================
+
+// HISTORIAL BÁSICO DE REGISTROS DEL ASESOR
+router.get('/historial-registros-asesor/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
   const { user_id } = req.params;
 
   // Solo permitir ver sus propios registros
@@ -422,65 +339,243 @@ router.get('/profundidad/:user_id', authenticateToken, requireAsesor, logAccess,
   let conn;
   try {
     conn = await getConnection();
-    
-    // 1. Obtener todos los PDVs asignados al asesor (igual que en cobertura)
-    const [pdvs] = await conn.execute(
-      `SELECT id, codigo, descripcion AS nombre, direccion
-       FROM puntos_venta
-       WHERE user_id = ?`, [user_id]
-    );
-    
-    // 2. Obtener PDVs con al menos una nueva referencia vendida
-    const [conProfundidadQuery] = await conn.execute(
-      `SELECT 
-          rs.pdv_id,
-          COUNT(*) AS nuevas_referencias
-       FROM registro_servicios rs
-       LEFT JOIN registro_productos rp ON rp.registro_id = rs.id
-       LEFT JOIN portafolio_pdv pp 
-          ON pp.pdv_id = rs.pdv_id AND pp.referencia_id = rp.referencia_id
-       WHERE pp.referencia_id IS NULL AND rs.user_id = ?
-       GROUP BY rs.pdv_id
-       HAVING nuevas_referencias > 0`, [user_id]
-    );
-    
-    const pdvsConProfundidad = new Set(conProfundidadQuery.map(r => r.pdv_id));
-    
-    // 3. Cálculo de puntos por profundidad
-    const totalAsignados = pdvs.length;
-    const totalConProfundidad = pdvsConProfundidad.size;
-    const puntosProfundidad = totalAsignados > 0 ? Math.round((totalConProfundidad / totalAsignados) * 200) : 0;
 
-    // 4. Asignar puntos individuales por PDV
-    const puntosPorPDV = totalAsignados > 0 ? Math.floor(200 / totalAsignados) : 0;
-    const pdvsDetalle = pdvs.map(pdv => ({
-      ...pdv,
-      estado: pdvsConProfundidad.has(pdv.id) ? 'REGISTRADO' : 'NO REGISTRADO',
-      puntos: pdvsConProfundidad.has(pdv.id) ? puntosPorPDV : 0
-    }));
-    
+    // Consulta básica solicitada
+    const query = `
+      SELECT 
+        registro_servicios.id,
+        puntos_venta.codigo,
+        puntos_venta.descripcion,
+        puntos_venta.direccion,
+        users.name,
+        registro_servicios.fecha_registro,
+        CASE
+            WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Volumen / Precio'
+            WHEN kpi_volumen = 1 THEN 'Volumen'
+            WHEN kpi_precio = 1 THEN 'Precio'
+            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Frecuencia'
+            ELSE 'Otro'
+        END AS tipo_kpi,
+        CASE
+            WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Implementacion'
+            WHEN kpi_volumen = 1 THEN 'Implementacion'
+            WHEN kpi_precio = 1 THEN 'Implementacion'
+            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Visita'
+            ELSE 'Otro'
+        END AS tipo_accion,
+        e1.descripcion AS estado,
+        e2.descripcion AS estado_agente,
+        registro_servicios.observacion,
+        GROUP_CONCAT(registro_productos.referencia_id) AS referencias,
+        GROUP_CONCAT(registro_productos.presentacion) AS presentaciones,
+        GROUP_CONCAT(registro_productos.cantidad_cajas) AS cantidades_cajas,
+        GROUP_CONCAT(registro_productos.conversion_galonaje) AS galonajes,
+        GROUP_CONCAT(registro_productos.precio_sugerido) AS precios_sugeridos,
+        GROUP_CONCAT(registro_productos.precio_real) AS precios_reales,
+        GROUP_CONCAT(registro_fotografico_servicios.foto_factura) AS fotos_factura,
+        GROUP_CONCAT(registro_fotografico_servicios.foto_pop) AS fotos_pop,
+        GROUP_CONCAT(registro_fotografico_servicios.foto_seguimiento) AS fotos_seguimiento
+      FROM registro_servicios
+      INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
+      INNER JOIN users ON users.id = registro_servicios.user_id
+      INNER JOIN estados e1 ON e1.id = registro_servicios.estado_id
+      INNER JOIN estados e2 ON e2.id = registro_servicios.estado_agente_id
+      LEFT JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
+      LEFT JOIN registro_fotografico_servicios ON registro_fotografico_servicios.id_registro = registro_servicios.id
+      WHERE registro_servicios.user_id = ?
+      GROUP BY 
+        registro_servicios.id,
+        puntos_venta.codigo,
+        puntos_venta.descripcion,
+        puntos_venta.direccion,
+        users.name,
+        registro_servicios.fecha_registro,
+        tipo_accion,
+        e1.descripcion,
+        e2.descripcion,
+        registro_servicios.observacion
+    `;
+    const [rows] = await conn.execute(query, [user_id]);
+
     res.json({
       success: true,
-      pdvs: pdvsDetalle,
-      totalAsignados,
-      totalConProfundidad,
-      puntosProfundidad,
-      porcentaje: totalAsignados > 0 ? Math.round((totalConProfundidad / totalAsignados) * 100) : 0
+      data: rows,
+      total: rows.length
     });
-    
-  } catch (error) {
-    console.error('Error al consultar datos de profundidad:', error);
+
+  } catch (err) {
+    console.error('Error obteniendo historial de registros:', err);
     res.status(500).json({
       success: false,
-      message: 'Error al consultar información de profundidad',
-      error: error.message
+      message: 'Error al obtener historial de registros',
+      error: err.message
     });
   } finally {
     if (conn) conn.release();
   }
 });
 
-// Endpoint específico para historial de visitas (descarga Excel con información completa)
+// RESULTADOS ESPECÍFICOS DE AUDITORÍAS (MYSTERY SHOPPER)
+router.get('/resultados-auditorias/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
+  const { user_id } = req.params;
+
+  // Solo permitir ver sus propios registros
+  if (req.user.userId != user_id) {
+    return res.status(403).json({
+      success: false,
+      message: 'No tienes permisos para acceder a los datos de otro usuario'
+    });
+  }
+
+  let conn;
+  try {
+    conn = await getConnection();
+
+    // Consulta específica para auditorias (registros con kpi_precio = 1)
+    const query = `
+      SELECT 
+        registro_servicios.id,
+        registro_servicios.user_id,
+        puntos_venta.codigo,
+        puntos_venta.descripcion,
+        puntos_venta.direccion,
+        puntos_venta.segmento,
+        users.name AS nombre_usuario,
+        users.email AS email_usuario,
+        registro_servicios.fecha_registro,
+        registro_servicios.kpi_volumen,
+        registro_servicios.kpi_precio,
+        registro_servicios.kpi_frecuencia,
+
+        CASE
+            WHEN kpi_precio = 1 THEN 'Precio'
+            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Frecuencia'
+            ELSE 'Otro'
+        END AS tipo_accion,
+
+        -- Si no hay registro asociado, el estado será 1 (En Revisión)
+        IFNULL(registros_mistery_shopper.id_estado, 1) AS estado_mystery,
+
+        -- Si no hay hallazgo registrado, mostrar 'Ninguno'
+        IFNULL(registros_mistery_shopper.hallazgo, 'Ninguno') AS hallazgo,
+
+        registro_servicios.observacion,
+
+        -- Información de productos
+        GROUP_CONCAT(registro_productos.referencia_id) AS referencias,
+        GROUP_CONCAT(registro_productos.presentacion) AS presentaciones,
+        GROUP_CONCAT(registro_productos.precio_sugerido) AS precios_sugeridos,
+        GROUP_CONCAT(registro_productos.precio_real) AS precios_reales,
+
+        -- Información fotográfica
+        GROUP_CONCAT(registro_fotografico_servicios.foto_pop) AS fotos_pop
+
+      FROM registro_servicios
+
+      INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
+      INNER JOIN users ON users.id = puntos_venta.user_id
+
+      LEFT JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
+      LEFT JOIN registro_fotografico_servicios ON registro_fotografico_servicios.id_registro = registro_servicios.id
+
+      LEFT JOIN registros_mistery_shopper 
+          ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
+
+      WHERE registro_servicios.kpi_precio = 1 AND registro_servicios.user_id = ?
+
+      GROUP BY
+          registro_servicios.id,
+          registro_servicios.user_id,
+          puntos_venta.codigo,
+          puntos_venta.descripcion,
+          puntos_venta.direccion,
+          puntos_venta.segmento,
+          users.name,
+          users.email,
+          registro_servicios.fecha_registro,
+          registro_servicios.kpi_volumen,
+          registro_servicios.kpi_precio,
+          registro_servicios.kpi_frecuencia,
+          tipo_accion,
+          estado_mystery,
+          hallazgo,
+          registro_servicios.observacion
+
+      ORDER BY
+          registro_servicios.fecha_registro DESC,
+          registro_servicios.created_at DESC
+    `;
+
+    const [rows] = await conn.execute(query, [user_id]);
+
+    // Procesar datos para incluir información adicional de auditorias
+    const datosProcessados = rows.map(row => {
+      // Procesar fotos en formato de array si hay datos
+      const fotos = [];
+      if (row.fotos_pop) {
+        const fotosArray = row.fotos_pop.split(',');
+        fotosArray.forEach(foto => {
+          if (foto.trim()) {
+            fotos.push({
+              ruta_archivo: foto.trim(),
+              tipo: 'foto_pop'
+            });
+          }
+        });
+      }
+
+      // Procesar productos en formato de array si hay datos
+      const productos = [];
+      if (row.referencias) {
+        const referencias = row.referencias.split(',');
+        const presentaciones = row.presentaciones ? row.presentaciones.split(',') : [];
+        const preciosSugeridos = row.precios_sugeridos ? row.precios_sugeridos.split(',') : [];
+        const preciosReales = row.precios_reales ? row.precios_reales.split(',') : [];
+
+        referencias.forEach((ref, index) => {
+          productos.push({
+            referencia: ref.trim(),
+            presentacion: presentaciones[index] ? presentaciones[index].trim() : 'N/A',
+            precio_sugerido: preciosSugeridos[index] ? preciosSugeridos[index].trim() : 'N/A',
+            precio_real: preciosReales[index] ? preciosReales[index].trim() : 'N/A'
+          });
+        });
+      }
+
+      return {
+        ...row,
+        fotos,
+        productos,
+        estado: row.estado_mystery === 1 ? 'En Revisión' : 
+                row.estado_mystery === 2 ? 'Aprobado' : 
+                row.estado_mystery === 3 ? 'Rechazado' : 'En Revisión',
+        estado_agente: row.hallazgo !== 'Ninguno' ? 'Con Hallazgos' : 'Sin Hallazgos'
+      };
+    });
+
+    res.json({
+      success: true,
+      data: datosProcessados,
+      total: datosProcessados.length
+    });
+
+  } catch (err) {
+    console.error('Error obteniendo resultados de auditorias:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener resultados de auditorias',
+      error: err.message
+    });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// ========================================================================
+// 📊 ENDPOINTS DE EXPORTACIÓN A EXCEL - REPORTES DETALLADOS
+// ========================================================================
+
+// HISTORIAL COMPLETO DE VISITAS - EXPORTACIÓN A EXCEL
 router.get('/historial-visitas/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
   const { user_id } = req.params;
 
@@ -665,15 +760,18 @@ router.get('/historial-visitas/:user_id', authenticateToken, requireAsesor, logA
   }
 });
 
-// Endpoint específico para resultados de auditorias
-router.get('/resultados-auditorias/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
-  const { user_id } = req.params;
+// ========================================================================
+// 📋 ENDPOINT PARA CONSULTAR PRECIO SUGERIDO DE REFERENCIA
+// ========================================================================
 
-  // Solo permitir ver sus propios registros
-  if (req.user.userId != user_id) {
-    return res.status(403).json({
+// Endpoint para consultar precio sugerido por referencia y presentación
+router.get('/precio-sugerido/:referencia/:presentacion', authenticateToken, requireAsesor, logAccess, async (req, res) => {
+  const { referencia, presentacion } = req.params;
+
+  if (!referencia || !presentacion) {
+    return res.status(400).json({
       success: false,
-      message: 'No tienes permisos para acceder a los datos de otro usuario'
+      message: 'Referencia y presentación son requeridos'
     });
   }
 
@@ -681,139 +779,239 @@ router.get('/resultados-auditorias/:user_id', authenticateToken, requireAsesor, 
   try {
     conn = await getConnection();
 
-    // Consulta específica para auditorias (registros con kpi_precio = 1)
+    // Consulta para obtener el precio sugerido según referencia y presentación
     const query = `
       SELECT 
-        registro_servicios.id,
-        registro_servicios.user_id,
-        puntos_venta.codigo,
-        puntos_venta.descripcion,
-        puntos_venta.direccion,
-        puntos_venta.segmento,
-        users.name AS nombre_usuario,
-        users.email AS email_usuario,
-        registro_servicios.fecha_registro,
-        registro_servicios.kpi_volumen,
-        registro_servicios.kpi_precio,
-        registro_servicios.kpi_frecuencia,
-
-        CASE
-            WHEN kpi_precio = 1 THEN 'Precio'
-            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Frecuencia'
-            ELSE 'Otro'
-        END AS tipo_accion,
-
-        -- Si no hay registro asociado, el estado será 1 (En Revisión)
-        IFNULL(registros_mistery_shopper.id_estado, 1) AS estado_mystery,
-
-        -- Si no hay hallazgo registrado, mostrar 'Ninguno'
-        IFNULL(registros_mistery_shopper.hallazgo, 'Ninguno') AS hallazgo,
-
-        registro_servicios.observacion,
-
-        -- Información de productos
-        GROUP_CONCAT(registro_productos.referencia_id) AS referencias,
-        GROUP_CONCAT(registro_productos.presentacion) AS presentaciones,
-        GROUP_CONCAT(registro_productos.precio_sugerido) AS precios_sugeridos,
-        GROUP_CONCAT(registro_productos.precio_real) AS precios_reales,
-
-        -- Información fotográfica
-        GROUP_CONCAT(registro_fotografico_servicios.foto_pop) AS fotos_pop
-
-      FROM registro_servicios
-
-      INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
-      INNER JOIN users ON users.id = puntos_venta.user_id
-
-      LEFT JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
-      LEFT JOIN registro_fotografico_servicios ON registro_fotografico_servicios.id_registro = registro_servicios.id
-
-      LEFT JOIN registros_mistery_shopper 
-          ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
-
-      WHERE registro_servicios.kpi_precio = 1 AND registro_servicios.user_id = ?
-
-      GROUP BY
-          registro_servicios.id,
-          registro_servicios.user_id,
-          puntos_venta.codigo,
-          puntos_venta.descripcion,
-          puntos_venta.direccion,
-          puntos_venta.segmento,
-          users.name,
-          users.email,
-          registro_servicios.fecha_registro,
-          registro_servicios.kpi_volumen,
-          registro_servicios.kpi_precio,
-          registro_servicios.kpi_frecuencia,
-          tipo_accion,
-          estado_mystery,
-          hallazgo,
-          registro_servicios.observacion
-
-      ORDER BY
-          registro_servicios.fecha_registro DESC,
-          registro_servicios.created_at DESC
+        referencias.descripcion,
+        referencias_precios.presentacion,
+        referencias_precios.precio_sugerido
+      FROM referencias
+      INNER JOIN referencias_precios ON referencias_precios.referencia_id = referencias.id
+      WHERE referencias.descripcion = ? AND referencias_precios.presentacion = ?
+      LIMIT 1
     `;
+    
+    const [resultado] = await conn.execute(query, [referencia, presentacion]);
 
-    const [rows] = await conn.execute(query, [user_id]);
+    if (resultado.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No se encontró precio sugerido para esta referencia y presentación'
+      });
+    }
 
-    // Procesar datos para incluir información adicional de auditorias
-    const datosProcessados = rows.map(row => {
-      // Procesar fotos en formato de array si hay datos
-      const fotos = [];
-      if (row.fotos_pop) {
-        const fotosArray = row.fotos_pop.split(',');
-        fotosArray.forEach(foto => {
-          if (foto.trim()) {
-            fotos.push({
-              ruta_archivo: foto.trim(),
-              tipo: 'foto_pop'
-            });
-          }
-        });
-      }
-
-      // Procesar productos en formato de array si hay datos
-      const productos = [];
-      if (row.referencias) {
-        const referencias = row.referencias.split(',');
-        const presentaciones = row.presentaciones ? row.presentaciones.split(',') : [];
-        const preciosSugeridos = row.precios_sugeridos ? row.precios_sugeridos.split(',') : [];
-        const preciosReales = row.precios_reales ? row.precios_reales.split(',') : [];
-
-        referencias.forEach((ref, index) => {
-          productos.push({
-            referencia: ref.trim(),
-            presentacion: presentaciones[index] ? presentaciones[index].trim() : 'N/A',
-            precio_sugerido: preciosSugeridos[index] ? preciosSugeridos[index].trim() : 'N/A',
-            precio_real: preciosReales[index] ? preciosReales[index].trim() : 'N/A'
-          });
-        });
-      }
-
-      return {
-        ...row,
-        fotos,
-        productos,
-        estado: row.estado_mystery === 1 ? 'En Revisión' : 
-                row.estado_mystery === 2 ? 'Aprobado' : 
-                row.estado_mystery === 3 ? 'Rechazado' : 'En Revisión',
-        estado_agente: row.hallazgo !== 'Ninguno' ? 'Con Hallazgos' : 'Sin Hallazgos'
-      };
-    });
+    const precioInfo = resultado[0];
 
     res.json({
       success: true,
-      data: datosProcessados,
-      total: datosProcessados.length
+      data: {
+        referencia: precioInfo.descripcion,
+        presentacion: precioInfo.presentacion,
+        precio_sugerido: precioInfo.precio_sugerido
+      }
     });
 
   } catch (err) {
-    console.error('Error obteniendo resultados de auditorias:', err);
+    console.error('Error consultando precio sugerido:', err);
     res.status(500).json({
       success: false,
-      message: 'Error al obtener resultados de auditorias',
+      message: 'Error al consultar precio sugerido',
+      error: err.message
+    });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// ========================================================================
+//  ENDPOINTS PARA RANKING 
+// ========================================================================
+
+// ENDPOINT PARA RANKING DE ASESORES DE MI EMPRESA
+router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, async (req, res) => {
+  const userId = req.user.userId; // Obtenido del token
+
+  let conn;
+  try {
+    conn = await getConnection();
+
+    // Primero obtener el agente_id del usuario logueado
+    const [miInfo] = await conn.execute(
+      `SELECT agente_id FROM users WHERE id = ?`, [userId]
+    );
+
+    if (!miInfo[0] || !miInfo[0].agente_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Usuario no tiene agente_id asignado'
+      });
+    }
+
+    const miAgenteId = miInfo[0].agente_id;
+
+    // Obtener todos los asesores de la empresa (role_id = 1 y mismo agente_id) con información geográfica
+    const [asesores] = await conn.execute(
+      `SELECT users.id, users.name, users.email, users.agente_id, 
+              departamento.descripcion AS departamento, 
+              depar_ciudades.descripcion AS ciudad,
+              departamento.id AS departamento_id,
+              depar_ciudades.id AS ciudad_id
+       FROM users 
+       INNER JOIN depar_ciudades ON depar_ciudades.id = users.ciudad_id
+       INNER JOIN departamento ON departamento.id = depar_ciudades.id_departamento
+       WHERE rol_id = 1 AND agente_id = ?
+       ORDER BY name`, [miAgenteId]
+    );
+
+    // Para cada asesor, calcular sus puntos usando la misma lógica que mis-puntos-totales
+    const rankingDetallado = [];
+
+    for (const asesor of asesores) {
+      // Puntos por KPI 1 (Volumen) - igual que en mis-puntos-totales
+      const [puntosVolumen] = await conn.execute(
+        `SELECT SUM(registro_puntos.puntos) as totalPuntos
+         FROM registro_servicios
+         INNER JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id
+         WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 1`, [asesor.id]
+      );
+
+      // Puntos por KPI 2 (Precios) - igual que en mis-puntos-totales
+      const [puntosPrecios] = await conn.execute(
+        `SELECT SUM(registro_puntos.puntos) as totalPuntos
+         FROM registro_servicios
+         INNER JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id
+         WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 2`, [asesor.id]
+      );
+
+      // Puntos por KPI 3 (Visitas/Frecuencia) - igual que en mis-puntos-totales
+      const [puntosVisitas] = await conn.execute(
+        `SELECT SUM(registro_puntos.puntos) as totalPuntos
+         FROM registro_servicios
+         INNER JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id
+         WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 3`, [asesor.id]
+      );
+
+      // Calcular totales - convertir a números para evitar concatenación (igual que mis-puntos-totales)
+      const puntosVolumenTotal = Number(puntosVolumen[0]?.totalPuntos) || 0;
+      const puntosPreciosTotal = Number(puntosPrecios[0]?.totalPuntos) || 0;
+      const puntosVisitasTotal = Number(puntosVisitas[0]?.totalPuntos) || 0;
+      const totalGeneral = puntosVolumenTotal + puntosPreciosTotal + puntosVisitasTotal;
+
+      rankingDetallado.push({
+        id: asesor.id,
+        name: asesor.name,
+        email: asesor.email,
+        departamento: asesor.departamento,
+        ciudad: asesor.ciudad,
+        departamento_id: asesor.departamento_id,
+        ciudad_id: asesor.ciudad_id,
+        total_puntos: totalGeneral,
+        es_usuario_actual: asesor.id == userId
+      });
+    }
+
+    // Ordenar por total de puntos (mayor a menor)
+    rankingDetallado.sort((a, b) => b.total_puntos - a.total_puntos);
+
+    // Agregar posiciones
+    rankingDetallado.forEach((asesor, index) => {
+      asesor.posicion = index + 1;
+    });
+
+    // Encontrar la posición del usuario actual
+    const posicionUsuario = rankingDetallado.find(a => a.id == userId);
+
+    // Obtener información del agente/empresa
+    const [agenteInfo] = await conn.execute(
+      `SELECT name as nombre_agente FROM users WHERE id = ?`, [miAgenteId]
+    );
+
+    res.json({
+      success: true,
+      ranking: rankingDetallado,
+      mi_posicion: posicionUsuario ? posicionUsuario.posicion : null,
+      mi_info: posicionUsuario || null,
+      total_asesores: rankingDetallado.length,
+      empresa_info: {
+        agente_id: miAgenteId,
+        nombre_agente: agenteInfo[0]?.nombre_agente || 'No encontrado'
+      }
+    });
+
+  } catch (err) {
+    console.error('Error obteniendo ranking de mi empresa:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener ranking de mi empresa',
+      error: err.message
+    });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// ENDPOINT PARA OBTENER OPCIONES DE FILTROS GEOGRÁFICOS DEL RANKING
+router.get('/ranking-filtros', authenticateToken, requireAsesor, logAccess, async (req, res) => {
+  const userId = req.user.userId;
+
+  let conn;
+  try {
+    conn = await getConnection();
+
+    // Obtener el agente_id del usuario logueado
+    const [miInfo] = await conn.execute(
+      `SELECT agente_id FROM users WHERE id = ?`, [userId]
+    );
+
+    if (!miInfo[0] || !miInfo[0].agente_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Usuario no tiene agente_id asignado'
+      });
+    }
+
+    const miAgenteId = miInfo[0].agente_id;
+
+    // Obtener todos los departamentos únicos de asesores de la empresa
+    const [departamentos] = await conn.execute(
+      `SELECT DISTINCT departamento.id, departamento.descripcion
+       FROM users 
+       INNER JOIN depar_ciudades ON depar_ciudades.id = users.ciudad_id
+       INNER JOIN departamento ON departamento.id = depar_ciudades.id_departamento
+       WHERE users.rol_id = 1 AND users.agente_id = ?
+       ORDER BY departamento.descripcion`, [miAgenteId]
+    );
+
+    // Obtener todas las ciudades únicas de asesores de la empresa
+    const [ciudades] = await conn.execute(
+      `SELECT DISTINCT depar_ciudades.id, depar_ciudades.descripcion, 
+              depar_ciudades.id_departamento
+       FROM users 
+       INNER JOIN depar_ciudades ON depar_ciudades.id = users.ciudad_id
+       INNER JOIN departamento ON departamento.id = depar_ciudades.id_departamento
+       WHERE users.rol_id = 1 AND users.agente_id = ?
+       ORDER BY depar_ciudades.descripcion`, [miAgenteId]
+    );
+
+    res.json({
+      success: true,
+      filtros: {
+        departamentos: [
+          { id: 'todos', descripcion: 'Todos los departamentos' },
+          ...departamentos
+        ],
+        ciudades: [
+          { id: 'todas', descripcion: 'Todas las ciudades', id_departamento: null },
+          ...ciudades
+        ]
+      }
+    });
+
+  } catch (err) {
+    console.error('Error obteniendo filtros de ranking:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener filtros de ranking',
       error: err.message
     });
   } finally {
