@@ -3,6 +3,7 @@ import multer from 'multer';
 import XLSX from 'xlsx';
 import bcrypt from 'bcrypt';
 import { getConnection } from '../db.js';
+import { authenticateToken, requireDirector, logAccess } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -33,8 +34,8 @@ const isValidEmail = (email) => {
   return emailRegex.test(email);
 };
 
-// Endpoint para procesar carga masiva de usuarios
-router.post('/users', upload.single('file'), async (req, res) => {
+// 🔒 Endpoint PROTEGIDO para procesar carga masiva de usuarios - SOLO DIRECTORES
+router.post('/users', authenticateToken, requireDirector, logAccess, upload.single('file'), async (req, res) => {
   let conn;
   
   // Tiempo de inicio para medir duración total del proceso

@@ -783,11 +783,11 @@ router.get('/precio-sugerido/:referencia/:presentacion', authenticateToken, requ
     const query = `
       SELECT 
         referencias.descripcion,
-        referencias_precios.presentacion,
-        referencias_precios.precio_sugerido
+        referencias_productos.presentacion,
+        referencias_productos.precio_sugerido
       FROM referencias
-      INNER JOIN referencias_precios ON referencias_precios.referencia_id = referencias.id
-      WHERE referencias.descripcion = ? AND referencias_precios.presentacion = ?
+      INNER JOIN referencias_productos ON referencias_productos.referencia_id = referencias.id
+      WHERE referencias.descripcion = ? AND referencias_productos.presentacion = ?
       LIMIT 1
     `;
     
@@ -1013,6 +1013,61 @@ router.get('/ranking-filtros', authenticateToken, requireAsesor, logAccess, asyn
       success: false,
       message: 'Error al obtener filtros de ranking',
       error: err.message
+    });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// ========================================================================
+//  ENDPOINTS PARA OBTENER PRESENTACIONES DE REFERENCIAS
+// ========================================================================
+
+router.get('/presentaciones-referencia/:referenciaDescripcion', async (req, res) => {
+  let conn;
+  try {
+    const { referenciaDescripcion } = req.params;
+    
+    console.log('🔍 Consultando presentaciones para referencia:', referenciaDescripcion);
+
+    conn = await getConnection();
+
+    const query = `
+      SELECT 
+        referencias.descripcion as referencia_descripcion,
+        referencias_productos.presentacion, 
+        referencias_productos.conversion_galonaje 
+      FROM referencias_productos	
+      INNER JOIN referencias ON referencias_productos.referencia_id = referencias.id
+      WHERE referencias.descripcion = ?
+      ORDER BY referencias_productos.presentacion
+    `;
+
+    const [results] = await conn.execute(query, [referenciaDescripcion]);
+
+    console.log('📋 Resultados encontrados:', results);
+
+    if (results.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No se encontraron presentaciones para esta referencia',
+        data: []
+      });
+    }
+
+    res.json({
+      success: true,
+      data: results,
+      referencia: referenciaDescripcion,
+      total_presentaciones: results.length
+    });
+
+  } catch (error) {
+    console.error('❌ Error al consultar presentaciones-referencia:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor',
+      details: error.message
     });
   } finally {
     if (conn) conn.release();

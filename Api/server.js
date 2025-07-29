@@ -44,7 +44,7 @@ app.use(cors(corsOptions));
 
 // Inicializar configuración de storage
 const storageConfig = getCurrentStorageConfig();
-console.log(`🔧 Configuración de storage (${process.env.NODE_ENV || 'development'}):`, storageConfig);
+//console.log(`🔧 Configuración de storage (${process.env.NODE_ENV || 'development'}):`, storageConfig);
 
 // Asegurar que existan las carpetas de storage
 try {
