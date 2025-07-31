@@ -1,10 +1,48 @@
+/**
+ * @fileoverview API de Mercadeo - Endpoints para supervisión territorial
+ * 
+ * Este módulo contiene todas las rutas para el rol Mercadeo AC que permite:
+ * - Gestión de registros filtrados por territorio asignado
+ * - Aprobación/rechazo de registros de implementación de su zona
+ * - Consulta de métricas y KPIs de su territorio
+ * - Análisis de datos de asesores bajo supervisión
+ * 
+ * Características principales:
+ * - Acceso filtrado por agente_id (solo su territorio)
+ * - Permisos de supervisión territorial
+ * - Auditoría de acciones realizadas
+ * - Validación de roles y autenticación
+ * 
+ * Diferencia con BackOffice:
+ * - Mercadeo: Ve solo registros de su territorio/agentes asignados
+ * - BackOffice: Ve todos los registros del sistema nacional
+ * 
+ * @author Plan Choque Terpel Team
+ * @version 1.0.0
+ * @requires express
+ * @requires mysql2/promise (a través de db.js)
+ * @requires auth middleware (authenticateToken, requireMercadeo, logAccess)
+ */
+
 import express from 'express';
 import { getConnection } from '../db.js';
 import { authenticateToken, requireMercadeo, logAccess } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Ruta de prueba sin autenticación
+// ============================================
+// ENDPOINTS DE DIAGNÓSTICO Y VERIFICACIÓN
+// ============================================
+
+/**
+ * @route GET /api/mercadeo/test
+ * @description Endpoint de prueba para verificar que el servicio Mercadeo funcione
+ * @access Public (sin autenticación)
+ * @returns {Object} Estado del servicio y timestamp
+ * 
+ * Uso: Verificar que la API esté funcionando correctamente
+ * Ejemplo: GET /api/mercadeo/test
+ */
 router.get('/test', async (req, res) => {
   res.json({
     success: true,
@@ -13,7 +51,17 @@ router.get('/test', async (req, res) => {
   });
 });
 
-// Ruta para verificar token y rol del usuario
+/**
+ * @route GET /api/mercadeo/verify-token
+ * @description Verifica que el token del usuario sea válido y tenga rol Mercadeo
+ * @access Private (requiere token válido)
+ * @middleware authenticateToken
+ * @returns {Object} Información del usuario y diagnóstico del token
+ * 
+ * Uso: Debugging y verificación de sesión en desarrollo
+ * Ejemplo: GET /api/mercadeo/verify-token
+ * Headers: Authorization: Bearer <token>
+ */
 router.get('/verify-token', authenticateToken, async (req, res) => {
   res.json({
     success: true,
@@ -35,7 +83,38 @@ router.get('/verify-token', authenticateToken, async (req, res) => {
   });
 });
 
-// Consulta de detalle de registro
+// ============================================
+// ENDPOINTS DE GESTIÓN DE REGISTROS TERRITORIALES
+// ============================================
+
+/**
+ * @route GET /api/mercadeo/registro-detalles/:registro_id
+ * @description Obtiene información detallada de un registro del territorio asignado
+ * @access Private (requiere rol Mercadeo)
+ * @middleware authenticateToken, requireMercadeo, logAccess
+ * @param {string} registro_id - ID único del registro a consultar
+ * @returns {Object} Datos completos del registro incluyendo archivos
+ * 
+ * Uso: Ver detalles de registros para supervisión territorial
+ * Ejemplo: GET /api/mercadeo/registro-detalles/123
+ * Headers: Authorization: Bearer <token>
+ * 
+ * Filtro: Solo registros de asesores bajo supervisión del agente_id
+ * 
+ * Respuesta típica:
+ * {
+ *   "success": true,
+ *   "data": {
+ *     "registro_id": 123,
+ *     "codigo": "EDS001",
+ *     "fecha_visita": "2025-01-15",
+ *     "tipo_kpi": "PRECIO",
+ *     "estado": "pendiente",
+ *     "asesor_name": "Juan Pérez",
+ *     "archivos": [...]
+ *   }
+ * }
+ */
 router.get('/registro-detalles/:registro_id', authenticateToken, requireMercadeo, logAccess, async (req, res) => {
   const { registro_id } = req.params;
   const { agente_id } = req.user;
@@ -228,7 +307,37 @@ router.get('/registro-detalles/:registro_id', authenticateToken, requireMercadeo
   }
 });
 
-// Obtener lista de asesores filtrada por agente_id
+// ============================================
+// ENDPOINTS DE DATOS TERRITORIALES - ASESORES
+// ============================================
+
+/**
+ * @route GET /api/mercadeo/asesores
+ * @description Obtiene lista de asesores del territorio asignado al mercadeo
+ * @access Private (requiere rol Mercadeo)
+ * @middleware authenticateToken, requireMercadeo, logAccess
+ * @returns {Object} Lista de asesores con información básica
+ * 
+ * Uso: Cargar listado de asesores para filtros y selección
+ * Ejemplo: GET /api/mercadeo/asesores
+ * Headers: Authorization: Bearer <token>
+ * 
+ * Filtro territorial: Solo asesores que manejan PDVs asignados al agente_id
+ * 
+ * Respuesta típica:
+ * {
+ *   "success": true,
+ *   "data": [
+ *     {
+ *       "id": 123,
+ *       "name": "Juan Pérez",
+ *       "email": "juan.perez@terpel.com",
+ *       "cedula": "12345678",
+ *       "pdv_count": 15
+ *     }
+ *   ]
+ * }
+ */
 router.get('/asesores', authenticateToken, requireMercadeo, logAccess, async (req, res) => {
   let conn;
   try {
@@ -277,7 +386,38 @@ router.get('/asesores', authenticateToken, requireMercadeo, logAccess, async (re
   }
 });
 
-// Obtener lista de puntos de venta filtrada por agente_id
+// ============================================
+// ENDPOINTS DE DATOS TERRITORIALES - PUNTOS DE VENTA
+// ============================================
+
+/**
+ * @route GET /api/mercadeo/puntos-venta
+ * @description Obtiene lista de puntos de venta del territorio asignado
+ * @access Private (requiere rol Mercadeo)
+ * @middleware authenticateToken, requireMercadeo, logAccess
+ * @returns {Object} Lista de PDVs con información detallada
+ * 
+ * Uso: Cargar puntos de venta para análisis territorial
+ * Ejemplo: GET /api/mercadeo/puntos-venta
+ * Headers: Authorization: Bearer <token>
+ * 
+ * Filtro territorial: Solo PDVs asignados al agente_id del mercadeo
+ * 
+ * Respuesta típica:
+ * {
+ *   "success": true,
+ *   "data": [
+ *     {
+ *       "id": 456,
+ *       "codigo": "EDS001",
+ *       "nombre": "Estación Centro",
+ *       "direccion": "Calle 123 #45-67",
+ *       "ciudad": "Bogotá",
+ *       "asesor_name": "Juan Pérez"
+ *     }
+ *   ]
+ * }
+ */
 router.get('/puntos-venta', authenticateToken, requireMercadeo, logAccess, async (req, res) => {
   let conn;
   try {
@@ -333,9 +473,37 @@ router.get('/puntos-venta', authenticateToken, requireMercadeo, logAccess, async
   }
 });
 
+// ============================================
+// ENDPOINTS DE MÉTRICAS Y KPIs TERRITORIALES
+// ============================================
 
-// DASH
-// Obtener métricas de cobertura filtradas por agente_id
+/**
+ * @route GET /api/mercadeo/cobertura
+ * @description Obtiene métricas de cobertura del territorio asignado
+ * @access Private (requiere rol Mercadeo)
+ * @middleware authenticateToken, requireMercadeo, logAccess
+ * @returns {Object} Datos de cobertura de productos por PDV
+ * 
+ * Uso: Dashboard de cobertura territorial para seguimiento
+ * Ejemplo: GET /api/mercadeo/cobertura
+ * Headers: Authorization: Bearer <token>
+ * 
+ * Filtro territorial: Solo datos de PDVs asignados al agente_id
+ * 
+ * Respuesta típica:
+ * {
+ *   "success": true,
+ *   "data": [
+ *     {
+ *       "pdv_codigo": "EDS001",
+ *       "cobertura_total": 85.5,
+ *       "productos_implementados": 17,
+ *       "productos_totales": 20,
+ *       "fecha_ultima_visita": "2025-01-15"
+ *     }
+ *   ]
+ * }
+ */
 router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (req, res) => {
   let conn;
   try {
@@ -368,13 +536,6 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
     }
     
     const whereClause = whereConditions.join(' AND ');
-
-    // Consulta para obtener métricas de cobertura
-    // LÓGICA DE PUNTOS POR COBERTURA:
-    // Meta = PDVs asignados al agente
-    // Real = PDVs con registros en registro_servicios
-    // Puntos individuales = (IMPACTADOS/ASIGNADOS) * 150
-    // Si tiene registro = puntos proporcionales, si no = 0 puntos
     
     // Primero obtener totales para calcular proporción
     const [totalesResult] = await conn.execute(
@@ -455,7 +616,38 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
   }
 });
 
-// Obtener métricas de volumen filtradas por agente_id
+/**
+ * @route GET /api/mercadeo/volumen
+ * @description Obtiene métricas de volumen del territorio asignado
+ * @access Private (requiere rol Mercadeo)
+ * @middleware authenticateToken, requireMercadeo, logAccess
+ * @query {number} asesor_id - Filtro opcional por asesor específico
+ * @query {number} pdv_id - Filtro opcional por PDV específico
+ * @returns {Object} Datos de volumen y metas por PDV
+ * 
+ * Uso: Dashboard de volumen territorial para seguimiento de metas
+ * Ejemplo: GET /api/mercadeo/volumen?asesor_id=123
+ * Headers: Authorization: Bearer <token>
+ * 
+ * Filtro territorial: Solo datos de PDVs asignados al agente_id
+ * 
+ * Respuesta típica:
+ * {
+ *   "success": true,
+ *   "data": [
+ *     {
+ *       "pdv_codigo": "EDS001",
+ *       "meta_volumen": 10000,
+ *       "volumen_actual": 8500,
+ *       "porcentaje_cumplimiento": 85.0,
+ *       "puntos_volumen": 127.5
+ *     }
+ *   ],
+ *   "puntos": 127,
+ *   "meta": 10000,
+ *   "real": 8500
+ * }
+ */
 router.get('/volumen', authenticateToken, requireMercadeo, logAccess, async (req, res) => {
   let conn;
   try {
@@ -1197,7 +1389,40 @@ router.get('/download-kpis', authenticateToken, requireMercadeo, logAccess, asyn
   }
 });
 
-// Obtener historial de registros filtrado por agente_id (similar al de asesor pero filtrado por agente)
+// ============================================
+// ENDPOINTS DE GESTIÓN DE REGISTROS Y VALIDACIÓN
+// ============================================
+
+/**
+ * @route GET /api/mercadeo/historial-registros-mercadeo
+ * @description Obtiene historial de registros del territorio para gestión y validación
+ * @access Private (requiere rol Mercadeo)
+ * @middleware authenticateToken, requireMercadeo, logAccess
+ * @returns {Object} Lista de registros del territorio con estados de validación
+ * 
+ * Uso: Página principal de gestión de registros en Mercadeo
+ * Ejemplo: GET /api/mercadeo/historial-registros-mercadeo
+ * Headers: Authorization: Bearer <token>
+ * 
+ * Filtro territorial: Solo registros de PDVs asignados al agente_id
+ * Diferencia con BackOffice: Mercadeo ve solo su territorio, BackOffice ve todo
+ * 
+ * Respuesta típica:
+ * {
+ *   "success": true,
+ *   "data": [
+ *     {
+ *       "registro_id": 123,
+ *       "codigo": "EDS001",
+ *       "fecha_visita": "2025-01-15",
+ *       "tipo_kpi": "PRECIO",
+ *       "estado": "pendiente",
+ *       "asesor_name": "Juan Pérez",
+ *       "archivos": [...]
+ *     }
+ *   ]
+ * }
+ */
 router.get('/historial-registros-mercadeo', authenticateToken, requireMercadeo, logAccess, async (req, res) => {
   const { agente_id } = req.user;
 
@@ -1214,61 +1439,71 @@ router.get('/historial-registros-mercadeo', authenticateToken, requireMercadeo, 
 
     // Consulta similar a la del asesor pero filtrando por agente_id
     const query = `
-      SELECT 
-        registro_servicios.id,
-        puntos_venta.codigo,
-        puntos_venta.descripcion,
-        puntos_venta.direccion,
-        users.name,
-        users.documento as cedula,
-        registro_servicios.fecha_registro,
+          SELECT 
+        rs.id,
+        agente.descripcion AS agente_comercial,
+        pv.codigo,
+        pv.descripcion AS nombre_pdv,
+        pv.direccion,
+        u.name,
+        u.documento AS cedula,
+        rs.fecha_registro,
         CASE
-            WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Volumen / Precio'
-            WHEN kpi_volumen = 1 THEN 'Volumen'
-            WHEN kpi_precio = 1 THEN 'Precio'
-            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Frecuencia'
+            WHEN rs.kpi_volumen = 1 AND rs.kpi_precio = 1 THEN 'Volumen / Precio'
+            WHEN rs.kpi_volumen = 1 THEN 'Volumen'
+            WHEN rs.kpi_precio = 1 THEN 'Precio'
+            WHEN rs.kpi_frecuencia = 1 AND rs.kpi_precio = 0 AND rs.kpi_volumen = 0 THEN 'Frecuencia'
             ELSE 'Otro'
         END AS tipo_kpi,
         CASE
-            WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Implementacion'
-            WHEN kpi_volumen = 1 THEN 'Implementacion'
-            WHEN kpi_precio = 1 THEN 'Implementacion'
-            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Visita'
+            WHEN rs.kpi_volumen = 1 OR rs.kpi_precio = 1 THEN 'Implementacion'
+            WHEN rs.kpi_frecuencia = 1 AND rs.kpi_precio = 0 AND rs.kpi_volumen = 0 THEN 'Visita'
             ELSE 'Otro'
         END AS tipo_accion,
-        e1.descripcion AS estado,
-        registro_servicios.observacion,
-        GROUP_CONCAT(registro_productos.referencia_id) AS referencias,
-        GROUP_CONCAT(registro_productos.presentacion) AS presentaciones,
-        GROUP_CONCAT(registro_productos.cantidad_cajas) AS cantidades_cajas,
-        GROUP_CONCAT(registro_productos.conversion_galonaje) AS galonajes,
-        GROUP_CONCAT(registro_productos.precio_sugerido) AS precios_sugeridos,
-        GROUP_CONCAT(registro_productos.precio_real) AS precios_reales,
-        GROUP_CONCAT(registro_fotografico_servicios.foto_factura) AS fotos_factura,
-        GROUP_CONCAT(registro_fotografico_servicios.foto_pop) AS fotos_pop,
-        GROUP_CONCAT(registro_fotografico_servicios.foto_seguimiento) AS fotos_seguimiento
-      FROM registro_servicios
-      INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
-      INNER JOIN users ON users.id = registro_servicios.user_id
-      INNER JOIN estados e1 ON e1.id = registro_servicios.estado_agente_id
-      LEFT JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
-      LEFT JOIN registro_fotografico_servicios ON registro_fotografico_servicios.id_registro = registro_servicios.id
-      WHERE puntos_venta.id_agente = ?
-      GROUP BY 
-        registro_servicios.id,
-        puntos_venta.codigo,
-        puntos_venta.descripcion,
-        puntos_venta.direccion,
-        users.name,
-        users.documento,
-        registro_servicios.fecha_registro,
-        registro_servicios.kpi_volumen,
-        registro_servicios.kpi_precio,
-        registro_servicios.kpi_frecuencia,
-        e1.descripcion,
-        registro_servicios.observacion
-      ORDER BY registro_servicios.fecha_registro DESC
-    `;
+        e1.descripcion AS estado_agente,
+        e2.descripcion AS estado_backoffice,
+        rs.observacion,
+        rs.observacion_agente,
+        rp.referencias,
+        rp.presentaciones,
+        rp.cantidades_cajas,
+        rp.galonajes,
+        rp.precios_sugeridos,
+        rp.precios_reales,
+        rf.fotos_factura,
+        rf.fotos_pop,
+        rf.fotos_seguimiento
+        FROM registro_servicios rs
+        INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
+        INNER JOIN agente ON agente.id = pv.id_agente
+        INNER JOIN users u ON u.id = rs.user_id
+        INNER JOIN estados e1 ON e1.id = rs.estado_agente_id
+        INNER JOIN estados e2 ON e2.id = rs.estado_id
+
+        LEFT JOIN (
+            SELECT 
+                registro_id,
+                GROUP_CONCAT(referencia_id) AS referencias,
+                GROUP_CONCAT(presentacion) AS presentaciones,
+                GROUP_CONCAT(cantidad_cajas) AS cantidades_cajas,
+                GROUP_CONCAT(conversion_galonaje) AS galonajes,
+                GROUP_CONCAT(precio_sugerido) AS precios_sugeridos,
+                GROUP_CONCAT(precio_real) AS precios_reales
+            FROM registro_productos
+            GROUP BY registro_id
+        ) rp ON rp.registro_id = rs.id
+
+        LEFT JOIN (
+            SELECT 
+                id_registro,
+                GROUP_CONCAT(foto_factura) AS fotos_factura,
+                GROUP_CONCAT(foto_pop) AS fotos_pop,
+                GROUP_CONCAT(foto_seguimiento) AS fotos_seguimiento
+            FROM registro_fotografico_servicios
+            GROUP BY id_registro
+        ) rf ON rf.id_registro = rs.id
+        WHERE rs.estado_id = 2 AND pv.id_agente = ?
+        ORDER BY rs.fecha_registro DESC;`;
     const [rows] = await conn.execute(query, [agente_id]);
 
     res.json({
@@ -1289,6 +1524,38 @@ router.get('/historial-registros-mercadeo', authenticateToken, requireMercadeo, 
   }
 });
 
+/**
+ * @description Actualización de Estado de Registros
+ * 
+ * Endpoints para la gestión del estado de registros desde el módulo de mercadeo.
+ * Permite aprobar o rechazar registros con comentarios de seguimiento.
+ */
+
+/**
+ * @route POST /api/mercadeo/actualizar-estado-registro/:registro_id
+ * @description Actualiza el estado de un registro específico (aprobación/rechazo)
+ * @param {string} registro_id - ID del registro a actualizar
+ * @body {number} estado_agente_id - Estado del registro (2: aprobado, 3: rechazado)
+ * @body {string} [comentario] - Comentario opcional sobre la decisión
+ * @returns {Object} Confirmación de actualización
+ * @returns {boolean} returns.success - Indica si la operación fue exitosa
+ * @returns {string} returns.message - Mensaje descriptivo del resultado
+ * @access Mercadeo
+ * @middleware authenticateToken, requireMercadeo, logAccess
+ * 
+ * @example
+ * // Request body:
+ * {
+ *   "estado_agente_id": 2,
+ *   "comentario": "Registro aprobado - cumple con todos los criterios"
+ * }
+ * 
+ * // Response:
+ * {
+ *   "success": true,
+ *   "message": "Estado del registro actualizado correctamente"
+ * }
+ */
 // Endpoint para aprobar/rechazar registros desde mercadeo
 router.post('/actualizar-estado-registro/:registro_id', authenticateToken, requireMercadeo, logAccess, async (req, res) => {
   const { registro_id } = req.params;
@@ -1333,13 +1600,12 @@ router.post('/actualizar-estado-registro/:registro_id', authenticateToken, requi
     const updateQuery = `
       UPDATE registro_servicios 
       SET estado_agente_id = ?, 
-          estado_id = ?,
-          observacion = ?,
+          observacion_agente = ?,
           updated_at = NOW()
       WHERE id = ?
     `;
-    
-    await conn.execute(updateQuery, [estado_agente_id, estado_agente_id, comentario, registro_id]);
+
+    await conn.execute(updateQuery, [estado_agente_id, comentario, registro_id]);
 
     res.json({
       success: true,
@@ -1358,6 +1624,23 @@ router.post('/actualizar-estado-registro/:registro_id', authenticateToken, requi
   }
 });
 
+/**
+ * @description Endpoints de Prueba
+ * 
+ * Endpoints de prueba sin autenticación para verificar el funcionamiento
+ * de los diferentes módulos del sistema de mercadeo.
+ * Útiles para diagnósticos y pruebas de conectividad.
+ */
+
+/**
+ * @route GET /api/mercadeo/test-asesores
+ * @description Endpoint de prueba para el módulo de asesores
+ * @returns {Object} Confirmación de funcionamiento
+ * @returns {boolean} returns.success - Siempre true
+ * @returns {string} returns.message - Mensaje de confirmación
+ * @returns {Array} returns.data - Array vacío
+ * @access Public (sin autenticación)
+ */
 // RUTAS DE PRUEBA SIN AUTENTICACIÓN
 router.get('/test-asesores', async (req, res) => {
   res.json({
@@ -1367,6 +1650,12 @@ router.get('/test-asesores', async (req, res) => {
   });
 });
 
+/**
+ * @route GET /api/mercadeo/test-puntos-venta
+ * @description Endpoint de prueba para el módulo de puntos de venta
+ * @returns {Object} Confirmación de funcionamiento del módulo de puntos de venta
+ * @access Public (sin autenticación)
+ */
 router.get('/test-puntos-venta', async (req, res) => {
   res.json({
     success: true,
@@ -1413,6 +1702,225 @@ router.get('/test-precios', async (req, res) => {
     message: 'Endpoint de precios funcionando',
     data: []
   });
+});
+
+// ============================================
+//  ENDPOINTS PARA RANKING 
+// ============================================
+
+/**
+ * @route GET /api/mercadeo/ranking-mi-empresa
+ * @description Obtiene el ranking de asesores bajo supervisión del agente comercial
+ * @access Private (requiere autenticación y rol MERCADEO)
+ * @returns {Object} Ranking de asesores con filtros por territorio del agente
+ * 
+ * Funcionalidad:
+ * - Filtra por agente_id del usuario autenticado
+ * - Calcula puntos totales por asesor usando la misma lógica que asesor
+ * - Ordena por puntuación descendente
+ * - Incluye información de posicionamiento
+ * - Proporciona datos de empresa/agente
+ */
+router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess, async (req, res) => {
+  const userId = req.user.userId; // Obtenido del token
+
+  let conn;
+  try {
+    conn = await getConnection();
+
+    // Primero obtener el agente_id del usuario logueado
+    const [miInfo] = await conn.execute(
+      `SELECT agente_id FROM users WHERE id = ?`, [userId]
+    );
+
+    if (!miInfo[0] || !miInfo[0].agente_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Usuario no tiene agente_id asignado'
+      });
+    }
+
+    const miAgenteId = miInfo[0].agente_id;
+
+    // Obtener todos los asesores de la empresa (rol_id = 1 y mismo agente_id) con información geográfica
+    const [asesores] = await conn.execute(
+      `SELECT users.id, users.name, users.email, users.agente_id, 
+              departamento.descripcion AS departamento, 
+              depar_ciudades.descripcion AS ciudad,
+              departamento.id AS departamento_id,
+              depar_ciudades.id AS ciudad_id
+       FROM users 
+       INNER JOIN depar_ciudades ON depar_ciudades.id = users.ciudad_id
+       INNER JOIN departamento ON departamento.id = depar_ciudades.id_departamento
+       WHERE rol_id = 1 AND agente_id = ?
+       ORDER BY name`, [miAgenteId]
+    );
+
+    // Para cada asesor, calcular sus puntos usando la misma lógica que mis-puntos-totales
+    const rankingDetallado = [];
+
+    for (const asesor of asesores) {
+      // Puntos por KPI 1 (Volumen) - igual que en mis-puntos-totales
+      const [puntosVolumen] = await conn.execute(
+        `SELECT SUM(registro_puntos.puntos) as totalPuntos
+         FROM registro_servicios
+         INNER JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id
+         WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 1`, [asesor.id]
+      );
+
+      // Puntos por KPI 2 (Precios) - igual que en mis-puntos-totales
+      const [puntosPrecios] = await conn.execute(
+        `SELECT SUM(registro_puntos.puntos) as totalPuntos
+         FROM registro_servicios
+         INNER JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id
+         WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 2`, [asesor.id]
+      );
+
+      // Puntos por KPI 3 (Visitas/Frecuencia) - igual que en mis-puntos-totales
+      const [puntosVisitas] = await conn.execute(
+        `SELECT SUM(registro_puntos.puntos) as totalPuntos
+         FROM registro_servicios
+         INNER JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id
+         WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 3`, [asesor.id]
+      );
+
+      // Calcular totales - convertir a números para evitar concatenación (igual que mis-puntos-totales)
+      const puntosVolumenTotal = Number(puntosVolumen[0]?.totalPuntos) || 0;
+      const puntosPreciosTotal = Number(puntosPrecios[0]?.totalPuntos) || 0;
+      const puntosVisitasTotal = Number(puntosVisitas[0]?.totalPuntos) || 0;
+      const totalGeneral = puntosVolumenTotal + puntosPreciosTotal + puntosVisitasTotal;
+
+      rankingDetallado.push({
+        id: asesor.id,
+        name: asesor.name,
+        email: asesor.email,
+        departamento: asesor.departamento,
+        ciudad: asesor.ciudad,
+        departamento_id: asesor.departamento_id,
+        ciudad_id: asesor.ciudad_id,
+        total_puntos: totalGeneral,
+        es_usuario_actual: false // Para mercadeo, ningún asesor es el usuario actual
+      });
+    }
+
+    // Ordenar por total de puntos (mayor a menor)
+    rankingDetallado.sort((a, b) => b.total_puntos - a.total_puntos);
+
+    // Agregar posiciones
+    rankingDetallado.forEach((asesor, index) => {
+      asesor.posicion = index + 1;
+    });
+
+    // Para mercadeo, no hay posición del usuario actual en el ranking (ya que es supervisor, no asesor)
+    const posicionUsuario = null;
+
+    // Obtener información del agente/empresa
+    const [agenteInfo] = await conn.execute(
+      `SELECT name as nombre_agente FROM users WHERE id = ?`, [miAgenteId]
+    );
+
+    res.json({
+      success: true,
+      ranking: rankingDetallado,
+      mi_posicion: null, // Mercadeo no tiene posición en ranking de asesores
+      mi_info: null,     // Mercadeo no está en el ranking
+      total_asesores: rankingDetallado.length,
+      empresa_info: {
+        agente_id: miAgenteId,
+        nombre_agente: agenteInfo[0]?.nombre_agente || 'No encontrado'
+      }
+    });
+
+  } catch (err) {
+    console.error('Error obteniendo ranking de mi empresa:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener ranking de mi empresa',
+      error: err.message
+    });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+/**
+ * @route GET /api/mercadeo/ranking-filtros
+ * @description Obtiene opciones de filtros geográficos para el ranking
+ * @access Private (requiere autenticación y rol MERCADEO)
+ * @returns {Object} Departamentos y ciudades disponibles para filtrar
+ * 
+ * Funcionalidad:
+ * - Filtra por asesores bajo supervisión del agente comercial
+ * - Proporciona lista de departamentos únicos
+ * - Proporciona lista de ciudades con relación a departamentos
+ * - Incluye opciones "todos/todas" por defecto
+ */
+router.get('/ranking-filtros', authenticateToken, requireMercadeo, logAccess, async (req, res) => {
+  const userId = req.user.userId;
+
+  let conn;
+  try {
+    conn = await getConnection();
+
+    // Obtener el agente_id del usuario logueado
+    const [miInfo] = await conn.execute(
+      `SELECT agente_id FROM users WHERE id = ?`, [userId]
+    );
+
+    if (!miInfo[0] || !miInfo[0].agente_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Usuario no tiene agente_id asignado'
+      });
+    }
+
+    const miAgenteId = miInfo[0].agente_id;
+
+    // Obtener todos los departamentos únicos de asesores de la empresa
+    const [departamentos] = await conn.execute(
+      `SELECT DISTINCT departamento.id, departamento.descripcion
+       FROM users 
+       INNER JOIN depar_ciudades ON depar_ciudades.id = users.ciudad_id
+       INNER JOIN departamento ON departamento.id = depar_ciudades.id_departamento
+       WHERE users.rol_id = 1 AND users.agente_id = ?
+       ORDER BY departamento.descripcion`, [miAgenteId]
+    );
+
+    // Obtener todas las ciudades únicas de asesores de la empresa
+    const [ciudades] = await conn.execute(
+      `SELECT DISTINCT depar_ciudades.id, depar_ciudades.descripcion, 
+              depar_ciudades.id_departamento
+       FROM users 
+       INNER JOIN depar_ciudades ON depar_ciudades.id = users.ciudad_id
+       INNER JOIN departamento ON departamento.id = depar_ciudades.id_departamento
+       WHERE users.rol_id = 1 AND users.agente_id = ?
+       ORDER BY depar_ciudades.descripcion`, [miAgenteId]
+    );
+
+    res.json({
+      success: true,
+      filtros: {
+        departamentos: [
+          { id: 'todos', descripcion: 'Todos los departamentos' },
+          ...departamentos
+        ],
+        ciudades: [
+          { id: 'todas', descripcion: 'Todas las ciudades', id_departamento: null },
+          ...ciudades
+        ]
+      }
+    });
+
+  } catch (err) {
+    console.error('Error obteniendo filtros de ranking:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener filtros de ranking',
+      error: err.message
+    });
+  } finally {
+    if (conn) conn.release();
+  }
 });
 
 export default router;

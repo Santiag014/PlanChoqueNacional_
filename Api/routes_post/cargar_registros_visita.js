@@ -83,7 +83,7 @@ router.post('/cargar-registros-visita', upload.any(), async (req, res) => {
 
     // Buscar el id real del PDV usando el código
     const codigo_pdv = pdv_id;
-    const [rows] = await conn.execute('SELECT id FROM puntos_venta WHERE codigo = ? OR id = ?', [codigo_pdv, codigo_pdv]);
+    const [rows] = await conn.execute('SELECT id FROM puntos_venta WHERE codigo = ?', [codigo_pdv]);
     if (!rows.length) {
       return res.status(400).json({ success: false, message: 'El código o id de PDV no existe' });
     }

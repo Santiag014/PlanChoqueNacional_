@@ -27,7 +27,7 @@ router.get('/cobertura/:user_id', authenticateToken, requireAsesor, logAccess, a
     const [implementados] = await conn.execute(
       `SELECT DISTINCT pdv_id
          FROM registro_servicios
-         WHERE user_id = ?`, [user_id]
+         WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [user_id]
     );
     const implementadosSet = new Set(implementados.map(r => r.pdv_id));
 
@@ -78,7 +78,7 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
       `SELECT SUM(registro_productos.conversion_galonaje) as totalReal
        FROM registro_servicios
        INNER JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
-       WHERE registro_servicios.user_id = ?`, [user_id]
+       WHERE registro_servicios.user_id = ? AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2`, [user_id]
     );
     const totalReal = realResult[0]?.totalReal || 0;
 
@@ -87,7 +87,7 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
       `SELECT SUM(registro_puntos.puntos) as totalPuntos
        FROM registro_servicios
        INNER JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id
-       WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 1`, [user_id]
+       WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 1 AND (registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2)`, [user_id]
     );
     const puntosVolumen = puntosResult[0]?.totalPuntos || 0;
 
@@ -105,7 +105,7 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
        LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.user_id = ?
        LEFT JOIN registro_productos rp ON rp.registro_id = rs.id
        LEFT JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 1
-       WHERE pv.user_id = ?
+       WHERE pv.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
        GROUP BY pv.id, pv.codigo, pv.descripcion, pv.segmento, pv.meta_volumen`,
       [user_id, user_id]
     );
@@ -119,7 +119,7 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
        FROM puntos_venta pv
        LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.user_id = ?
        LEFT JOIN registro_productos rp ON rp.registro_id = rs.id
-       WHERE pv.user_id = ?
+       WHERE pv.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
        GROUP BY pv.segmento`,
       [user_id, user_id]
     );
@@ -132,7 +132,7 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
          SUM(rp.conversion_galonaje) AS galonaje
        FROM registro_servicios rs
        INNER JOIN registro_productos rp ON rp.registro_id = rs.id
-       WHERE rs.user_id = ?
+       WHERE rs.user_id = ? AND rs.estado_id = 2 AND rs.estado_agente_id = 2
        GROUP BY rp.referencia_id
        ORDER BY galonaje DESC`,
       [user_id]
@@ -183,7 +183,7 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
     const [realResult] = await conn.execute(
       `SELECT COUNT(id) as totalVisitas
        FROM registro_servicios
-       WHERE user_id = ?`, [user_id]
+       WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [user_id]
     );
     const totalVisitas = realResult[0]?.totalVisitas || 0;
     
@@ -192,7 +192,7 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
       `SELECT SUM(registro_puntos.puntos) as totalPuntos
        FROM registro_servicios
        INNER JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id
-       WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 3`, [user_id]
+       WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 3 AND (registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2)`, [user_id]
     );
     const puntosVisitas = puntosResult[0]?.totalPuntos || 0;
     
@@ -208,7 +208,7 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
        FROM puntos_venta pv
        LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.user_id = ?
        LEFT JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 3
-       WHERE pv.user_id = ?
+       WHERE pv.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
        GROUP BY pv.id, pv.codigo, pv.descripcion`,
       [user_id, user_id]
     );
@@ -234,7 +234,7 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
          END AS tipo,
          COUNT(*) AS cantidad
        FROM registro_servicios
-       WHERE user_id = ?
+       WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2
        GROUP BY tipo`,
       [user_id]
     );
@@ -282,7 +282,9 @@ router.get('/precios/:user_id', authenticateToken, requireAsesor, logAccess, asy
     const [reportados] = await conn.execute(
       `SELECT DISTINCT pdv_id
        FROM registro_servicios
-       WHERE user_id = ? AND kpi_precio = 1`, [user_id]
+        LEFT JOIN registros_mistery_shopper 
+          ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
+       WHERE user_id = ? AND kpi_precio = 1 AND registros_mistery_shopper.id IS NOT NULL`, [user_id]
     );
     const reportadosSet = new Set(reportados.map(r => r.pdv_id));
 
@@ -363,9 +365,10 @@ router.get('/historial-registros-asesor/:user_id', authenticateToken, requireAse
             WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Visita'
             ELSE 'Otro'
         END AS tipo_accion,
-        e1.descripcion AS estado,
+        e1.descripcion AS estado_backoffice,
         e2.descripcion AS estado_agente,
-        registro_servicios.observacion,
+        registro_servicios.observacion AS observacion_asesor,
+        registro_servicios.observacion_agente AS observacion_agente,
         GROUP_CONCAT(registro_productos.referencia_id) AS referencias,
         GROUP_CONCAT(registro_productos.presentacion) AS presentaciones,
         GROUP_CONCAT(registro_productos.cantidad_cajas) AS cantidades_cajas,
@@ -393,7 +396,8 @@ router.get('/historial-registros-asesor/:user_id', authenticateToken, requireAse
         tipo_accion,
         e1.descripcion,
         e2.descripcion,
-        registro_servicios.observacion
+        registro_servicios.observacion,
+        registro_servicios.observacion_agente
     `;
     const [rows] = await conn.execute(query, [user_id]);
 
@@ -594,80 +598,114 @@ router.get('/historial-visitas/:user_id', authenticateToken, requireAsesor, logA
     // Consulta completa combinando historial de visitas con detalles completos (basada en registro-detalles)
     const query = `
       SELECT 
-        registro_servicios.id,
-        registro_servicios.user_id,
-        puntos_venta.codigo,
-        puntos_venta.descripcion,
-        puntos_venta.direccion,
-        puntos_venta.coordenadas,
-        puntos_venta.segmento,
-        puntos_venta.meta_volumen,
-        users.name as nombre_usuario,
-        users.email as email_usuario,
-        registro_servicios.fecha_registro,
-        registro_servicios.created_at,
-        registro_servicios.updated_at,
-        registro_servicios.kpi_volumen,
-        registro_servicios.kpi_precio,
-        registro_servicios.kpi_frecuencia,
-        CASE
-            WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Volumen / Precio'
-            WHEN kpi_volumen = 1 THEN 'Volumen'
-            WHEN kpi_precio = 1 THEN 'Precio'
-            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Frecuencia'
-            ELSE 'Otro'
-        END AS tipo_accion,
-        e1.descripcion AS estado,
-        e2.descripcion AS estado_agente,
-        registro_servicios.observacion,
-        -- Información de productos con más detalles
-        GROUP_CONCAT(registro_productos.referencia_id) AS referencias,
-        GROUP_CONCAT(registro_productos.presentacion) AS presentaciones,
-        GROUP_CONCAT(registro_productos.cantidad_cajas) AS cantidades_cajas,
-        GROUP_CONCAT(registro_productos.conversion_galonaje) AS galones,
-        GROUP_CONCAT(registro_productos.precio_sugerido) AS precios_sugeridos,
-        GROUP_CONCAT(registro_productos.precio_real) AS precios_reales,
-        -- Información fotográfica
-        GROUP_CONCAT(registro_fotografico_servicios.foto_factura) AS fotos_factura,
-        GROUP_CONCAT(registro_fotografico_servicios.foto_pop) AS fotos_pop,
-        GROUP_CONCAT(registro_fotografico_servicios.foto_seguimiento) AS fotos_seguimiento,
-        -- Totales calculados
-        SUM(registro_productos.cantidad_cajas) as total_cajas,
-        SUM(registro_productos.conversion_galonaje) as total_galones,
-        SUM(registro_productos.precio_real * registro_productos.cantidad_cajas) as valor_total_implementado,
-        -- Puntos obtenidos
-        COALESCE(SUM(registro_puntos.puntos), 0) AS puntos_obtenidos
-      FROM registro_servicios
-      INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
-      INNER JOIN users ON users.id = puntos_venta.user_id
-      INNER JOIN estados e1 ON e1.id = registro_servicios.estado_id
-      INNER JOIN estados e2 ON e2.id = registro_servicios.estado_agente_id
-      LEFT JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
-      LEFT JOIN registro_fotografico_servicios ON registro_fotografico_servicios.id_registro = registro_servicios.id
-      LEFT JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id
-      WHERE registro_servicios.user_id = ?
-      GROUP BY 
-        registro_servicios.id,
-        registro_servicios.user_id,
-        puntos_venta.codigo,
-        puntos_venta.descripcion,
-        puntos_venta.direccion,
-        puntos_venta.coordenadas,
-        puntos_venta.segmento,
-        puntos_venta.meta_volumen,
-        users.name,
-        users.email,
-        registro_servicios.fecha_registro,
-        registro_servicios.created_at,
-        registro_servicios.updated_at,
-        registro_servicios.kpi_volumen,
-        registro_servicios.kpi_precio,
-        registro_servicios.kpi_frecuencia,
-        tipo_accion,
-        e1.descripcion,
-        e2.descripcion,
-        registro_servicios.observacion
-      ORDER BY registro_servicios.fecha_registro DESC, registro_servicios.created_at DESC
+      rs.id,
+      rs.user_id,
+      pv.codigo,
+      pv.descripcion,
+      pv.direccion,
+      pv.coordenadas,
+      pv.segmento,
+      pv.meta_volumen,
+      u.name AS nombre_usuario,
+      u.email AS email_usuario,
+      rs.fecha_registro,
+      rs.created_at,
+      rs.updated_at,
+      rs.kpi_volumen,
+      rs.kpi_precio,
+      rs.kpi_frecuencia,
+      CASE
+          WHEN rs.kpi_volumen = 1 AND rs.kpi_precio = 1 THEN 'Volumen / Precio'
+          WHEN rs.kpi_volumen = 1 THEN 'Volumen'
+          WHEN rs.kpi_precio = 1 THEN 'Precio'
+          WHEN rs.kpi_frecuencia = 1 AND rs.kpi_precio = 0 AND rs.kpi_volumen = 0 THEN 'Frecuencia'
+          ELSE 'Otro'
+      END AS tipo_accion,
+      e1.descripcion AS estado_backoffice,
+      e2.descripcion AS estado_agente,
+      rs.observacion AS observacion_asesor,
+      rs.observacion_agente AS observacion_agente,
+
+      -- Subconsulta: Información de productos
+      (
+          SELECT GROUP_CONCAT(rp.referencia_id)
+          FROM registro_productos rp
+          WHERE rp.registro_id = rs.id
+      ) AS referencias,
+      (
+          SELECT GROUP_CONCAT(rp.presentacion)
+          FROM registro_productos rp
+          WHERE rp.registro_id = rs.id
+      ) AS presentaciones,
+      (
+          SELECT GROUP_CONCAT(rp.cantidad_cajas)
+          FROM registro_productos rp
+          WHERE rp.registro_id = rs.id
+      ) AS cantidades_cajas,
+      (
+          SELECT GROUP_CONCAT(rp.conversion_galonaje)
+          FROM registro_productos rp
+          WHERE rp.registro_id = rs.id
+      ) AS galones,
+      (
+          SELECT GROUP_CONCAT(rp.precio_sugerido)
+          FROM registro_productos rp
+          WHERE rp.registro_id = rs.id
+      ) AS precios_sugeridos,
+      (
+          SELECT GROUP_CONCAT(rp.precio_real)
+          FROM registro_productos rp
+          WHERE rp.registro_id = rs.id
+      ) AS precios_reales,
+
+      -- Subconsulta: Totales
+      (
+          SELECT SUM(rp.cantidad_cajas)
+          FROM registro_productos rp
+          WHERE rp.registro_id = rs.id
+      ) AS total_cajas,
+      (
+          SELECT SUM(rp.conversion_galonaje)
+          FROM registro_productos rp
+          WHERE rp.registro_id = rs.id
+      ) AS total_galones,
+      (
+          SELECT SUM(rp.precio_real * rp.cantidad_cajas)
+          FROM registro_productos rp
+          WHERE rp.registro_id = rs.id
+      ) AS valor_total_implementado,
+
+      -- Subconsulta: Información fotográfica
+      (
+          SELECT GROUP_CONCAT(rf.foto_factura)
+          FROM registro_fotografico_servicios rf
+          WHERE rf.id_registro = rs.id
+      ) AS fotos_factura,
+      (
+          SELECT GROUP_CONCAT(rf.foto_pop)
+          FROM registro_fotografico_servicios rf
+          WHERE rf.id_registro = rs.id
+      ) AS fotos_pop,
+      (
+          SELECT GROUP_CONCAT(rf.foto_seguimiento)
+          FROM registro_fotografico_servicios rf
+          WHERE rf.id_registro = rs.id
+      ) AS fotos_seguimiento,
+
+      -- Subconsulta: Puntos obtenidos
+      (
+          SELECT COALESCE(SUM(rp.puntos), 0)
+          FROM registro_puntos rp
+          WHERE rp.id_visita = rs.id
+      ) AS puntos_obtenidos
+
+  FROM registro_servicios rs
+  INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
+  INNER JOIN users u ON u.id = pv.user_id
+  INNER JOIN estados e1 ON e1.id = rs.estado_id
+  INNER JOIN estados e2 ON e2.id = rs.estado_agente_id
+  WHERE registro_servicios.user_id = ?
+  ORDER BY rs.fecha_registro DESC, rs.created_at DESC;
     `;
 
     const [rows] = await conn.execute(query, [user_id]);
@@ -714,9 +752,10 @@ router.get('/historial-visitas/:user_id', authenticateToken, requireAsesor, logA
       'Fecha Visita': row.fecha_registro,
       'Fecha/Hora Creación': row.fecha_hora_creacion,
       'Tipo Acción': row.tipo_accion,
-      'Estado': row.estado,
+      'Estado BackOffice': row.estado_backoffice,
       'Estado Agente': row.estado_agente,
-      'Observaciones': row.observacion || 'Sin observaciones',
+      'Observaciones Asesor': row.observacion_asesor || 'Sin observaciones',
+      'Observaciones Agente': row.observacion_agente || 'Sin observaciones',
       'Referencias Productos': row.referencias,
       'Presentaciones': row.presentaciones,
       'Cantidades Cajas': row.cantidades_cajas,

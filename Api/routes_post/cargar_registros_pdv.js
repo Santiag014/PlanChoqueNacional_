@@ -129,16 +129,20 @@ router.post('/cargar-registro-pdv', upload.any(), async (req, res) => {
 
   // Si recibes codigo_pdv en vez de pdv_id
   const codigo_pdv = pdv_id; // usa pdv_id si no hay codigo_pdv
+  console.log('🔍 Código PDV recibido:', codigo_pdv);
 
   // Buscar el id real del PDV usando el código
-  const [rows] = await conn.execute('SELECT id FROM puntos_venta WHERE codigo = ? OR id = ?', [codigo_pdv, codigo_pdv]);
+  const [rows] = await conn.execute('SELECT id FROM puntos_venta WHERE codigo = ?', [codigo_pdv]);
   if (!rows.length) {
     return res.status(400).json({ success: false, message: 'El código o id de PDV no existe' });
   }
   const pdv_id_real = rows[0].id;
+  console.log('✅ ID real del PDV encontrado:', pdv_id_real);
+  console.log('🔄 Conversión: Código', codigo_pdv, '-> ID real', pdv_id_real);
 
   // Ahora usa pdv_id_real en el insert
   // Corregido: 10 columnas, 10 valores
+  console.log('💾 Insertando en registro_servicios con pdv_id:', pdv_id_real);
   const [servicioResult] = await conn.execute(
     `INSERT INTO registro_servicios (pdv_id, user_id, estado_id, estado_agente_id, kpi_volumen, kpi_frecuencia, kpi_precio, fecha_registro, created_at, updated_at)
     VALUES (?, ?, 1, 1, ?, ?, ?, ?, NOW()-7, NOW()-7)`,

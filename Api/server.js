@@ -12,6 +12,7 @@ import asesorRouter from './routes/asesor.js';
 import publicRouter from './routes/public.js';
 import misteryShopperRouter from './routes/mistery.shopper.js';
 import otRouter from './routes/ot.js';
+import backofficeRouter from './routes/backoffice.js';
 import bulkUploadRouter from './routes/bulk-upload.js';
 import { getConnection } from './db.js';
 import { getCurrentStorageConfig, ensureStorageDirectories } from './config/storage.js';
@@ -69,6 +70,7 @@ app.use('/api', publicRouter);
 app.use('/api/asesor', asesorRouter);
 app.use('/api/mistery-shopper', misteryShopperRouter);
 app.use('/api/ot', otRouter);
+app.use('/api/backoffice', backofficeRouter);
 
 // --- NUEVO: servir archivos estáticos del build de React ---
 const __filename = fileURLToPath(import.meta.url);
