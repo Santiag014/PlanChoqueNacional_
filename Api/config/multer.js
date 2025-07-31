@@ -26,18 +26,27 @@ const storage = multer.diskStorage({
   }
 });
 
-// Configuración de multer con validaciones
+// Configuración de multer con validaciones más permisivas para móviles
 export const upload = multer({ 
   storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB máximo
+    fileSize: 50 * 1024 * 1024, // 50MB máximo para múltiples archivos
+    fieldSize: 10 * 1024 * 1024, // 10MB por campo
+    fields: 50, // Máximo 50 campos
+    files: 20   // Máximo 20 archivos
   },
   fileFilter: function (req, file, cb) {
-    // Permitir solo imágenes
-    if (file.mimetype.startsWith('image/')) {
+    // Permitir solo imágenes con más tipos
+    const allowedTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 
+      'image/webp', 'image/bmp', 'image/tiff'
+    ];
+    
+    if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Solo se permiten archivos de imagen'), false);
+      console.error(`Tipo de archivo no permitido: ${file.mimetype}`);
+      cb(new Error(`Tipo de archivo no permitido: ${file.mimetype}. Solo se permiten imágenes.`), false);
     }
   }
 });

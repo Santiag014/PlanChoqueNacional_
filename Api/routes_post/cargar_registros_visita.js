@@ -121,8 +121,34 @@ router.post('/cargar-registros-visita', upload.any(), async (req, res) => {
       registro_id
     });
   } catch (err) {
-    console.error('Error en cargar-registro-pdv:', err);
-    res.status(500).json({ success: false, message: 'Error al guardar el registro', error: err.message });
+    console.error('Error en cargar-registro-visita:', err);
+    console.error('Stack trace:', err.stack);
+    console.error('Request details:', {
+      body: req.body,
+      files: req.files?.map(f => ({ fieldname: f.fieldname, filename: f.filename, size: f.size })),
+      userAgent: req.headers['user-agent'],
+      contentType: req.headers['content-type']
+    });
+    
+    // Mensajes de error más específicos para visitas
+    let errorMessage = 'Error al guardar la visita';
+    if (err.code === 'ECONNREFUSED') {
+      errorMessage = 'Error de conexión a la base de datos';
+    } else if (err.code === 'ER_NO_SUCH_TABLE') {
+      errorMessage = 'Error en la estructura de la base de datos';
+    } else if (err.message.includes('Duplicate entry')) {
+      errorMessage = 'Ya existe una visita con estos datos';
+    } else if (err.code === 'ENOENT') {
+      errorMessage = 'Error al guardar la fotografía de seguimiento';
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      message: errorMessage, 
+      error: err.message,
+      // Solo en desarrollo
+      ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    });
   } finally {
     if (conn) conn.release();
   }

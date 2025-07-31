@@ -19,7 +19,7 @@ import { getCurrentStorageConfig, ensureStorageDirectories } from './config/stor
 
 const app = express();
 
-// Configurar CORS para permitir el frontend remoto
+// Configurar CORS para permitir el frontend remoto y acceso desde dispositivos móviles
 const corsOptions = {
   origin: function (origin, callback) {
     const allowedOrigins = [
@@ -32,13 +32,21 @@ const corsOptions = {
     // Permitir requests sin origin (móviles, Postman, etc.)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Permitir cualquier IP local para desarrollo móvil
+    // Ejemplos: http://192.168.1.100:5173, http://10.0.0.5:5173, etc.
+    const isLocalIP = /^http:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+):(5173|3000)$/.test(origin);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || isLocalIP) {
       callback(null, true);
     } else {
+      console.log(`❌ CORS: Origen no permitido: ${origin}`);
       callback(new Error('No permitido por CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400 // Cache preflight por 24 horas
 };
 
 app.use(cors(corsOptions));
@@ -54,8 +62,9 @@ try {
   console.error('❌ Error inicializando storage:', error);
 }
 
-// Middleware para parsear JSON (aplicar globalmente)
-app.use(express.json());
+// Middleware para parsear JSON con límites más generosos
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Primero, rutas que reciben archivos (FormData)
 app.use('/api', cargarVisitas);

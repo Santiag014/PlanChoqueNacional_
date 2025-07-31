@@ -3,6 +3,35 @@ import { getConnection } from '../db.js';
 
 const router = express.Router();
 
+// Test endpoint para verificar conectividad en producción
+router.get('/test-connection', (req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'API funcionando correctamente',
+    timestamp: new Date().toISOString(),
+    userAgent: req.headers['user-agent'],
+    origin: req.headers.origin,
+    host: req.headers.host
+  });
+});
+
+// Test endpoint POST para verificar si los POST requests funcionan
+router.post('/test-post', (req, res) => {
+  console.log('📡 Test POST recibido:', {
+    body: req.body,
+    headers: req.headers,
+    timestamp: new Date().toISOString()
+  });
+  
+  res.json({ 
+    success: true, 
+    message: 'POST request funcionando correctamente',
+    receivedData: req.body,
+    timestamp: new Date().toISOString(),
+    userAgent: req.headers['user-agent']
+  });
+});
+
 // Obtener marcas - endpoint público
 router.get('/marcas', async (req, res) => {
   try {
