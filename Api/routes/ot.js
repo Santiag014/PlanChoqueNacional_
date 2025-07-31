@@ -266,7 +266,7 @@ router.get('/cobertura', authenticateToken, requireOT, logAccess, async (req, re
     // PDVs con al menos un registro en registro_servicios
     const [implementados] = await conn.execute(
       `SELECT DISTINCT pdv_id
-       FROM registro_servicios`
+       FROM registro_servicios WHERE registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2`
     );
     const implementadosSet = new Set(implementados.map(r => r.pdv_id));
 
@@ -313,7 +313,8 @@ router.get('/volumen', authenticateToken, requireOT, logAccess, async (req, res)
     const [realResult] = await conn.execute(
       `SELECT SUM(registro_productos.conversion_galonaje) as totalReal
        FROM registro_servicios
-       INNER JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id`
+       INNER JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
+       WHERE registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2`
     );
     const totalReal = realResult[0]?.totalReal || 0;
 
@@ -337,7 +338,7 @@ router.get('/volumen', authenticateToken, requireOT, logAccess, async (req, res)
        FROM puntos_venta pv
        INNER JOIN users u ON u.id = pv.user_id
        LEFT JOIN agente ag ON ag.id = pv.id_agente
-       LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id
+       LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.estado_id = 2 AND rs.estado_agente_id = 2
        LEFT JOIN registro_productos rp ON rp.registro_id = rs.id
        GROUP BY pv.id, pv.codigo, pv.descripcion, pv.segmento, pv.meta_volumen, u.name, u.email, u.id, ag.descripcion, ag.id`
     );
@@ -367,7 +368,7 @@ router.get('/volumen', authenticateToken, requireOT, logAccess, async (req, res)
          COUNT(DISTINCT pv.id) AS cantidadPdvs,
          COALESCE(SUM(rp.conversion_galonaje), 0) AS totalGalones
        FROM puntos_venta pv
-       LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id
+       LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.estado_id = 2 AND rs.estado_agente_id = 2
        LEFT JOIN registro_productos rp ON rp.registro_id = rs.id
        GROUP BY pv.segmento`
     );
@@ -380,6 +381,7 @@ router.get('/volumen', authenticateToken, requireOT, logAccess, async (req, res)
          SUM(rp.conversion_galonaje) AS galonaje
        FROM registro_servicios rs
        INNER JOIN registro_productos rp ON rp.registro_id = rs.id
+       WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2
        GROUP BY rp.referencia_id
        ORDER BY galonaje DESC`
     );
@@ -437,7 +439,7 @@ router.get('/visitas', authenticateToken, requireOT, logAccess, async (req, res)
     // Obtener el número real de visitas (registro_servicios)
     const [realResult] = await conn.execute(
       `SELECT COUNT(id) as totalVisitas
-       FROM registro_servicios`
+       FROM registro_servicios  WHERE estado_id = 2 AND estado_agente_id = 2`
     );
     const totalVisitas = realResult[0]?.totalVisitas || 0;
     
@@ -460,7 +462,7 @@ router.get('/visitas', authenticateToken, requireOT, logAccess, async (req, res)
        FROM puntos_venta pv
        INNER JOIN users u ON u.id = pv.user_id
        LEFT JOIN agente ag ON ag.id = pv.id_agente
-       LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id
+       LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.estado_id = 2 AND rs.estado_agente_id = 2
        GROUP BY pv.id, pv.codigo, pv.descripcion, u.name, u.email, u.id, ag.descripcion, ag.id`
     );
     
@@ -495,6 +497,7 @@ router.get('/visitas', authenticateToken, requireOT, logAccess, async (req, res)
          END AS tipo,
          COUNT(*) AS cantidad
        FROM registro_servicios
+        WHERE estado_id = 2 AND estado_agente_id = 2
        GROUP BY tipo`
     );
 
@@ -541,7 +544,8 @@ router.get('/precios', authenticateToken, requireOT, logAccess, async (req, res)
     const [reportados] = await conn.execute(
       `SELECT DISTINCT pdv_id
        FROM registro_servicios
-       WHERE kpi_precio = 1`
+       LEFT JOIN registros_mistery_shopper ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id 
+       WHERE registro_servicios.kpi_precio = 1 AND registros_mistery_shopper.id IS NOT NULL;`
     );
     const reportadosSet = new Set(reportados.map(r => r.pdv_id));
 

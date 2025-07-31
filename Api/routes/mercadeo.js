@@ -544,7 +544,7 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
         COUNT(DISTINCT CASE WHEN registro_servicios.id IS NOT NULL THEN puntos_venta.id END) as totalImpactados
        FROM puntos_venta
        INNER JOIN users ON users.id = puntos_venta.user_id
-       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id
+       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id AND registro_servicios.estado_id =2 AND registro_servicios.estado_agente_id = 2
        WHERE ${whereClause}`, queryParams
     );
     
@@ -561,11 +561,11 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
         users.name as nombre_asesor,
         users.id as asesor_id,
         CASE 
-          WHEN COUNT(registro_servicios.id) > 0 THEN 'Registrado'
+          WHEN (COUNT(registro_servicios.id) > 0 AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2) THEN 'Registrado'
           ELSE 'No Registrado'
         END as estado,
         CASE 
-          WHEN COUNT(registro_servicios.id) > 0 THEN ${puntosBasePorPDV}
+          WHEN COUNT(registro_servicios.id) > 0 AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2 THEN ${puntosBasePorPDV}
           ELSE 0
         END as puntos
       FROM puntos_venta
@@ -694,7 +694,7 @@ router.get('/volumen', authenticateToken, requireMercadeo, logAccess, async (req
        FROM registro_servicios
        INNER JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
        INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
-       WHERE ${whereClause}`, queryParams
+       WHERE ${whereClause} AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id `, queryParams
     );
     const totalReal = realResult[0]?.totalReal || 0;
 
@@ -725,7 +725,7 @@ router.get('/volumen', authenticateToken, requireMercadeo, logAccess, async (req
          ) as porcentaje
        FROM puntos_venta
        INNER JOIN users ON users.id = puntos_venta.user_id
-       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id
+       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2
        LEFT JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
        WHERE ${whereClause}
        GROUP BY puntos_venta.id, puntos_venta.codigo, puntos_venta.descripcion, puntos_venta.segmento, puntos_venta.meta_volumen, users.name, users.id
@@ -894,44 +894,70 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
       `SELECT COUNT(registro_servicios.id) as totalVisitas
        FROM registro_servicios
        INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
-       WHERE ${whereClause}`, queryParams
+       WHERE ${whereClause} AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2`, queryParams
     );
     const totalVisitas = realResult[0]?.totalVisitas || 0;
 
-    // Calcular puntos de visitas
-    // LÓGICA DE PUNTOS POR VISITAS:
-    // Meta = Total PDVs * 20 visitas
-    // Real = Total visitas reportadas
-    // Puntos totales = (VISITAS_REPORTADAS/META_VISITAS) * puntos_base
-    // Usaremos 100 puntos base para visitas
     const porcentajeVisitas = metaVisitas > 0 ? (totalVisitas / metaVisitas) : 0;
     const puntosVisitas = Math.round(porcentajeVisitas * 100);
 
     // Obtener detalle por PDV
     // LÓGICA DE PUNTOS POR VISITAS:
     // Cada PDV contribuye proporcionalmente al total de 100 puntos
-    // Obtener detalle por PDV (ESTRUCTURA IGUAL A ASESOR)
+    // Obtener detalle por PDV (ESTRUCTURA SIMPLIFICADA PARA DEBUG)
     const [pdvs] = await conn.execute(
       `SELECT 
-         puntos_venta.id,
-         puntos_venta.codigo,
-         puntos_venta.descripcion as nombre,
-         users.name as nombre_asesor,
-         users.id as asesor_id,
-         COUNT(registro_servicios.id) as cantidadVisitas,
-         20 as meta,
-         ROUND((COUNT(registro_servicios.id) / 20) * 100, 2) as porcentaje,
-         CASE 
-           WHEN ? > 0 THEN ROUND((COUNT(registro_servicios.id) / ?) * 100, 2)
-           ELSE 0
-         END as puntos
-       FROM puntos_venta
-       INNER JOIN users ON users.id = puntos_venta.user_id
-       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id
-       WHERE ${whereClause}
-       GROUP BY puntos_venta.id, puntos_venta.codigo, puntos_venta.descripcion, users.name, users.id
-       ORDER BY puntos_venta.codigo`, [...queryParams, metaVisitas, metaVisitas]
+        puntos_venta.id,
+        puntos_venta.codigo,
+        puntos_venta.descripcion as nombre,
+        users.name as nombre_asesor,
+        users.id as asesor_id,
+        COUNT(registro_servicios.id) AS cantidadVisitas,
+        20 AS meta,
+        ROUND((COUNT(registro_servicios.id) / 20) * 100, 2) AS porcentaje,
+        ROUND((COUNT(registro_servicios.id) / 20) * 100, 2) AS puntos
+      FROM puntos_venta
+      INNER JOIN users ON users.id = puntos_venta.user_id
+      LEFT JOIN registro_servicios 
+        ON registro_servicios.pdv_id = puntos_venta.id 
+        AND registro_servicios.estado_id = 2 
+        AND registro_servicios.estado_agente_id = 2
+      WHERE ${whereClause}
+      GROUP BY 
+        puntos_venta.id, 
+        puntos_venta.codigo, 
+        puntos_venta.descripcion, 
+        users.name, 
+        users.id
+      ORDER BY puntos_venta.codigo`,
+      queryParams
     );
+
+    console.log('=== DEBUG PDV QUERY ===');
+    console.log('whereClause:', whereClause);
+    console.log('queryParams:', queryParams);
+    console.log('metaVisitas:', metaVisitas);
+    console.log('pdvs result length:', pdvs.length);
+    console.log('pdvs result:', pdvs);
+
+    // DEBUG: Verificar si existen PDVs para este agente
+    const [debugPdvs] = await conn.execute(
+      `SELECT 
+        puntos_venta.id,
+        puntos_venta.codigo,
+        puntos_venta.descripcion,
+        puntos_venta.id_agente,
+        users.name as nombre_asesor
+      FROM puntos_venta
+      INNER JOIN users ON users.id = puntos_venta.user_id
+      WHERE puntos_venta.id_agente = ?
+      ORDER BY puntos_venta.codigo`,
+      [agente_id]
+    );
+    console.log('=== DEBUG: PDVs básicos para agente_id', agente_id, '===');
+    console.log('debugPdvs count:', debugPdvs.length);
+    console.log('debugPdvs:', debugPdvs);
+
 
     // Obtener tipos de visita
     const [tiposVisita] = await conn.execute(
@@ -946,7 +972,7 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
          COUNT(*) AS cantidad
        FROM registro_servicios
        INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
-       WHERE ${whereClause}
+       WHERE ${whereClause} AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2
        GROUP BY tipo`, queryParams
     );
 
@@ -962,7 +988,9 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
          COUNT(registro_servicios.id) * 2 as puntosGanados
        FROM puntos_venta
        INNER JOIN users ON users.id = puntos_venta.user_id
-       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id
+       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id 
+         AND registro_servicios.estado_id = 2 
+         AND registro_servicios.estado_agente_id = 2
        WHERE ${whereClause}
        GROUP BY users.id, users.name
        ORDER BY totalVisitas DESC`, queryParams
@@ -1004,114 +1032,6 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
   }
 });
 
-// Obtener métricas de profundidad filtradas por agente_id
-router.get('/profundidad', authenticateToken, requireMercadeo, logAccess, async (req, res) => {
-  let conn;
-  try {
-    conn = await getConnection();
-    
-    const { agente_id } = req.user;
-    
-    if (!agente_id) {
-      return res.status(400).json({
-        success: false,
-        message: 'Usuario no tiene agente asignado'
-      });
-    }
-
-    // Filtros opcionales
-    const { asesor_id, pdv_id } = req.query;
-    
-    // Construir filtros WHERE dinámicos
-    let whereConditions = ['puntos_venta.id_agente = ?'];
-    let queryParams = [agente_id];
-    
-    if (asesor_id) {
-      whereConditions.push('puntos_venta.user_id = ?');
-      queryParams.push(asesor_id);
-    }
-    
-    if (pdv_id) {
-      whereConditions.push('puntos_venta.id = ?');
-      queryParams.push(pdv_id);
-    }
-    
-    const whereClause = whereConditions.join(' AND ');
-
-    // Obtener todos los PDVs asignados del agente
-    const [pdvs] = await conn.execute(
-      `SELECT 
-         puntos_venta.id,
-         puntos_venta.codigo,
-         puntos_venta.descripcion as nombre,
-         puntos_venta.direccion,
-         users.name as nombre_asesor,
-         users.id as asesor_id
-       FROM puntos_venta
-       INNER JOIN users ON users.id = puntos_venta.user_id
-       WHERE ${whereClause}
-       ORDER BY puntos_venta.codigo`, queryParams
-    );
-
-    // Obtener PDVs con al menos una nueva referencia vendida
-    const [conProfundidadQuery] = await conn.execute(
-      `SELECT 
-          registro_servicios.pdv_id,
-          COUNT(DISTINCT registro_productos.referencia_id) AS nuevas_referencias
-       FROM registro_servicios
-       INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
-       LEFT JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
-       LEFT JOIN portafolio_pdv ON 
-          portafolio_pdv.pdv_id = registro_servicios.pdv_id AND 
-          portafolio_pdv.referencia_id = registro_productos.referencia_id
-       WHERE ${whereClause} AND portafolio_pdv.referencia_id IS NULL
-       GROUP BY registro_servicios.pdv_id
-       HAVING nuevas_referencias > 0`, queryParams
-    );
-
-    const pdvsConProfundidad = new Set(conProfundidadQuery.map(r => r.pdv_id));
-
-    // Calcular métricas (IGUAL QUE ASESOR: 200 puntos máximo)
-    const totalAsignados = pdvs.length;
-    const totalConProfundidad = pdvsConProfundidad.size;
-    const puntosProfundidad = totalAsignados > 0 ? Math.round((totalConProfundidad / totalAsignados) * 200) : 0;
-
-    // Asignar puntos individuales por PDV (IGUAL QUE ASESOR)
-    const puntosPorPDV = totalAsignados > 0 ? Math.floor(200 / totalAsignados) : 0;
-    const pdvsDetalle = pdvs.map(pdv => ({
-      ...pdv,
-      estado: pdvsConProfundidad.has(pdv.id) ? 'REGISTRADO' : 'NO REGISTRADO',
-      puntos: pdvsConProfundidad.has(pdv.id) ? puntosPorPDV : 0
-    }));
-
-    res.json({
-      success: true,
-      pdvs: pdvsDetalle,
-      data: pdvsDetalle,
-      // Métricas principales para el dashboard
-      puntos: puntosProfundidad,
-      meta: totalAsignados,
-      real: totalConProfundidad,
-      porcentajeCumplimiento: totalAsignados > 0 ? Math.round((totalConProfundidad / totalAsignados) * 100) : 0,
-      // Propiedades adicionales para compatibilidad
-      totalAsignados,
-      totalConProfundidad,
-      puntosProfundidad,
-      porcentaje: totalAsignados > 0 ? Math.round((totalConProfundidad / totalAsignados) * 100) : 0
-    });
-
-  } catch (err) {
-    console.error('Error obteniendo métricas de profundidad (Mercadeo):', err);
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener métricas de profundidad',
-      error: err.message
-    });
-  } finally {
-    if (conn) conn.release();
-  }
-});
-
 // Obtener métricas de precios filtradas por agente_id
 router.get('/precios', authenticateToken, requireMercadeo, logAccess, async (req, res) => {
   let conn;
@@ -1145,21 +1065,16 @@ router.get('/precios', authenticateToken, requireMercadeo, logAccess, async (req
     }
     
     const whereClause = whereConditions.join(' AND ');
-
-    // Consulta para obtener métricas de precios
-    // LÓGICA DE PUNTOS POR PRECIOS:
-    // Meta = PDVs asignados al agente
-    // Real = PDVs con reportes de precios (kpi_precio = 1)
-    // Puntos totales = (PDVs_CON_PRECIOS/PDVs_ASIGNADOS) * 50
     
     // Primero obtener totales
     const [totalesResult] = await conn.execute(
       `SELECT 
         COUNT(DISTINCT puntos_venta.id) as totalAsignados,
-        COUNT(DISTINCT CASE WHEN registro_servicios.kpi_precio = 1 THEN puntos_venta.id END) as totalConPrecios
+        COUNT(DISTINCT CASE WHEN registro_servicios.kpi_precio = 1 AND registros_mistery_shopper.id_registro_pdv IS NOT NULL THEN puntos_venta.id END) as totalConPrecios
        FROM puntos_venta
        INNER JOIN users ON users.id = puntos_venta.user_id
        LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id
+       LEFT JOIN registros_mistery_shopper ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
        WHERE ${whereClause}`, queryParams
     );
     
@@ -1176,17 +1091,23 @@ router.get('/precios', authenticateToken, requireMercadeo, logAccess, async (req
         users.name as nombre_asesor,
         users.id as asesor_id,
         CASE 
-          WHEN COUNT(CASE WHEN registro_servicios.kpi_precio = 1 THEN 1 END) > 0 THEN 'REPORTADOS'
+          WHEN COUNT(CASE WHEN registro_servicios.kpi_precio = 1 AND registros_mistery_shopper.id_registro_pdv IS NOT NULL THEN 1 END) > 0 THEN 'REPORTADOS'
           ELSE 'NO REPORTADOS'
         END as estado,
         CASE 
-          WHEN COUNT(CASE WHEN registro_servicios.kpi_precio = 1 THEN 1 END) > 0 THEN ${puntosPorPDV}
+          WHEN COUNT(
+            CASE 
+              WHEN registro_servicios.kpi_precio = 1 AND registros_mistery_shopper.id_registro_pdv IS NOT NULL THEN 1 
+            END
+          ) > 0 THEN ${puntosPorPDV}
           ELSE 0
-        END as puntos
+        END AS puntos
       FROM puntos_venta
       INNER JOIN users ON users.id = puntos_venta.user_id
       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id
-      WHERE ${whereClause}
+      LEFT JOIN registros_mistery_shopper 
+          ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
+      WHERE ${whereClause} 
       GROUP BY puntos_venta.id, puntos_venta.codigo, puntos_venta.descripcion, users.name, users.id
       ORDER BY puntos_venta.codigo
     `;
@@ -1279,7 +1200,7 @@ router.get('/download-kpis', authenticateToken, requireMercadeo, logAccess, asyn
         COUNT(registro_servicios.id) * 15 as puntos
       FROM puntos_venta
       INNER JOIN users ON users.id = puntos_venta.user_id
-      LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id
+      LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id AND registro_servicios.estado_id =2 AND registro_servicios.estado_agente_id = 2
       WHERE ${whereClause}
       GROUP BY puntos_venta.id, puntos_venta.codigo, puntos_venta.descripcion, users.name
       ORDER BY puntos_venta.codigo`, queryParams
@@ -1299,7 +1220,7 @@ router.get('/download-kpis', authenticateToken, requireMercadeo, logAccess, asyn
          ) as porcentaje
        FROM puntos_venta
        INNER JOIN users ON users.id = puntos_venta.user_id
-       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id
+       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id  AND registro_servicios.estado_id =2 AND registro_servicios.estado_agente_id = 2
        LEFT JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
        WHERE ${whereClause}
        GROUP BY puntos_venta.id, puntos_venta.codigo, puntos_venta.descripcion, puntos_venta.segmento, puntos_venta.meta_volumen, users.name
@@ -1318,7 +1239,7 @@ router.get('/download-kpis', authenticateToken, requireMercadeo, logAccess, asyn
          COUNT(registro_servicios.id) * 2 as puntos
        FROM puntos_venta
        INNER JOIN users ON users.id = puntos_venta.user_id
-       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id
+       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id AND registro_servicios.estado_id =2 AND registro_servicios.estado_agente_id = 2
        WHERE ${whereClause}
        GROUP BY puntos_venta.id, puntos_venta.codigo, puntos_venta.descripcion, users.name
        ORDER BY puntos_venta.codigo`, queryParams
@@ -1351,14 +1272,19 @@ router.get('/download-kpis', authenticateToken, requireMercadeo, logAccess, asyn
         puntos_venta.descripcion as nombre,
         users.name as nombre_asesor,
         CASE 
-          WHEN COUNT(registro_servicios.id) > 0 THEN 'Precios Reportados'
-          ELSE 'Precios No Reportados'
+          WHEN (COUNT(registro_servicios.id) > 0 AND registros_mistery_shopper.id_registro_pdv IS NOT NULL) THEN 'Precios Reportados'
+          ELSE 'Precios No. Reportados'
         END as estado,
-        COUNT(registro_servicios.id) * 3 as puntos
+        CASE 
+          WHEN COUNT(registro_servicios.id) > 0 AND registros_mistery_shopper.id_registro_pdv IS NOT NULL THEN COUNT(registro_servicios.id) * 2
+          ELSE 0
+        END as puntos
       FROM puntos_venta
       INNER JOIN users ON users.id = puntos_venta.user_id
       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id 
         AND registro_servicios.kpi_precio = 1
+      LEFT JOIN registros_mistery_shopper 
+          ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
       WHERE ${whereClause}
       GROUP BY puntos_venta.id, puntos_venta.codigo, puntos_venta.descripcion, users.name
       ORDER BY puntos_venta.codigo`, queryParams
