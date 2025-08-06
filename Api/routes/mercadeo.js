@@ -1428,7 +1428,7 @@ router.get('/historial-registros-mercadeo', authenticateToken, requireMercadeo, 
             FROM registro_fotografico_servicios
             GROUP BY id_registro
         ) rf ON rf.id_registro = rs.id
-        WHERE rs.estado_id = 2 AND pv.id_agente = ?
+        WHERE pv.id_agente = ?
         ORDER BY rs.fecha_registro DESC;`;
     const [rows] = await conn.execute(query, [agente_id]);
 

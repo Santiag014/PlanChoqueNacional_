@@ -45,12 +45,14 @@ export const requireRole = (allowedRoles) => {
       4: 'director',
       5: 'ot', // Organización Terpel
       6: 'backoffice', // BackOffice
+      // 7: 'implementacion', // Implementación - DESHABILITADO TEMPORALMENTE
       'asesor': 'asesor',
       'misteryshopper': 'misteryshopper',
       'mercadeo_ac': 'mercadeo_ac',
       'director': 'director',
       'ot': 'ot',
       'backoffice': 'backoffice'
+      // 'implementacion': 'implementacion' // DESHABILITADO TEMPORALMENTE
     };
 
     const userRoleId = req.user.tipo;
@@ -87,6 +89,9 @@ export const requireOT = requireRole('ot');
 
 // Middleware específico para BackOffice
 export const requireBackOffice = requireRole('backoffice');
+
+// Middleware específico para Implementación - DESHABILITADO TEMPORALMENTE
+// export const requireImplementacion = requireRole('implementacion');
 
 // Middleware para múltiples roles
 export const requireAnyRole = (...roles) => requireRole(roles);

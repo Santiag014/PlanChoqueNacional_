@@ -77,8 +77,7 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
     const [realResult] = await conn.execute(
       `SELECT SUM(registro_productos.conversion_galonaje) as totalReal
        FROM registro_servicios
-       INNER JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
-       WHERE registro_servicios.user_id = ? AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2`, [user_id]
+       INNER JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id AND registro_servicios.user_id = ? AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2`, [user_id]
     );
     const totalReal = realResult[0]?.totalReal || 0;
 
@@ -102,10 +101,10 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
          COALESCE(SUM(rp.conversion_galonaje), 0) AS \`real\`,
          COALESCE(SUM(rpt.puntos), 0) AS puntos
        FROM puntos_venta pv
-       LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.user_id = ?
+       LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.user_id = ? and (rs.estado_id = 2 AND rs.estado_agente_id = 2)
        LEFT JOIN registro_productos rp ON rp.registro_id = rs.id
        LEFT JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 1
-       WHERE pv.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
+       WHERE pv.user_id = ?
        GROUP BY pv.id, pv.codigo, pv.descripcion, pv.segmento, pv.meta_volumen`,
       [user_id, user_id]
     );
@@ -117,9 +116,9 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
          COUNT(DISTINCT pv.id) AS cantidadPdvs,
          COALESCE(SUM(rp.conversion_galonaje), 0) AS totalGalones
        FROM puntos_venta pv
-       LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.user_id = ?
+       LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.user_id = ? AND(rs.estado_id = 2 AND rs.estado_agente_id = 2)
        LEFT JOIN registro_productos rp ON rp.registro_id = rs.id
-       WHERE pv.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
+       WHERE pv.user_id = ? 
        GROUP BY pv.segmento`,
       [user_id, user_id]
     );
@@ -132,7 +131,7 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
          SUM(rp.conversion_galonaje) AS galonaje
        FROM registro_servicios rs
        INNER JOIN registro_productos rp ON rp.registro_id = rs.id
-       WHERE rs.user_id = ? AND rs.estado_id = 2 AND rs.estado_agente_id = 2
+       WHERE rs.user_id = ? AND(rs.estado_id = 2 AND rs.estado_agente_id = 2)
        GROUP BY rp.referencia_id
        ORDER BY galonaje DESC`,
       [user_id]
@@ -191,8 +190,8 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
     const [puntosResult] = await conn.execute(
       `SELECT SUM(registro_puntos.puntos) as totalPuntos
        FROM registro_servicios
-       INNER JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id
-       WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 3 AND (registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2)`, [user_id]
+       INNER JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id AND registro_puntos.id_kpi = 3 AND (registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2)
+       WHERE registro_servicios.user_id = ?`, [user_id]
     );
     const puntosVisitas = puntosResult[0]?.totalPuntos || 0;
     
@@ -206,9 +205,9 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
          20 AS meta,
          COALESCE(SUM(rpt.puntos), 0) AS puntos
        FROM puntos_venta pv
-       LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.user_id = ?
+       LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
        LEFT JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 3
-       WHERE pv.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
+       WHERE pv.user_id = ? 
        GROUP BY pv.id, pv.codigo, pv.descripcion`,
       [user_id, user_id]
     );

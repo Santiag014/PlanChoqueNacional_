@@ -11,6 +11,7 @@ import mercadeoRouter from './routes/mercadeo.js';
 import asesorRouter from './routes/asesor.js';
 import publicRouter from './routes/public.js';
 import misteryShopperRouter from './routes/mistery.shopper.js';
+// import implementacionRouter from './routes/implementacion.js'; // DESHABILITADO TEMPORALMENTE
 import otRouter from './routes/ot.js';
 import backofficeRouter from './routes/backoffice.js';
 import bulkUploadRouter from './routes/bulk-upload.js';
@@ -78,6 +79,7 @@ app.use('/api/mercadeo', mercadeoRouter);
 app.use('/api', publicRouter);
 app.use('/api/asesor', asesorRouter);
 app.use('/api/mistery-shopper', misteryShopperRouter);
+// app.use('/api/implementacion', implementacionRouter); // DESHABILITADO TEMPORALMENTE
 app.use('/api/ot', otRouter);
 app.use('/api/backoffice', backofficeRouter);
 

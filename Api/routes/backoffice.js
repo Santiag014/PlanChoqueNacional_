@@ -124,6 +124,7 @@ router.get('/historial-registros-backoffice', authenticateToken, requireBackOffi
         u.name,
         u.documento AS cedula,
         rs.fecha_registro,
+        rs.created_at,
         CASE
             WHEN rs.kpi_volumen = 1 AND rs.kpi_precio = 1 THEN 'Volumen / Precio'
             WHEN rs.kpi_volumen = 1 THEN 'Volumen'
@@ -178,7 +179,7 @@ router.get('/historial-registros-backoffice', authenticateToken, requireBackOffi
             FROM registro_fotografico_servicios
             GROUP BY id_registro
         ) rf ON rf.id_registro = rs.id
-        ORDER BY rs.fecha_registro DESC;
+        ORDER BY rs.id ASC;
     `;
     const [rows] = await conn.execute(query);
 
@@ -285,6 +286,91 @@ router.put('/registro/:registro_id/estado', authenticateToken, requireBackOffice
 
   } catch (error) {
     console.error('Error al actualizar estado del registro:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// ============================================
+// ENDPOINTS DE GESTIÓN DE USUARIOS
+// ============================================
+
+/**
+ * @route GET /api/backoffice/usuarios
+ * @description Obtiene TODOS los usuarios del sistema
+ * @access Private (requiere rol BackOffice)
+ * @middleware authenticateToken, requireBackOffice, logAccess
+ * @returns {Object} Lista completa de usuarios con información completa
+ */
+router.get('/usuarios', authenticateToken, requireBackOffice, logAccess, async (req, res) => {
+  let connection;
+  try {
+    connection = await getConnection();
+
+    const [usuarios] = await connection.execute(`
+      SELECT agente.descripcion as agente_comercial, users.name, users.documento, users.email, rol.descripcion, depar_ciudades.descripcion as ciudad FROM users
+      INNER JOIN agente ON agente.id = users.agente_id
+      INNER JOIN rol ON rol.id = users.rol_id
+      INNER JOIN depar_ciudades ON depar_ciudades.id = users.ciudad_id
+      WHERE rol.id IN (1,3,5)
+    `);
+
+    res.json({
+      success: true,
+      data: usuarios,
+      total: usuarios.length,
+      message: 'Usuarios obtenidos exitosamente'
+    });
+
+  } catch (error) {
+    console.error('Error al obtener usuarios:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+
+// ============================================
+// ENDPOINTS DE GESTIÓN DE PUNTOS DE VENTA
+// ============================================
+
+/**
+ * @route GET /api/backoffice/puntos-venta
+ * @description Obtiene TODOS los puntos de venta del sistema
+ * @access Private (requiere rol BackOffice)
+ * @middleware authenticateToken, requireBackOffice, logAccess
+ * @returns {Object} Lista completa de PDVs con información completa
+ */
+router.get('/puntos-venta', authenticateToken, requireBackOffice, logAccess, async (req, res) => {
+  let connection;
+  try {
+    connection = await getConnection();
+
+    const [puntosVenta] = await connection.execute(`
+      SELECT agente.descripcion as agente_comercial,puntos_venta.codigo, puntos_venta.descripcion, puntos_venta.nit, puntos_venta.direccion, puntos_venta.ciudad, puntos_venta.segmento, puntos_venta.meta_volumen, users.documento, users.name FROM puntos_venta
+      INNER JOIN users ON puntos_venta.user_id = users.id
+      INNER JOIN agente ON agente.id = puntos_venta.id_agente
+    `);
+
+    res.json({
+      success: true,
+      data: puntosVenta,
+      total: puntosVenta.length,
+      message: 'Puntos de venta obtenidos exitosamente'
+    });
+
+  } catch (error) {
+    console.error('Error al obtener puntos de venta:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',

@@ -7,18 +7,16 @@ import fs from 'fs';
 
 const router = express.Router();
 
-// Configuración de multer para guardar la foto en /public/storage/YYYY-MM-DD
+// Configuración de multer para guardar las fotos en /uploads/YYYY-MM-DD
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const today = new Date();
     const folder = today.toISOString().slice(0, 10); // YYYY-MM-DD
-    const publicDir = path.join(process.cwd(), 'public');
-    const storageDir = path.join(publicDir, 'storage');
-    const dayDir = path.join(storageDir, folder);
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    const dayDir = path.join(uploadsDir, folder);
 
-    if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir);
-    if (!fs.existsSync(storageDir)) fs.mkdirSync(storageDir);
-    if (!fs.existsSync(dayDir)) fs.mkdirSync(dayDir);
+    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+    if (!fs.existsSync(dayDir)) fs.mkdirSync(dayDir, { recursive: true });
 
     cb(null, dayDir);
   },
@@ -42,13 +40,15 @@ router.get('/pdvs', authenticateToken, requireMisteryShopper, logAccess, async (
       SELECT 
         pv.codigo, 
         a.descripcion as agente,
-        r_pdv.created_at as fecha,
-        r_pdv.id as id_registro_pdv
+        registro_servicios.fecha_registro as fecha,
+        registro_servicios.id as id_registro_pdv
       FROM puntos_venta pv
       LEFT JOIN agente a ON pv.id_agente = a.id
-      INNER JOIN registros_pdv r_pdv ON r_pdv.pdv_id = pv.id
-      WHERE r_pdv.kpi_id = 2
-      ORDER BY pv.id DESC
+      INNER JOIN registro_servicios ON registro_servicios.pdv_id = pv.id
+      LEFT JOIN registros_mistery_shopper rms ON registro_servicios.id = rms.id_registro_pdv
+      WHERE registro_servicios.kpi_precio = 1 AND registro_servicios.estado_agente_id = 2 AND rms.id IS NOT NULL
+      GROUP BY registro_servicios.pdv_id
+      ORDER BY registro_servicios.fecha_registro ASC;
     `);
     res.json({ success: true, data: rows });
   } catch (err) {
@@ -68,32 +68,75 @@ router.get('/pdv-detalle', authenticateToken, requireMisteryShopper, logAccess, 
     conn = await getConnection();
     const [rows] = await conn.execute(`
       SELECT pv.id, pv.codigo, pv.descripcion as nombrePDV, pv.direccion, pv.coordenadas,
-             u.name as asesor, a.descripcion as agente, rms.nro_visita
-      FROM registros_pdv r_pdv
+             u.name as asesor, a.descripcion as agente, rms.nro_visita,
+             GROUP_CONCAT(re_prod.referencia_id) AS referencias,
+             GROUP_CONCAT(re_prod.presentacion) AS presentaciones,
+             GROUP_CONCAT(re_prod.precio_sugerido) AS precios_sugeridos,
+             GROUP_CONCAT(re_prod.precio_real) AS precios_reales,
+             GROUP_CONCAT(re_prod.cantidad_cajas) AS cantidades_cajas,
+             GROUP_CONCAT(re_prod.conversion_galonaje) AS galonajes
+      FROM registro_servicios r_pdv
       INNER JOIN puntos_venta pv ON r_pdv.pdv_id = pv.id
+      INNER JOIN registro_productos re_prod ON re_prod.registro_id = r_pdv.id
       LEFT JOIN users u ON pv.user_id = u.id
       LEFT JOIN agente a ON pv.id_agente = a.id
       LEFT JOIN registros_mistery_shopper rms ON r_pdv.id = rms.id_registro_pdv
       WHERE r_pdv.id = ?
+      GROUP BY pv.id, pv.codigo, pv.descripcion, pv.direccion, pv.coordenadas,
+               u.name, a.descripcion, rms.nro_visita
       LIMIT 1
     `, [id_registro_pdv]);
     
     if (rows.length > 0) {
+      const registro = rows[0];
+      
       // Extraer lat/lng de la columna coordenadas
       let lat = null, lng = null;
-      if (rows[0].coordenadas) {
-        const parts = rows[0].coordenadas.split(',');
+      if (registro.coordenadas) {
+        const parts = registro.coordenadas.split(',');
         if (parts.length === 2) {
           lat = parseFloat(parts[0]);
           lng = parseFloat(parts[1]);
         }
       }
+
+      // Procesar productos en formato de array para la tabla
+      const productos = [];
+      if (registro.referencias) {
+        const referencias = registro.referencias.split(',');
+        const presentaciones = registro.presentaciones ? registro.presentaciones.split(',') : [];
+        const preciosSugeridos = registro.precios_sugeridos ? registro.precios_sugeridos.split(',') : [];
+        const preciosReales = registro.precios_reales ? registro.precios_reales.split(',') : [];
+        const cantidades = registro.cantidades_cajas ? registro.cantidades_cajas.split(',') : [];
+        const galonajes = registro.galonajes ? registro.galonajes.split(',') : [];
+
+        referencias.forEach((ref, index) => {
+          productos.push({
+            referencia: ref.trim(),
+            presentacion: presentaciones[index] ? presentaciones[index].trim() : 'N/A',
+            precio_sugerido: preciosSugeridos[index] ? parseFloat(preciosSugeridos[index].trim()) : 0,
+            precio_real: preciosReales[index] ? parseFloat(preciosReales[index].trim()) : 0,
+            cantidad_cajas: cantidades[index] ? parseInt(cantidades[index].trim()) : 0,
+            galonaje: galonajes[index] ? parseFloat(galonajes[index].trim()) : 0
+          });
+        });
+      }
+      
       res.json({
         success: true,
         data: {
-          ...rows[0],
+          id: registro.id,
+          codigo: registro.codigo,
+          nombrePDV: registro.nombrePDV,
+          direccion: registro.direccion,
+          coordenadas: registro.coordenadas,
+          asesor: registro.asesor,
+          agente: registro.agente,
+          nro_visita: registro.nro_visita,
           lat,
-          lng
+          lng,
+          productos: productos,
+          total_productos: productos.length
         }
       });
     } else {
@@ -106,11 +149,11 @@ router.get('/pdv-detalle', authenticateToken, requireMisteryShopper, logAccess, 
   }
 });
 
-// Endpoint: Guardar hallazgo y foto - solo para Mystery Shoppers autenticados
-router.post('/guardar-hallazgo', authenticateToken, requireMisteryShopper, logAccess, upload.single('foto'), async (req, res) => {
+// Endpoint: Guardar hallazgo y fotos - solo para Mystery Shoppers autenticados
+router.post('/guardar-hallazgo', authenticateToken, requireMisteryShopper, logAccess, upload.array('fotos', 10), async (req, res) => {
   let conn;
   try {
-    const { pdv_id, hallazgos, user_id, nro_visita } = req.body;
+    const { pdv_id, hallazgos, user_id, nro_visita, estado_productos } = req.body;
     
     // Verificar que el usuario solo puede enviar datos con su propio user_id
     if (req.user.userId != user_id) {
@@ -128,29 +171,60 @@ router.post('/guardar-hallazgo', authenticateToken, requireMisteryShopper, logAc
     const today = new Date();
     const folder = today.toISOString().slice(0, 10); // YYYY-MM-DD
 
-    // URL pública de la foto
-    let fotoUrl = null;
-    if (req.file) {
-      fotoUrl = `storage/${folder}/${req.file.filename}`;
-    }
-
     conn = await getConnection();
-    await conn.execute(
-      `INSERT INTO registros_mistery_shopper 
-        (id_registro_pdv, id_user, foto_reporte, hallazgo, nro_visita, created_at, update_at)
-       VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
-      [pdv_id, user_id, fotoUrl, hallazgos, nro_visita || null]
-    );
     
-    res.json({ 
-      success: true, 
-      message: 'Hallazgo guardado correctamente', 
-      data: { fotoUrl } 
-    });
+    // Iniciar transacción para asegurar consistencia
+    await conn.beginTransaction();
+
+    try {
+      // 1. Insertar en registros_mistery_shopper
+      const [resultHallazgo] = await conn.execute(
+        `INSERT INTO registros_mistery_shopper 
+          (id_registro_pdv, id_user, hallazgo, nro_visita, id_estado, created_at, update_at)
+         VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
+        [pdv_id, user_id, hallazgos || '', nro_visita || 1, estado_productos === 'aceptado' ? 1 : 2]
+      );
+
+      const idRegistroShopper = resultHallazgo.insertId;
+
+      // 2. Insertar múltiples fotos en registro_fotografico_shopper
+      if (req.files && req.files.length > 0) {
+        for (const file of req.files) {
+          const fotoUrl = `/uploads/${folder}/${file.filename}`;
+          
+          await conn.execute(
+            `INSERT INTO registro_fotografico_shopper 
+              (id_registro, foto_seguimiento) 
+             VALUES (?, ?)`,
+            [idRegistroShopper, fotoUrl]
+          );
+        }
+      }
+
+      // Confirmar transacción
+      await conn.commit();
+
+      res.json({ 
+        success: true, 
+        message: 'Reporte guardado correctamente', 
+        data: { 
+          id_registro: idRegistroShopper,
+          fotos_guardadas: req.files ? req.files.length : 0,
+          estado_productos: estado_productos
+        } 
+      });
+
+    } catch (transactionError) {
+      // Rollback en caso de error
+      await conn.rollback();
+      throw transactionError;
+    }
+    
   } catch (err) {
+    console.error('Error al guardar reporte:', err);
     res.status(500).json({ 
       success: false, 
-      message: 'Error al guardar hallazgo', 
+      message: 'Error al guardar reporte', 
       error: err.message 
     });
   } finally {
@@ -343,6 +417,21 @@ router.get('/hallazgo-detalles/:hallazgo_id', authenticateToken, requireMisteryS
   } finally {
     if (conn) conn.release();
   }
+});
+
+// Endpoint de diagnóstico para verificar autenticación de Mystery Shopper
+router.get('/test-auth', authenticateToken, requireMisteryShopper, logAccess, async (req, res) => {
+  res.json({
+    success: true,
+    message: 'Autenticación de Mystery Shopper funcionando correctamente',
+    user: {
+      userId: req.user.userId,
+      email: req.user.email,
+      tipo: req.user.tipo,
+      nombre: req.user.nombre
+    },
+    timestamp: new Date().toISOString()
+  });
 });
 
 export default router;
