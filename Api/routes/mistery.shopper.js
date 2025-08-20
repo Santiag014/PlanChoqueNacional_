@@ -156,7 +156,7 @@ router.post('/guardar-hallazgo', authenticateToken, requireMisteryShopper, logAc
     const { pdv_id, hallazgos, user_id, nro_visita, estado_productos } = req.body;
     
     // Verificar que el usuario solo puede enviar datos con su propio user_id
-    if (req.user.userId != user_id) {
+    if (req.user.id != user_id) {
       return res.status(403).json({ 
         success: false, 
         message: 'No tienes permisos para enviar datos de otro usuario' 
@@ -237,7 +237,7 @@ router.get('/historial-hallazgos/:user_id', authenticateToken, requireMisterySho
   const { user_id } = req.params;
   
   // Verificar que el usuario solo puede acceder a sus propios datos
-  if (req.user.userId != user_id) {
+  if (req.user.id != user_id) {
     return res.status(403).json({ 
       success: false, 
       message: 'No tienes permisos para acceder a los datos de otro usuario' 
@@ -325,7 +325,7 @@ router.get('/hallazgo-detalles/:hallazgo_id', authenticateToken, requireMisteryS
       });
     }
     
-    if (hallazgoCheck[0].id_user != req.user.userId) {
+    if (hallazgoCheck[0].id_user != req.user.id) {
       return res.status(403).json({ 
         success: false, 
         message: 'No tienes permisos para acceder a este hallazgo' 
@@ -425,7 +425,7 @@ router.get('/test-auth', authenticateToken, requireMisteryShopper, logAccess, as
     success: true,
     message: 'Autenticación de Mystery Shopper funcionando correctamente',
     user: {
-      userId: req.user.userId,
+      userId: req.user.id,
       email: req.user.email,
       tipo: req.user.tipo,
       nombre: req.user.nombre

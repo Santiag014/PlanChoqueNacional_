@@ -259,7 +259,7 @@ router.get('/precios/:user_id', authenticateToken, requireAsesor, logAccess, asy
   const { user_id } = req.params;
 
   // Solo permitir ver sus propios registros
-  if (req.user.userId != user_id) {
+  if (req.user.id != user_id) {
     return res.status(403).json({
       success: false,
       message: 'No tienes permisos para acceder a los datos de otro usuario'
@@ -330,7 +330,7 @@ router.get('/historial-registros-asesor/:user_id', authenticateToken, requireAse
   const { user_id } = req.params;
 
   // Solo permitir ver sus propios registros
-  if (req.user.userId != user_id) {
+  if (req.user.id != user_id) {
     return res.status(403).json({
       success: false,
       message: 'No tienes permisos para acceder a los datos de otro usuario'
@@ -343,7 +343,41 @@ router.get('/historial-registros-asesor/:user_id', authenticateToken, requireAse
 
     // Consulta básica solicitada
     const query = `
-      SELECT 
+    WITH productos_agrupados AS (
+        SELECT 
+            registro_id,
+            GROUP_CONCAT(referencia_id) AS referencias,
+            GROUP_CONCAT(presentacion) AS presentaciones,
+            GROUP_CONCAT(cantidad_cajas) AS cantidades_cajas,
+            GROUP_CONCAT(conversion_galonaje) AS galonajes,
+            GROUP_CONCAT(precio_sugerido) AS precios_sugeridos,
+            GROUP_CONCAT(precio_real) AS precios_reales
+        FROM registro_productos
+        GROUP BY registro_id
+    ),
+    fotos_agrupadas AS (
+        SELECT 
+            id_registro,
+            GROUP_CONCAT(foto_factura) AS fotos_factura,
+            GROUP_CONCAT(foto_seguimiento) AS fotos_seguimiento
+        FROM registro_fotografico_servicios
+        GROUP BY id_registro
+    ),
+    implementacion_agrupada AS (
+        SELECT 
+            ri.id_registro,
+            ri.nro_implementacion,
+            ri.acepto_implementacion,
+            ri.observacion AS observacion_implementacion,
+            ri.foto_remision,
+            GROUP_CONCAT(rip.nombre_producto) AS productos_implementados,
+            GROUP_CONCAT(rip.nro) AS nros_productos,
+            GROUP_CONCAT(rip.foto_evidencia) AS fotos_evidencia
+        FROM registros_implementacion ri
+        LEFT JOIN registros_implementacion_productos rip ON rip.id_registro_implementacion = ri.id
+        GROUP BY ri.id_registro, ri.nro_implementacion, ri.acepto_implementacion, ri.observacion, ri.foto_remision
+    )
+    SELECT 
         registro_servicios.id,
         puntos_venta.codigo,
         puntos_venta.descripcion,
@@ -358,45 +392,45 @@ router.get('/historial-registros-asesor/:user_id', authenticateToken, requireAse
             ELSE 'Otro'
         END AS tipo_kpi,
         CASE
-            WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Implementacion'
-            WHEN kpi_volumen = 1 THEN 'Implementacion'
-            WHEN kpi_precio = 1 THEN 'Implementacion'
-            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Visita'
+            WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Galonaje/Precios'
+            WHEN kpi_volumen = 1 THEN 'Galonaje'
+            WHEN kpi_precio = 1 THEN 'Precios'
+            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 AND IsImplementacion is null THEN 'Visita'
+            WHEN IsImplementacion = 1 THEN 'Implementación'
             ELSE 'Otro'
         END AS tipo_accion,
         e1.descripcion AS estado_backoffice,
         e2.descripcion AS estado_agente,
         registro_servicios.observacion AS observacion_asesor,
         registro_servicios.observacion_agente AS observacion_agente,
-        GROUP_CONCAT(registro_productos.referencia_id) AS referencias,
-        GROUP_CONCAT(registro_productos.presentacion) AS presentaciones,
-        GROUP_CONCAT(registro_productos.cantidad_cajas) AS cantidades_cajas,
-        GROUP_CONCAT(registro_productos.conversion_galonaje) AS galonajes,
-        GROUP_CONCAT(registro_productos.precio_sugerido) AS precios_sugeridos,
-        GROUP_CONCAT(registro_productos.precio_real) AS precios_reales,
-        GROUP_CONCAT(registro_fotografico_servicios.foto_factura) AS fotos_factura,
-        GROUP_CONCAT(registro_fotografico_servicios.foto_pop) AS fotos_pop,
-        GROUP_CONCAT(registro_fotografico_servicios.foto_seguimiento) AS fotos_seguimiento
-      FROM registro_servicios
-      INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
-      INNER JOIN users ON users.id = registro_servicios.user_id
-      INNER JOIN estados e1 ON e1.id = registro_servicios.estado_id
-      INNER JOIN estados e2 ON e2.id = registro_servicios.estado_agente_id
-      LEFT JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
-      LEFT JOIN registro_fotografico_servicios ON registro_fotografico_servicios.id_registro = registro_servicios.id
-      WHERE registro_servicios.user_id = ?
-      GROUP BY 
-        registro_servicios.id,
-        puntos_venta.codigo,
-        puntos_venta.descripcion,
-        puntos_venta.direccion,
-        users.name,
-        registro_servicios.fecha_registro,
-        tipo_accion,
-        e1.descripcion,
-        e2.descripcion,
-        registro_servicios.observacion,
-        registro_servicios.observacion_agente
+        
+        -- Datos de subconsultas
+        pa.referencias,
+        pa.presentaciones,
+        pa.cantidades_cajas,
+        pa.galonajes,
+        pa.precios_sugeridos,
+        pa.precios_reales,
+        fa.fotos_factura,
+        fa.fotos_seguimiento,
+        ia.nro_implementacion,
+        ia.acepto_implementacion,
+        ia.observacion_implementacion,
+        ia.foto_remision,
+        ia.productos_implementados,
+        ia.nros_productos,
+        ia.fotos_evidencia
+        
+    FROM registro_servicios
+    INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
+    INNER JOIN users ON users.id = registro_servicios.user_id
+    INNER JOIN estados e1 ON e1.id = registro_servicios.estado_id
+    INNER JOIN estados e2 ON e2.id = registro_servicios.estado_agente_id
+    LEFT JOIN productos_agrupados pa ON pa.registro_id = registro_servicios.id
+    LEFT JOIN fotos_agrupadas fa ON fa.id_registro = registro_servicios.id
+    LEFT JOIN implementacion_agrupada ia ON ia.id_registro = registro_servicios.id
+
+    WHERE registro_servicios.user_id = ?;
     `;
     const [rows] = await conn.execute(query, [user_id]);
 
@@ -423,7 +457,7 @@ router.get('/resultados-auditorias/:user_id', authenticateToken, requireAsesor, 
   const { user_id } = req.params;
 
   // Solo permitir ver sus propios registros
-  if (req.user.userId != user_id) {
+  if (req.user.id != user_id) {
     return res.status(403).json({
       success: false,
       message: 'No tienes permisos para acceder a los datos de otro usuario'
@@ -468,10 +502,7 @@ router.get('/resultados-auditorias/:user_id', authenticateToken, requireAsesor, 
         GROUP_CONCAT(registro_productos.referencia_id) AS referencias,
         GROUP_CONCAT(registro_productos.presentacion) AS presentaciones,
         GROUP_CONCAT(registro_productos.precio_sugerido) AS precios_sugeridos,
-        GROUP_CONCAT(registro_productos.precio_real) AS precios_reales,
-
-        -- Información fotográfica
-        GROUP_CONCAT(registro_fotografico_servicios.foto_pop) AS fotos_pop
+        GROUP_CONCAT(registro_productos.precio_real) AS precios_reales
 
       FROM registro_servicios
 
@@ -583,7 +614,7 @@ router.get('/historial-visitas/:user_id', authenticateToken, requireAsesor, logA
   const { user_id } = req.params;
 
   // Solo permitir ver sus propios registros
-  if (req.user.userId != user_id) {
+  if (req.user.id != user_id) {
     return res.status(403).json({
       success: false,
       message: 'No tienes permisos para acceder a los datos de otro usuario'
@@ -867,7 +898,7 @@ router.get('/precio-sugerido/:referencia/:presentacion', authenticateToken, requ
 
 // ENDPOINT PARA RANKING DE ASESORES DE MI EMPRESA
 router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, async (req, res) => {
-  const userId = req.user.userId; // Obtenido del token
+  const userId = req.user.id; // Obtenido del token
 
   let conn;
   try {
@@ -990,7 +1021,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
 
 // ENDPOINT PARA OBTENER OPCIONES DE FILTROS GEOGRÁFICOS DEL RANKING
 router.get('/ranking-filtros', authenticateToken, requireAsesor, logAccess, async (req, res) => {
-  const userId = req.user.userId;
+  const userId = req.user.id;
 
   let conn;
   try {
@@ -1111,5 +1142,180 @@ router.get('/presentaciones-referencia/:referenciaDescripcion', async (req, res)
     if (conn) conn.release();
   }
 });
+
+// ========================================================================
+// 📋 ENDPOINTS DE LA SECCIÓN IMPLEMENTACION PUNTO DE VENTA
+// ========================================================================
+
+// ENDPOINT DE GALONAJE POR PDV PARA IMPLEMENTACIONES
+router.get('/galonaje-implementacion/:codigo_pdv', async (req, res) => {
+  const { codigo_pdv } = req.params;
+  let conn;
+
+  try {
+    conn = await getConnection();
+
+    // 1. Obtener el pdv_id y segmento a partir del codigo_pdv
+    const [pdvResult] = await conn.execute(
+      `SELECT id, segmento, descripcion
+       FROM puntos_venta 
+       WHERE codigo = ?`,
+      [codigo_pdv]
+    );
+
+    if (pdvResult.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'PDV no encontrado para el usuario especificado'
+      });
+    }
+
+    const pdv_id = pdvResult[0].id;
+    const segmento = pdvResult[0].segmento;
+    const descripcion = pdvResult[0].descripcion;
+
+    // 2. Obtener el galonaje real total
+    const [realResult] = await conn.execute(
+      `SELECT SUM(registro_productos.conversion_galonaje) AS totalReal
+       FROM registro_servicios
+       INNER JOIN registro_productos 
+         ON registro_productos.registro_id = registro_servicios.id
+       WHERE registro_servicios.pdv_id = ?
+         AND registro_servicios.estado_id = 2
+         AND registro_servicios.estado_agente_id = 2`,
+      [pdv_id]
+    );
+
+    const totalReal = realResult[0]?.totalReal || 0;
+
+    // 3. Obtener las metas de compras
+    const [comprasResult] = await conn.execute(
+      `SELECT compra_1, compra_2, compra_3, compra_4, compra_5
+       FROM puntos_venta__implementacion
+       WHERE pdv_id = ?`,
+      [pdv_id]
+    );
+
+    
+    // 4. Verificar qué implementaciones están realizadas y validadas 
+    const [implementacionResult] = await conn.execute(
+      `SELECT DISTINCT(registros_implementacion.nro_implementacion) FROM registro_servicios
+       INNER JOIN registros_implementacion ON registros_implementacion.id_registro = registro_servicios.id
+       WHERE registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2 AND registro_servicios.pdv_id = ?`,
+      [pdv_id]
+    );
+
+    // Obtener array de implementaciones completadas
+    const implementacionesCompletadas = implementacionResult.map(row => row.nro_implementacion);
+
+    const compras = comprasResult[0] || {
+      compra_1: 0,
+      compra_2: 0,
+      compra_3: 0,
+      compra_4: 0,
+      compra_5: 0
+    };
+
+    // Crear objeto con estado de implementaciones
+    const estadoImplementaciones = {
+      implementacion_1: implementacionesCompletadas.includes(1),
+      implementacion_2: implementacionesCompletadas.includes(2),
+      implementacion_3: implementacionesCompletadas.includes(3),
+      implementacion_4: implementacionesCompletadas.includes(4),
+      implementacion_5: implementacionesCompletadas.includes(5)
+    };
+
+    res.json({
+      success: true,
+      totalReal,
+      compras,
+      implementaciones_completadas: implementacionesCompletadas,
+      estado_implementaciones: estadoImplementaciones,
+      pdv_id,
+      segmento,
+      descripcion,
+      codigo_pdv
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener datos de galonaje por PDV',
+      error: err.message
+    });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// ENDPOINT PARA OBTENER PRODUCTOS DE IMPLEMENTACIÓN SEGÚN SEGMENTO Y NÚMERO
+router.get('/productos-implementacion/:segmento/:nro_implementacion', async (req, res) => {
+  const { segmento, nro_implementacion } = req.params;
+  let conn;
+
+  try {
+    conn = await getConnection();
+
+    console.log(`🔍 Consultando productos para segmento: ${segmento}, implementación: ${nro_implementacion}`);
+
+    // Buscar productos específicos para el segmento e implementación
+    const [productos] = await conn.execute(
+      `SELECT id, nombre_producto
+       FROM puntos_venta_productos_imp 
+       WHERE segmento = ? AND nro_implementacion = ?
+       ORDER BY nombre_producto`,
+      [segmento, nro_implementacion]
+    );
+
+    // Si no hay productos específicos, buscar productos MULTISEGMENTO para esa implementación
+    if (productos.length === 0) {
+      const [productosMulti] = await conn.execute(
+        `SELECT id, nombre_producto
+         FROM puntos_venta_productos_imp 
+         WHERE segmento = 'MULTISEGMENTO' AND nro_implementacion = ?
+         ORDER BY nombre_producto`,
+        [nro_implementacion]
+      );
+
+      if (productosMulti.length === 0) {
+        return res.json({
+          success: true,
+          message: `No se encontraron productos para el segmento ${segmento} e implementación ${nro_implementacion}`,
+          data: [],
+          segmento,
+          nro_implementacion
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: productosMulti,
+        segmento: 'MULTISEGMENTO',
+        nro_implementacion,
+        total_productos: productosMulti.length,
+        message: `Productos MULTISEGMENTO encontrados para implementación ${nro_implementacion}`
+      });
+    }
+
+    res.json({
+      success: true,
+      data: productos,
+      segmento,
+      nro_implementacion,
+      total_productos: productos.length
+    });
+
+  } catch (err) {
+    console.error('❌ Error al obtener productos de implementación:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener productos de implementación',
+      error: err.message
+    });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 
 export default router;

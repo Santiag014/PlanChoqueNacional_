@@ -1359,78 +1359,182 @@ router.get('/historial-registros-mercadeo', authenticateToken, requireMercadeo, 
     });
   }
 
+  // Obtener parámetros de filtro de la query string
+  const { 
+    busquedaCodigo, 
+    busquedaCedula, 
+    filtroKPI, 
+    filtroActividad, 
+    filtroEstadoBackoffice, 
+    filtroEstadoAgente 
+  } = req.query;
+
   let conn;
   try {
     conn = await getConnection();
 
+    // Construir condiciones WHERE dinámicas
+    let whereConditions = ['puntos_venta.id_agente = ?'];
+    let queryParams = [agente_id];
+
+    // Filtro por código de PDV
+    if (busquedaCodigo && busquedaCodigo.trim()) {
+      whereConditions.push('puntos_venta.codigo LIKE ?');
+      queryParams.push(`%${busquedaCodigo.trim()}%`);
+    }
+
+    // Filtro por cédula del asesor
+    if (busquedaCedula && busquedaCedula.trim()) {
+      whereConditions.push('users.documento LIKE ?');
+      queryParams.push(`%${busquedaCedula.trim()}%`);
+    }
+
+    // Filtro por KPI
+    if (filtroKPI && filtroKPI !== 'TODOS') {
+      switch(filtroKPI) {
+        case 'VOLUMEN':
+          whereConditions.push('registro_servicios.kpi_volumen = 1');
+          break;
+        case 'PRECIO':
+          whereConditions.push('registro_servicios.kpi_precio = 1');
+          break;
+        case 'FRECUENCIA':
+          whereConditions.push('registro_servicios.kpi_frecuencia = 1 AND registro_servicios.kpi_precio = 0 AND registro_servicios.kpi_volumen = 0');
+          break;
+        case 'PRECIO_VOLUMEN':
+          whereConditions.push('registro_servicios.kpi_volumen = 1 AND registro_servicios.kpi_precio = 1');
+          break;
+      }
+    }
+
+    // Filtro por Actividad
+    if (filtroActividad && filtroActividad !== 'TODAS') {
+      switch(filtroActividad.toUpperCase()) {
+        case 'GALONAJE/PRECIOS':
+          whereConditions.push('registro_servicios.kpi_volumen = 1 AND registro_servicios.kpi_precio = 1');
+          break;
+        case 'GALONAJE':
+          whereConditions.push('registro_servicios.kpi_volumen = 1');
+          break;
+        case 'PRECIOS':
+          whereConditions.push('registro_servicios.kpi_precio = 1');
+          break;
+        case 'VISITA':
+          whereConditions.push('registro_servicios.kpi_frecuencia = 1 AND registro_servicios.kpi_precio = 0 AND registro_servicios.kpi_volumen = 0 AND registro_servicios.IsImplementacion IS NULL');
+          break;
+        case 'IMPLEMENTACIÓN':
+          whereConditions.push('registro_servicios.IsImplementacion = 1');
+          break;
+      }
+    }
+
+    // Filtro por Estado BackOffice
+    if (filtroEstadoBackoffice && filtroEstadoBackoffice !== 'TODOS') {
+      whereConditions.push('e1.descripcion = ?');
+      queryParams.push(filtroEstadoBackoffice);
+    }
+
+    // Filtro por Estado Agente
+    if (filtroEstadoAgente && filtroEstadoAgente !== 'TODOS') {
+      whereConditions.push('e2.descripcion = ?');
+      queryParams.push(filtroEstadoAgente);
+    }
+
+    const whereClause = whereConditions.join(' AND ');
+
     // Consulta similar a la del asesor pero filtrando por agente_id
     const query = `
-          SELECT 
-        rs.id,
-        agente.descripcion AS agente_comercial,
-        pv.codigo,
-        pv.descripcion AS nombre_pdv,
-        pv.direccion,
-        u.name,
-        u.documento AS cedula,
-        rs.fecha_registro,
+    WITH productos_agrupados AS (
+        SELECT 
+            registro_id,
+            GROUP_CONCAT(referencia_id) AS referencias,
+            GROUP_CONCAT(presentacion) AS presentaciones,
+            GROUP_CONCAT(cantidad_cajas) AS cantidades_cajas,
+            GROUP_CONCAT(conversion_galonaje) AS galonajes,
+            GROUP_CONCAT(precio_sugerido) AS precios_sugeridos,
+            GROUP_CONCAT(precio_real) AS precios_reales
+        FROM registro_productos
+        GROUP BY registro_id
+    ),
+    fotos_agrupadas AS (
+        SELECT 
+            id_registro,
+            GROUP_CONCAT(foto_factura) AS fotos_factura,
+            GROUP_CONCAT(foto_seguimiento) AS fotos_seguimiento
+        FROM registro_fotografico_servicios
+        GROUP BY id_registro
+    ),
+    implementacion_agrupada AS (
+        SELECT 
+            ri.id_registro,
+            ri.nro_implementacion,
+            ri.acepto_implementacion,
+            ri.observacion AS observacion_implementacion,
+            ri.foto_remision,
+            GROUP_CONCAT(rip.nombre_producto) AS productos_implementados,
+            GROUP_CONCAT(rip.nro) AS nros_productos,
+            GROUP_CONCAT(rip.foto_evidencia) AS fotos_evidencia
+        FROM registros_implementacion ri
+        LEFT JOIN registros_implementacion_productos rip ON rip.id_registro_implementacion = ri.id
+        GROUP BY ri.id_registro, ri.nro_implementacion, ri.acepto_implementacion, ri.observacion, ri.foto_remision
+    )
+    SELECT 
+        registro_servicios.id,
+        puntos_venta.codigo,
+        puntos_venta.descripcion,
+        puntos_venta.direccion,
+        users.name,
+        users.documento,
+        registro_servicios.fecha_registro,
         CASE
-            WHEN rs.kpi_volumen = 1 AND rs.kpi_precio = 1 THEN 'Volumen / Precio'
-            WHEN rs.kpi_volumen = 1 THEN 'Volumen'
-            WHEN rs.kpi_precio = 1 THEN 'Precio'
-            WHEN rs.kpi_frecuencia = 1 AND rs.kpi_precio = 0 AND rs.kpi_volumen = 0 THEN 'Frecuencia'
+            WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Volumen / Precio'
+            WHEN kpi_volumen = 1 THEN 'Volumen'
+            WHEN kpi_precio = 1 THEN 'Precio'
+            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Frecuencia'
             ELSE 'Otro'
         END AS tipo_kpi,
         CASE
-            WHEN rs.kpi_volumen = 1 OR rs.kpi_precio = 1 THEN 'Implementacion'
-            WHEN rs.kpi_frecuencia = 1 AND rs.kpi_precio = 0 AND rs.kpi_volumen = 0 THEN 'Visita'
+            WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Galonaje/Precios'
+            WHEN kpi_volumen = 1 THEN 'Galonaje'
+            WHEN kpi_precio = 1 THEN 'Precios'
+            WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 AND IsImplementacion is null THEN 'Visita'
+            WHEN IsImplementacion = 1 THEN 'Implementación'
             ELSE 'Otro'
         END AS tipo_accion,
-        e1.descripcion AS estado_agente,
-        e2.descripcion AS estado_backoffice,
-        rs.observacion,
-        rs.observacion_agente,
-        rp.referencias,
-        rp.presentaciones,
-        rp.cantidades_cajas,
-        rp.galonajes,
-        rp.precios_sugeridos,
-        rp.precios_reales,
-        rf.fotos_factura,
-        rf.fotos_pop,
-        rf.fotos_seguimiento
-        FROM registro_servicios rs
-        INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
-        INNER JOIN agente ON agente.id = pv.id_agente
-        INNER JOIN users u ON u.id = rs.user_id
-        INNER JOIN estados e1 ON e1.id = rs.estado_agente_id
-        INNER JOIN estados e2 ON e2.id = rs.estado_id
+        e1.descripcion AS estado_backoffice,
+        e2.descripcion AS estado_agente,
+        registro_servicios.observacion,
+        registro_servicios.observacion_agente,
+        
+        -- Datos de subconsultas
+        pa.referencias,
+        pa.presentaciones,
+        pa.cantidades_cajas,
+        pa.galonajes,
+        pa.precios_sugeridos,
+        pa.precios_reales,
+        fa.fotos_factura,
+        fa.fotos_seguimiento,
+        ia.nro_implementacion,
+        ia.acepto_implementacion,
+        ia.observacion_implementacion,
+        ia.foto_remision,
+        ia.productos_implementados,
+        ia.nros_productos,
+        ia.fotos_evidencia
+        
+    FROM registro_servicios
+    INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
+    INNER JOIN users ON users.id = registro_servicios.user_id
+    INNER JOIN estados e1 ON e1.id = registro_servicios.estado_id
+    INNER JOIN estados e2 ON e2.id = registro_servicios.estado_agente_id
+    LEFT JOIN productos_agrupados pa ON pa.registro_id = registro_servicios.id
+    LEFT JOIN fotos_agrupadas fa ON fa.id_registro = registro_servicios.id
+    LEFT JOIN implementacion_agrupada ia ON ia.id_registro = registro_servicios.id
 
-        LEFT JOIN (
-            SELECT 
-                registro_id,
-                GROUP_CONCAT(referencia_id) AS referencias,
-                GROUP_CONCAT(presentacion) AS presentaciones,
-                GROUP_CONCAT(cantidad_cajas) AS cantidades_cajas,
-                GROUP_CONCAT(conversion_galonaje) AS galonajes,
-                GROUP_CONCAT(precio_sugerido) AS precios_sugeridos,
-                GROUP_CONCAT(precio_real) AS precios_reales
-            FROM registro_productos
-            GROUP BY registro_id
-        ) rp ON rp.registro_id = rs.id
-
-        LEFT JOIN (
-            SELECT 
-                id_registro,
-                GROUP_CONCAT(foto_factura) AS fotos_factura,
-                GROUP_CONCAT(foto_pop) AS fotos_pop,
-                GROUP_CONCAT(foto_seguimiento) AS fotos_seguimiento
-            FROM registro_fotografico_servicios
-            GROUP BY id_registro
-        ) rf ON rf.id_registro = rs.id
-        WHERE pv.id_agente = ?
-        ORDER BY rs.fecha_registro DESC;`;
-    const [rows] = await conn.execute(query, [agente_id]);
+    WHERE ${whereClause}
+    ORDER BY registro_servicios.fecha_registro DESC`;
+    const [rows] = await conn.execute(query, queryParams);
 
     res.json({
       success: true,
@@ -1648,7 +1752,7 @@ router.get('/test-precios', async (req, res) => {
  * - Proporciona datos de empresa/agente
  */
 router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess, async (req, res) => {
-  const userId = req.user.userId; // Obtenido del token
+  const userId = req.user.id; // Obtenido del token
 
   let conn;
   try {
@@ -1782,7 +1886,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
  * - Incluye opciones "todos/todas" por defecto
  */
 router.get('/ranking-filtros', authenticateToken, requireMercadeo, logAccess, async (req, res) => {
-  const userId = req.user.userId;
+  const userId = req.user.id;
 
   let conn;
   try {

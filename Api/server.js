@@ -7,11 +7,11 @@ import authRouter from './routes/auth.js';
 // import usersRouter from './routes/users.js'; // Comentado temporalmente - archivo no existe
 import cargarVisitas from './routes_post/cargar_registros_pdv.js';
 import cargarVisitas_Frecuencia from './routes_post/cargar_registros_visita.js';
+import cargarImplementaciones from './routes_post/cargar_registros_implementacion.js';
 import mercadeoRouter from './routes/mercadeo.js';
 import asesorRouter from './routes/asesor.js';
 import publicRouter from './routes/public.js';
 import misteryShopperRouter from './routes/mistery.shopper.js';
-// import implementacionRouter from './routes/implementacion.js'; // DESHABILITADO TEMPORALMENTE
 import otRouter from './routes/ot.js';
 import backofficeRouter from './routes/backoffice.js';
 import bulkUploadRouter from './routes/bulk-upload.js';
@@ -70,16 +70,15 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // Primero, rutas que reciben archivos (FormData)
 app.use('/api', cargarVisitas);
 app.use('/api', cargarVisitas_Frecuencia);
+app.use('/api', cargarImplementaciones);
 app.use('/api/bulk-upload', bulkUploadRouter);
 
 // Luego, rutas que reciben JSON
 app.use('/api', authRouter);
-// app.use('/api', usersRouter); // Comentado temporalmente - archivo no existe
 app.use('/api/mercadeo', mercadeoRouter);
 app.use('/api', publicRouter);
 app.use('/api/asesor', asesorRouter);
 app.use('/api/mistery-shopper', misteryShopperRouter);
-// app.use('/api/implementacion', implementacionRouter); // DESHABILITADO TEMPORALMENTE
 app.use('/api/ot', otRouter);
 app.use('/api/backoffice', backofficeRouter);
 

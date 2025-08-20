@@ -32,10 +32,6 @@ router.post('/cargar-registros-visita', upload.any(), async (req, res) => {
     console.log('req.body:', req.body);
     console.log('req.files:', req.files);
     
-    // Capturar is_seguimiento directamente desde req.body
-    const is_seguimiento = req.body.is_seguimiento;
-    console.log('🔍 is_seguimiento recibido:', is_seguimiento, 'tipo:', typeof is_seguimiento);
-    
     // Forzar que productos sea array aunque venga null/undefined
     if (!Array.isArray(registro.productos)) {
       registro.productos = [];
@@ -92,19 +88,16 @@ router.post('/cargar-registros-visita', upload.any(), async (req, res) => {
     // Insertar en registro_servicios
     const [servicioResult] = await conn.execute(
       `INSERT INTO registro_servicios (pdv_id, user_id, estado_id, estado_agente_id, kpi_volumen, kpi_frecuencia, kpi_precio, fecha_registro, created_at, updated_at)
-      VALUES (?, ?, 1, 1, ?, ?, ?, ?, NOW()-7, NOW()-7)`,
+      VALUES (?, ?, 1, 1, ?, ?, ?, ?, NOW(), NOW())`,
       [pdv_id_real, user_id, kpi_volumen, kpi_frecuencia, kpi_precio, fecha]
     );
     const registro_id = servicioResult.insertId;
 
-    // 3. Insertar foto en registro_fotografico_servicios (campo foto_seguimiento)
+    // 3. Insertar foto en registro_fotografico_servicios
     if (fotoSeguimientoUrl) {
-      // Convertir is_seguimiento a entero (puede venir como string desde FormData)
-      const isSeguimientoValue = parseInt(is_seguimiento) === 1 ? 1 : 0;
-      console.log('📷 Guardando foto con IsSeguimiento:', isSeguimientoValue, 'Original:', is_seguimiento, 'Tipo original:', typeof is_seguimiento);
       await conn.execute(
-        `INSERT INTO registro_fotografico_servicios (id_registro, foto_seguimiento, IsSeguimiento) VALUES (?, ?, ?)`,
-        [registro_id, fotoSeguimientoUrl, isSeguimientoValue]
+        `INSERT INTO registro_fotografico_servicios (id_registro, foto_seguimiento) VALUES (?, ?)`,
+        [registro_id, fotoSeguimientoUrl]
       );
     }
 

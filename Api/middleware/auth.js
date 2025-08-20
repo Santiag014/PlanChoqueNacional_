@@ -8,6 +8,9 @@ export const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
+  console.log('🔐 [authenticateToken] Auth header:', authHeader ? 'Present' : 'Missing');
+  console.log('🔐 [authenticateToken] Token:', token ? 'Present' : 'Missing');
+
   if (!token) {
     return res.status(401).json({ 
       success: false, 
@@ -17,11 +20,18 @@ export const authenticateToken = (req, res, next) => {
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
+      console.log('❌ [authenticateToken] Token verification failed:', err.message);
       return res.status(403).json({ 
         success: false, 
         message: 'Token inválido o expirado' 
       });
     }
+    
+    console.log('✅ [authenticateToken] Token verified successfully');
+    console.log('👤 [authenticateToken] User data from token:', user);
+    console.log('🆔 [authenticateToken] User ID:', user.id);
+    console.log('📧 [authenticateToken] User email:', user.email);
+    
     req.user = user;
     next();
   });

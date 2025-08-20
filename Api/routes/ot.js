@@ -1,17 +1,18 @@
 import express from 'express';
 import { getConnection } from '../db.js';
 import { authenticateToken, requireOT, logAccess } from '../middleware/auth.js';
+import { applyUserFilters, addUserRestrictions, getUserAgentsByName } from '../config/userPermissions.js';
 
 const router = express.Router();
 
-// Consulta básica de historial - SIN RESTRICCIÓN user_id
-router.get('/historial-registros', authenticateToken, requireOT, logAccess, async (req, res) => {
+// Consulta básica de historial - CON RESTRICCIONES POR USUARIO
+router.get('/historial-registros', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
   let conn;
   try {
     conn = await getConnection();
 
-    // Consulta básica sin filtrar por user_id
-    const query = `
+    // Consulta base sin filtros de usuario
+    const baseQuery = `
       SELECT 
         registro_servicios.id,
         puntos_venta.codigo, 
@@ -26,18 +27,23 @@ router.get('/historial-registros', authenticateToken, requireOT, logAccess, asyn
         estado_id,
         estado_agente_id,
         users.name as nombre_asesor,
-        users.email as email_asesor
+        users.email as email_asesor,
+        puntos_venta.id_agente as agente_id
       FROM registro_servicios
       INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
       INNER JOIN users ON users.id = registro_servicios.user_id
       ORDER BY registro_servicios.fecha_registro DESC
     `;
-    const [rows] = await conn.execute(query);
+
+    // Aplicar filtros de usuario según permisos
+    const { query, params } = await applyUserFilters(baseQuery, req.user.id, 'puntos_venta');
+    const [rows] = await conn.execute(query, params);
 
     res.json({
       success: true,
       data: rows,
-      total: rows.length
+      total: rows.length,
+      userRestrictions: req.userRestrictions // Para debugging
     });
 
   } catch (err) {
@@ -241,14 +247,14 @@ router.get('/registro-detalles/:registro_id', authenticateToken, requireOT, logA
 });
 
 // ENDPOINT DE COBERTURA GLOBAL PARA DASHBOARD OT
-router.get('/cobertura', authenticateToken, requireOT, logAccess, async (req, res) => {
+router.get('/cobertura', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
   let conn;
   try {
     conn = await getConnection();
 
-    // Total de PDVs en el sistema
-    const [pdvs] = await conn.execute(
-      `SELECT 
+    // Consulta base para PDVs del sistema
+    const basePdvsQuery = `
+      SELECT 
         pv.id, 
         pv.codigo, 
         pv.descripcion AS nombre, 
@@ -257,17 +263,29 @@ router.get('/cobertura', authenticateToken, requireOT, logAccess, async (req, re
         u.email as asesor_email,
         ag.descripcion as compania,
         ag.id as agente_id,
-        u.id as asesor_id
+        u.id as asesor_id,
+        pv.id_agente
        FROM puntos_venta pv
        INNER JOIN users u ON u.id = pv.user_id
-       LEFT JOIN agente ag ON ag.id = pv.id_agente`
-    );
+       LEFT JOIN agente ag ON ag.id = pv.id_agente
+    `;
 
-    // PDVs con al menos un registro en registro_servicios
-    const [implementados] = await conn.execute(
-      `SELECT DISTINCT pdv_id
-       FROM registro_servicios WHERE registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2`
-    );
+    // Aplicar filtros de usuario según permisos - filtrar por nombre de agente
+    const { query: pdvsQuery, params: pdvsParams } = await applyUserFilters(basePdvsQuery, req.user.id, '', null, 'name', 'ag.descripcion');
+    const [pdvs] = await conn.execute(pdvsQuery, pdvsParams);
+
+    // Consulta base para registros implementados
+    const baseImplementadosQuery = `
+      SELECT DISTINCT rs.pdv_id
+      FROM registro_servicios rs
+      INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
+      LEFT JOIN agente ag ON ag.id = pv.id_agente
+      WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2
+    `;
+
+    // Aplicar filtros de usuario a los implementados - filtrar por nombre de agente
+    const { query: implementadosQuery, params: implementadosParams } = await applyUserFilters(baseImplementadosQuery, req.user.id, '', null, 'name', 'ag.descripcion');
+    const [implementados] = await conn.execute(implementadosQuery, implementadosParams);
     const implementadosSet = new Set(implementados.map(r => r.pdv_id));
 
     // Cálculo de puntos cobertura (más realista)
@@ -287,7 +305,8 @@ router.get('/cobertura', authenticateToken, requireOT, logAccess, async (req, re
       pdvs: pdvsDetalle,
       totalAsignados,
       totalImplementados,
-      puntosCobertura
+      puntosCobertura,
+      userRestrictions: req.userRestrictions // Para debugging
     });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error al obtener cobertura', error: err.message });
@@ -297,33 +316,42 @@ router.get('/cobertura', authenticateToken, requireOT, logAccess, async (req, re
 });
 
 // ENDPOINT DE VOLUMEN GLOBAL PARA DASHBOARD OT
-router.get('/volumen', authenticateToken, requireOT, logAccess, async (req, res) => {
+router.get('/volumen', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
   let conn;
   try {
     conn = await getConnection();
 
-    // Obtener la meta total de volumen (suma de meta_volumen de todos los PDVs)
-    const [metaResult] = await conn.execute(
-      `SELECT SUM(meta_volumen) as totalMeta 
-       FROM puntos_venta`
-    );
+    // Consulta base para meta total de volumen con filtros de usuario
+    const baseMetaQuery = `
+      SELECT SUM(pv.meta_volumen) as totalMeta 
+      FROM puntos_venta pv
+      LEFT JOIN agente ag ON ag.id = pv.id_agente
+    `;
+    // Filtrar por nombre de agente/empresa como se hacía antes en frontend
+    const { query: metaQuery, params: metaParams } = await applyUserFilters(baseMetaQuery, req.user.id, '', null, 'name', 'ag.descripcion');
+    const [metaResult] = await conn.execute(metaQuery, metaParams);
     const totalMeta = metaResult[0]?.totalMeta || 0;
 
-    // Obtener el volumen real total (suma de conversion_galonaje)
-    const [realResult] = await conn.execute(
-      `SELECT SUM(registro_productos.conversion_galonaje) as totalReal
-       FROM registro_servicios
-       INNER JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
-       WHERE registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2`
-    );
+    // Consulta base para volumen real con filtros de usuario
+    const baseRealQuery = `
+      SELECT SUM(registro_productos.conversion_galonaje) as totalReal
+      FROM registro_servicios
+      INNER JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
+      INNER JOIN puntos_venta pv ON pv.id = registro_servicios.pdv_id
+      LEFT JOIN agente ag ON ag.id = pv.id_agente
+      WHERE registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2
+    `;
+    // Filtrar por nombre de agente/empresa como se hacía antes en frontend
+    const { query: realQuery, params: realParams } = await applyUserFilters(baseRealQuery, req.user.id, '', null, 'name', 'ag.descripcion');
+    const [realResult] = await conn.execute(realQuery, realParams);
     const totalReal = realResult[0]?.totalReal || 0;
 
     // Calcular puntos de volumen de forma más realista
     const puntosVolumen = Math.min(totalMeta > 0 ? Math.round((totalReal / totalMeta) * 100) : 0, 100);
 
-    // Obtener detalle por PDV con información del asesor
-    const [pdvs] = await conn.execute(
-      `SELECT 
+    // Consulta base para detalle por PDV con información del asesor
+    const basePdvsQuery = `
+      SELECT 
          pv.id,
          pv.codigo,
          pv.descripcion AS nombre,
@@ -334,14 +362,18 @@ router.get('/volumen', authenticateToken, requireOT, logAccess, async (req, res)
          u.id as asesor_id,
          ag.descripcion as compania,
          ag.id as agente_id,
+         pv.id_agente,
          COALESCE(SUM(rp.conversion_galonaje), 0) AS \`real\`
        FROM puntos_venta pv
        INNER JOIN users u ON u.id = pv.user_id
        LEFT JOIN agente ag ON ag.id = pv.id_agente
        LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.estado_id = 2 AND rs.estado_agente_id = 2
        LEFT JOIN registro_productos rp ON rp.registro_id = rs.id
-       GROUP BY pv.id, pv.codigo, pv.descripcion, pv.segmento, pv.meta_volumen, u.name, u.email, u.id, ag.descripcion, ag.id`
-    );
+       GROUP BY pv.id, pv.codigo, pv.descripcion, pv.segmento, pv.meta_volumen, u.name, u.email, u.id, ag.descripcion, ag.id, pv.id_agente
+    `;
+    // Filtrar por nombre de agente/empresa como se hacía antes en frontend
+    const { query: pdvsQuery, params: pdvsParams } = await applyUserFilters(basePdvsQuery, req.user.id, '', null, 'name', 'ag.descripcion');
+    const [pdvs] = await conn.execute(pdvsQuery, pdvsParams);
 
     // Calcular puntos individuales por PDV basado en cumplimiento de meta
     const pdvsConPuntos = pdvs.map(pdv => {
@@ -361,30 +393,35 @@ router.get('/volumen', authenticateToken, requireOT, logAccess, async (req, res)
       };
     });
 
-    // Obtener resumen por segmento
-    const [segmentos] = await conn.execute(
-      `SELECT 
+    // Consulta base para resumen por segmento con filtros de usuario
+    const baseSegmentosQuery = `
+      SELECT 
          pv.segmento,
          COUNT(DISTINCT pv.id) AS cantidadPdvs,
          COALESCE(SUM(rp.conversion_galonaje), 0) AS totalGalones
        FROM puntos_venta pv
        LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.estado_id = 2 AND rs.estado_agente_id = 2
        LEFT JOIN registro_productos rp ON rp.registro_id = rs.id
-       GROUP BY pv.segmento`
-    );
+       GROUP BY pv.segmento
+    `;
+    const { query: segmentosQuery, params: segmentosParams } = await applyUserFilters(baseSegmentosQuery, req.user.id, 'pv');
+    const [segmentos] = await conn.execute(segmentosQuery, segmentosParams);
 
-    // Obtener detalle por producto (usando referencia_id)
-    const [productos] = await conn.execute(
-      `SELECT 
+    // Consulta base para detalle por producto con filtros de usuario
+    const baseProductosQuery = `
+      SELECT 
          rp.referencia_id AS nombre,
          COUNT(rp.id) AS numeroCajas,
          SUM(rp.conversion_galonaje) AS galonaje
        FROM registro_servicios rs
        INNER JOIN registro_productos rp ON rp.registro_id = rs.id
+       INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
        WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2
        GROUP BY rp.referencia_id
-       ORDER BY galonaje DESC`
-    );
+       ORDER BY galonaje DESC
+    `;
+    const { query: productosQuery, params: productosParams } = await applyUserFilters(baseProductosQuery, req.user.id, 'pv');
+    const [productos] = await conn.execute(productosQuery, productosParams);
 
     // Calcular porcentajes para productos
     const totalGalonaje = productos.reduce((sum, p) => sum + p.galonaje, 0);
@@ -400,7 +437,8 @@ router.get('/volumen', authenticateToken, requireOT, logAccess, async (req, res)
       real_volumen: totalReal,
       puntos: puntosVolumen,
       segmentos,
-      productos
+      productos,
+      userRestrictions: req.userRestrictions // Para debugging
     });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error al obtener datos de volumen', error: err.message });
@@ -410,14 +448,14 @@ router.get('/volumen', authenticateToken, requireOT, logAccess, async (req, res)
 });
 
 // ENDPOINT DE VISITAS GLOBAL PARA DASHBOARD OT
-router.get('/visitas', authenticateToken, requireOT, logAccess, async (req, res) => {
+router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
   let conn;
   try {
     conn = await getConnection();
 
-    // Obtener todos los PDVs del sistema
-    const [pdvsResult] = await conn.execute(
-      `SELECT 
+    // Consulta base para todos los PDVs del sistema con filtros de usuario
+    const basePdvsQuery = `
+      SELECT 
         pv.id, 
         pv.codigo, 
         pv.descripcion AS nombre, 
@@ -429,26 +467,37 @@ router.get('/visitas', authenticateToken, requireOT, logAccess, async (req, res)
         ag.id as agente_id
        FROM puntos_venta pv
        INNER JOIN users u ON u.id = pv.user_id
-       LEFT JOIN agente ag ON ag.id = pv.id_agente`
-    );
+       LEFT JOIN agente ag ON ag.id = pv.id_agente
+    `;
+
+    // Aplicar filtros de usuario según permisos
+    const { query: pdvsQuery, params: pdvsParams } = await applyUserFilters(basePdvsQuery, req.user.id, 'pv');
+    const [pdvsResult] = await conn.execute(pdvsQuery, pdvsParams);
     const totalPdvs = pdvsResult.length;
     
-    // Meta de visitas: 20 por cada PDV
+    // Meta de visitas: 20 por cada PDV filtrado
     const metaVisitas = totalPdvs * 20;
     
-    // Obtener el número real de visitas (registro_servicios)
-    const [realResult] = await conn.execute(
-      `SELECT COUNT(id) as totalVisitas
-       FROM registro_servicios  WHERE estado_id = 2 AND estado_agente_id = 2`
-    );
+    // Consulta base para el número real de visitas con filtros de usuario
+    const baseRealQuery = `
+      SELECT COUNT(rs.id) as totalVisitas
+       FROM registro_servicios rs
+       INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
+       LEFT JOIN agente ag ON ag.id = pv.id_agente
+       WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2
+    `;
+    
+    // Aplicar filtros de usuario a las visitas
+    const { query: realQuery, params: realParams } = await applyUserFilters(baseRealQuery, req.user.id, 'pv');
+    const [realResult] = await conn.execute(realQuery, realParams);
     const totalVisitas = realResult[0]?.totalVisitas || 0;
     
     // Calcular puntos de visitas de forma más realista
     const puntosVisitas = Math.min(metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 100) : 0, 100);
     
-    // Obtener detalle de visitas por PDV
-    const [pdvs] = await conn.execute(
-      `SELECT 
+    // Consulta base para detalle de visitas por PDV con filtros de usuario
+    const basePdvsDetalleQuery = `
+      SELECT 
          pv.id,
          pv.codigo,
          pv.descripcion AS nombre,
@@ -463,8 +512,12 @@ router.get('/visitas', authenticateToken, requireOT, logAccess, async (req, res)
        INNER JOIN users u ON u.id = pv.user_id
        LEFT JOIN agente ag ON ag.id = pv.id_agente
        LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.estado_id = 2 AND rs.estado_agente_id = 2
-       GROUP BY pv.id, pv.codigo, pv.descripcion, u.name, u.email, u.id, ag.descripcion, ag.id`
-    );
+       GROUP BY pv.id, pv.codigo, pv.descripcion, u.name, u.email, u.id, ag.descripcion, ag.id
+    `;
+    
+    // Aplicar filtros de usuario al detalle
+    const { query: pdvsDetalleQuery, params: pdvsDetalleParams } = await applyUserFilters(basePdvsDetalleQuery, req.user.id, 'pv');
+    const [pdvs] = await conn.execute(pdvsDetalleQuery, pdvsDetalleParams);
     
     // Calcular porcentaje de cumplimiento y puntos para cada PDV
     const pdvsDetalle = pdvs.map(pdv => {
@@ -485,9 +538,9 @@ router.get('/visitas', authenticateToken, requireOT, logAccess, async (req, res)
       };
     });
     
-    // Obtener tipos de visita
-    const [tiposVisita] = await conn.execute(
-      `SELECT 
+    // Consulta base para tipos de visita con filtros de usuario
+    const baseTiposQuery = `
+      SELECT 
          CASE
             WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Volumen/Precio'
             WHEN kpi_volumen = 1 THEN 'Volumen'
@@ -496,10 +549,16 @@ router.get('/visitas', authenticateToken, requireOT, logAccess, async (req, res)
             ELSE 'Otro'
          END AS tipo,
          COUNT(*) AS cantidad
-       FROM registro_servicios
-        WHERE estado_id = 2 AND estado_agente_id = 2
-       GROUP BY tipo`
-    );
+       FROM registro_servicios rs
+       INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
+       LEFT JOIN agente ag ON ag.id = pv.id_agente
+       WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2
+       GROUP BY tipo
+    `;
+    
+    // Aplicar filtros de usuario a los tipos de visita
+    const { query: tiposQuery, params: tiposParams } = await applyUserFilters(baseTiposQuery, req.user.id, 'pv');
+    const [tiposVisita] = await conn.execute(tiposQuery, tiposParams);
 
     res.json({
       success: true,
@@ -508,7 +567,8 @@ router.get('/visitas', authenticateToken, requireOT, logAccess, async (req, res)
       real_visitas: totalVisitas,
       puntos: puntosVisitas,
       porcentajeCumplimiento: metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 100) : 0,
-      tiposVisita
+      tiposVisita,
+      userRestrictions: req.userRestrictions // Para debugging
     });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error al obtener datos de visitas', error: err.message });
@@ -518,14 +578,13 @@ router.get('/visitas', authenticateToken, requireOT, logAccess, async (req, res)
 });
 
 // Endpoint para consultar información de precios GLOBAL
-router.get('/precios', authenticateToken, requireOT, logAccess, async (req, res) => {
+router.get('/precios', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
   let conn;
   try {
     conn = await getConnection();
     
-    // 1. Obtener todos los PDVs del sistema
-    const [pdvs] = await conn.execute(
-      `SELECT 
+    // 1. Obtener todos los PDVs del sistema filtrados por usuario
+    const basePdvQuery = `SELECT 
         pv.id, 
         pv.codigo, 
         pv.descripcion AS nombre, 
@@ -537,16 +596,19 @@ router.get('/precios', authenticateToken, requireOT, logAccess, async (req, res)
         ag.id as agente_id
        FROM puntos_venta pv
        INNER JOIN users u ON u.id = pv.user_id
-       LEFT JOIN agente ag ON ag.id = pv.id_agente`
-    );
+       LEFT JOIN agente ag ON ag.id = pv.id_agente`;
     
-    // 2. Obtener PDVs con al menos un reporte de precio (kpi_precio = 1)
-    const [reportados] = await conn.execute(
-      `SELECT DISTINCT pdv_id
-       FROM registro_servicios
-       LEFT JOIN registros_mistery_shopper ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id 
-       WHERE registro_servicios.kpi_precio = 1 AND registros_mistery_shopper.id IS NOT NULL;`
-    );
+    const [pdvs] = await conn.execute(applyUserFilters(basePdvQuery, req.userRestrictions));
+    
+    // 2. Obtener PDVs con al menos un reporte de precio (kpi_precio = 1) filtrados por usuario  
+    const reportadosQuery = `SELECT DISTINCT rs.pdv_id
+       FROM registro_servicios rs
+       INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
+       LEFT JOIN agente ag ON ag.id = pv.id_agente
+       LEFT JOIN registros_mistery_shopper rms ON rms.id_registro_pdv = rs.id 
+       WHERE rs.kpi_precio = 1 AND rms.id IS NOT NULL`;
+    
+    const [reportados] = await conn.execute(applyUserFilters(reportadosQuery, req.userRestrictions));
     const reportadosSet = new Set(reportados.map(r => r.pdv_id));
 
     // 3. Cálculo de puntos por precios (más realista)
@@ -583,14 +645,13 @@ router.get('/precios', authenticateToken, requireOT, logAccess, async (req, res)
 });
 
 // Endpoint para consultar información de profundidad GLOBAL
-router.get('/profundidad', authenticateToken, requireOT, logAccess, async (req, res) => {
+router.get('/profundidad', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
   let conn;
   try {
     conn = await getConnection();
     
-    // 1. Obtener todos los PDVs del sistema
-    const [pdvs] = await conn.execute(
-      `SELECT 
+    // 1. Obtener todos los PDVs del sistema filtrados por usuario
+    const basePdvQuery = `SELECT 
         pv.id, 
         pv.codigo, 
         pv.descripcion AS nombre, 
@@ -602,22 +663,25 @@ router.get('/profundidad', authenticateToken, requireOT, logAccess, async (req, 
         ag.id as agente_id
        FROM puntos_venta pv
        INNER JOIN users u ON u.id = pv.user_id
-       LEFT JOIN agente ag ON ag.id = pv.id_agente`
-    );
+       LEFT JOIN agente ag ON ag.id = pv.id_agente`;
     
-    // 2. Obtener PDVs con al menos una nueva referencia vendida
-    const [conProfundidadQuery] = await conn.execute(
-      `SELECT 
+    const [pdvs] = await conn.execute(applyUserFilters(basePdvQuery, req.userRestrictions));
+    
+    // 2. Obtener PDVs con al menos una nueva referencia vendida filtrados por usuario
+    const profundidadQuery = `SELECT 
           rs.pdv_id,
           COUNT(*) AS nuevas_referencias
        FROM registro_servicios rs
+       INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
+       LEFT JOIN agente ag ON ag.id = pv.id_agente
        LEFT JOIN registro_productos rp ON rp.registro_id = rs.id
        LEFT JOIN portafolio_pdv pp 
           ON pp.pdv_id = rs.pdv_id AND pp.referencia_id = rp.referencia_id
        WHERE pp.referencia_id IS NULL
        GROUP BY rs.pdv_id
-       HAVING nuevas_referencias > 0`
-    );
+       HAVING nuevas_referencias > 0`;
+    
+    const [conProfundidadQuery] = await conn.execute(applyUserFilters(profundidadQuery, req.userRestrictions));
     
     const pdvsConProfundidad = new Set(conProfundidadQuery.map(r => r.pdv_id));
     
@@ -655,25 +719,37 @@ router.get('/profundidad', authenticateToken, requireOT, logAccess, async (req, 
 });
 
 // Endpoint para obtener todos los asesores (users con rol = 1)
-router.get('/asesores', authenticateToken, requireOT, logAccess, async (req, res) => {
+router.get('/asesores', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
   let conn;
   try {
     conn = await getConnection();
 
-    const [asesores] = await conn.execute(
-      `SELECT 
-        id,
-        name,
-        email
-       FROM users
-       WHERE rol_id = 1
-       ORDER BY name`
-    );
+    // Consulta base para asesores con información de compañía
+    const baseAsesoresQuery = `
+      SELECT DISTINCT
+        u.id,
+        u.name,
+        u.email,
+        u.created_at,
+        u.updated_at,
+        ag.descripcion as compania,
+        pv.id_agente
+       FROM users u
+       LEFT JOIN puntos_venta pv ON pv.user_id = u.id
+       LEFT JOIN agente ag ON ag.id = pv.id_agente
+       WHERE u.rol_id = 1
+       ORDER BY u.name
+    `;
+
+    // Aplicar filtros de usuario según permisos
+    const { query: asesoresQuery, params: asesoresParams } = await applyUserFilters(baseAsesoresQuery, req.user.id, 'pv');
+    const [asesores] = await conn.execute(asesoresQuery, asesoresParams);
 
     res.json({
       success: true,
       data: asesores,
-      total: asesores.length
+      total: asesores.length,
+      userRestrictions: req.userRestrictions // Para debugging
     });
 
   } catch (error) {
@@ -689,22 +765,38 @@ router.get('/asesores', authenticateToken, requireOT, logAccess, async (req, res
 });
 
 // Endpoint para obtener todos los agentes comerciales
-router.get('/agentes-comerciales', authenticateToken, requireOT, logAccess, async (req, res) => {
+router.get('/agentes-comerciales', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
   let conn;
   try {
     conn = await getConnection();
 
-    const [agentes] = await conn.execute(
-      `SELECT 
-        id,
-        descripcion
-       FROM agente`
-    );
+    // Consulta base para agentes comerciales
+    const baseAgentesQuery = `
+      SELECT 
+        ag.id,
+        ag.descripcion
+       FROM agente ag
+    `;
+
+    // Aplicar filtros de usuario según permisos
+    // Nota: Para agentes usamos el campo 'id' directamente, no 'id_agente'
+    const restrictions = req.userRestrictions;
+    let query = baseAgentesQuery;
+    let params = [];
+
+    if (restrictions && restrictions.hasRestrictions && restrictions.agenteIds && restrictions.agenteIds.length > 0) {
+      const placeholders = restrictions.agenteIds.map(() => '?').join(',');
+      query += ` WHERE ag.id IN (${placeholders})`;
+      params = restrictions.agenteIds;
+    }
+
+    const [agentes] = await conn.execute(query, params);
 
     res.json({
       success: true,
       data: agentes,
-      total: agentes.length
+      total: agentes.length,
+      userRestrictions: req.userRestrictions // Para debugging
     });
 
   } catch (error) {
@@ -720,13 +812,14 @@ router.get('/agentes-comerciales', authenticateToken, requireOT, logAccess, asyn
 });
 
 // Endpoint para obtener todos los puntos de venta
-router.get('/puntos-venta', authenticateToken, requireOT, logAccess, async (req, res) => {
+router.get('/puntos-venta', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
   let conn;
   try {
     conn = await getConnection();
 
-    const [pdvs] = await conn.execute(
-      `SELECT 
+    // Consulta base para puntos de venta
+    const basePdvsQuery = `
+      SELECT 
         pv.id,
         pv.codigo,
         pv.descripcion as nombre,
@@ -736,17 +829,23 @@ router.get('/puntos-venta', authenticateToken, requireOT, logAccess, async (req,
         ag.descripcion as compania,
         u.name as asesor_nombre,
         u.id as asesor_id,
-        ag.id as agente_id
+        ag.id as agente_id,
+        pv.id_agente
        FROM puntos_venta pv
        INNER JOIN users u ON u.id = pv.user_id
        LEFT JOIN agente ag ON ag.id = pv.id_agente
-       ORDER BY pv.codigo`
-    );
+       ORDER BY pv.codigo
+    `;
+
+    // Aplicar filtros de usuario según permisos
+    const { query: pdvsQuery, params: pdvsParams } = await applyUserFilters(basePdvsQuery, req.user.id, 'pv');
+    const [pdvs] = await conn.execute(pdvsQuery, pdvsParams);
 
     res.json({
       success: true,
       data: pdvs,
-      total: pdvs.length
+      total: pdvs.length,
+      userRestrictions: req.userRestrictions // Para debugging
     });
 
   } catch (error) {
@@ -758,6 +857,63 @@ router.get('/puntos-venta', authenticateToken, requireOT, logAccess, async (req,
     });
   } finally {
     if (conn) conn.release();
+  }
+});
+
+// Nueva ruta para obtener permisos y agentes permitidos del usuario
+router.get('/user-permissions', authenticateToken, requireOT, addUserRestrictions, async (req, res) => {
+  try {
+    const { getUserAllowedAgents } = await import('../config/userPermissions.js');
+    const allowedAgents = await getUserAllowedAgents(req.user.id);
+
+    res.json({
+      success: true,
+      data: {
+        userId: req.user.id,
+        hasRestrictions: req.userRestrictions?.hasRestrictions || false,
+        allowedAgents: allowedAgents,
+        restrictedAgentIds: req.userRestrictions?.agenteIds || []
+      }
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo permisos de usuario:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener permisos de usuario',
+      error: error.message
+    });
+  }
+});
+
+// Buscar agentes por nombre - CON RESTRICCIONES POR USUARIO
+router.get('/buscar-agentes', authenticateToken, requireOT, async (req, res) => {
+  try {
+    const { nombre } = req.query;
+    
+    if (!nombre || nombre.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'El parámetro "nombre" es requerido'
+      });
+    }
+
+    const agentes = await getUserAgentsByName(req.user.id, nombre);
+
+    res.json({
+      success: true,
+      data: agentes,
+      total: agentes.length,
+      searchTerm: nombre
+    });
+
+  } catch (error) {
+    console.error('Error buscando agentes por nombre:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al buscar agentes',
+      error: error.message
+    });
   }
 });
 

@@ -56,7 +56,7 @@ router.post('/login', async (req, res) => {
       // Crear token JWT con información del usuario
       const token = jwt.sign(
         { 
-          userId: user.id,
+          id: user.id,  // Cambiado de userId a id para consistencia
           email: user.email,
           tipo: user.tipo || user.rol || user.rol_id,
           nombre: user.nombre || user.name,
@@ -179,7 +179,7 @@ router.post('/verify-token', (req, res) => {
       success: true, 
       message: 'Token válido',
       user: {
-        id: decoded.userId,
+        id: decoded.id,  // Cambiado de decoded.userId a decoded.id
         email: decoded.email,
         tipo: decoded.tipo,
         nombre: decoded.nombre,
@@ -196,7 +196,7 @@ router.post('/refresh-token', authenticateToken, (req, res) => {
   // Crear un nuevo token con la misma información del usuario
   const newToken = jwt.sign(
     { 
-      userId: user.userId,
+      id: user.id,  // Cambiado de userId a id para consistencia
       email: user.email,
       tipo: user.tipo,
       nombre: user.nombre,

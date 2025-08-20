@@ -115,71 +115,99 @@ router.get('/historial-registros-backoffice', authenticateToken, requireBackOffi
 
     // Consulta para obtener TODOS los registros (sin filtro por agente)
     const query = `
+ WITH productos_agrupados AS (
     SELECT 
-        rs.id,
-        agente.descripcion AS agente_comercial,
-        pv.codigo,
-        pv.descripcion AS nombre_pdv,
-        pv.direccion,
-        u.name,
-        u.documento AS cedula,
-        rs.fecha_registro,
-        rs.created_at,
-        CASE
-            WHEN rs.kpi_volumen = 1 AND rs.kpi_precio = 1 THEN 'Volumen / Precio'
-            WHEN rs.kpi_volumen = 1 THEN 'Volumen'
-            WHEN rs.kpi_precio = 1 THEN 'Precio'
-            WHEN rs.kpi_frecuencia = 1 AND rs.kpi_precio = 0 AND rs.kpi_volumen = 0 THEN 'Frecuencia'
-            ELSE 'Otro'
-        END AS tipo_kpi,
-        CASE
-            WHEN rs.kpi_volumen = 1 OR rs.kpi_precio = 1 THEN 'Implementacion'
-            WHEN rs.kpi_frecuencia = 1 AND rs.kpi_precio = 0 AND rs.kpi_volumen = 0 THEN 'Visita'
-            ELSE 'Otro'
-        END AS tipo_accion,
-        e1.descripcion AS estado_agente,
-        e2.descripcion AS estado_backoffice,
-        rs.observacion,
-        rs.observacion_agente,
-        rp.referencias,
-        rp.presentaciones,
-        rp.cantidades_cajas,
-        rp.galonajes,
-        rp.precios_sugeridos,
-        rp.precios_reales,
-        rf.fotos_factura,
-        rf.fotos_pop,
-        rf.fotos_seguimiento
-        FROM registro_servicios rs
-        INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
-        INNER JOIN agente ON agente.id = pv.id_agente
-        INNER JOIN users u ON u.id = rs.user_id
-        INNER JOIN estados e1 ON e1.id = rs.estado_agente_id
-        INNER JOIN estados e2 ON e2.id = rs.estado_id
+        registro_id,
+        GROUP_CONCAT(referencia_id) AS referencias,
+        GROUP_CONCAT(presentacion) AS presentaciones,
+        GROUP_CONCAT(cantidad_cajas) AS cantidades_cajas,
+        GROUP_CONCAT(ROUND(conversion_galonaje, 2)) AS galonajes,
+        GROUP_CONCAT(ROUND(precio_sugerido, 0)) AS precios_sugeridos,
+        GROUP_CONCAT(ROUND(precio_real, 0)) AS precios_reales
+    FROM registro_productos
+    GROUP BY registro_id
+),
+fotos_agrupadas AS (
+    SELECT 
+        id_registro,
+        GROUP_CONCAT(foto_factura) AS fotos_factura,
+        GROUP_CONCAT(foto_seguimiento) AS fotos_seguimiento
+    FROM registro_fotografico_servicios
+    GROUP BY id_registro
+),
+implementacion_agrupada AS (
+    SELECT 
+        ri.id_registro,
+        ri.nro_implementacion,
+        ri.acepto_implementacion,
+        ri.observacion AS observacion_implementacion,
+        ri.foto_remision,
+        GROUP_CONCAT(rip.nombre_producto) AS productos_implementados,
+        GROUP_CONCAT(rip.nro) AS nros_productos,
+        GROUP_CONCAT(rip.foto_evidencia) AS fotos_evidencia
+    FROM registros_implementacion ri
+    LEFT JOIN registros_implementacion_productos rip ON rip.id_registro_implementacion = ri.id
+    GROUP BY ri.id_registro, ri.nro_implementacion, ri.acepto_implementacion, ri.observacion, ri.foto_remision
+)
+SELECT 
+    registro_servicios.id,
+    puntos_venta.codigo,
+    agente.descripcion AS agente_comercial,
+    puntos_venta.descripcion AS nombre_pdv,
+    puntos_venta.nit,
+    puntos_venta.direccion,
+    users.name,
+    users.documento AS cedula,
+    registro_servicios.fecha_registro,
+    registro_servicios.created_at,
+    CASE
+        WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Volumen / Precio'
+        WHEN kpi_volumen = 1 THEN 'Volumen'
+        WHEN kpi_precio = 1 THEN 'Precio'
+        WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Frecuencia'
+        ELSE 'Otro'
+    END AS tipo_kpi,
+    CASE
+        WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Galonaje/Precios'
+        WHEN kpi_volumen = 1 THEN 'Galonaje'
+        WHEN kpi_precio = 1 THEN 'Precios'
+        WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 AND IsImplementacion IS NULL THEN 'Visita'
+        WHEN IsImplementacion = 1 THEN 'Implementación'
+        ELSE 'Otro'
+    END AS tipo_accion,
+    e1.descripcion AS estado_backoffice,
+    e2.descripcion AS estado_agente,
+    registro_servicios.observacion AS observacion_asesor,
+    registro_servicios.observacion_agente AS observacion_agente,
+    
+    -- Datos de subconsultas
+    pa.referencias,
+    pa.presentaciones,
+    pa.cantidades_cajas,
+    pa.galonajes,
+    pa.precios_sugeridos,
+    pa.precios_reales,
+    fa.fotos_factura,
+    fa.fotos_seguimiento,
+    ia.nro_implementacion,
+    ia.acepto_implementacion,
+    ia.observacion_implementacion,
+    ia.foto_remision,
+    ia.productos_implementados,
+    ia.nros_productos,
+    ia.fotos_evidencia
+    
+FROM registro_servicios
+INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
+INNER JOIN users ON users.id = registro_servicios.user_id
+INNER JOIN estados e1 ON e1.id = registro_servicios.estado_id
+INNER JOIN estados e2 ON e2.id = registro_servicios.estado_agente_id
+INNER JOIN agente ON agente.id = puntos_venta.id_agente  -- ✅ Corregido
+LEFT JOIN productos_agrupados pa ON pa.registro_id = registro_servicios.id
+LEFT JOIN fotos_agrupadas fa ON fa.id_registro = registro_servicios.id
+LEFT JOIN implementacion_agrupada ia ON ia.id_registro = registro_servicios.id
 
-        LEFT JOIN (
-            SELECT 
-                registro_id,
-                GROUP_CONCAT(referencia_id) AS referencias,
-                GROUP_CONCAT(presentacion) AS presentaciones,
-                GROUP_CONCAT(cantidad_cajas) AS cantidades_cajas,
-                GROUP_CONCAT(conversion_galonaje) AS galonajes,
-                GROUP_CONCAT(precio_sugerido) AS precios_sugeridos,
-                GROUP_CONCAT(precio_real) AS precios_reales
-            FROM registro_productos
-            GROUP BY registro_id
-        ) rp ON rp.registro_id = rs.id
-
-        LEFT JOIN (
-            SELECT 
-                id_registro,
-                GROUP_CONCAT(foto_factura) AS fotos_factura,
-                GROUP_CONCAT(foto_pop) AS fotos_pop,
-                GROUP_CONCAT(foto_seguimiento) AS fotos_seguimiento
-            FROM registro_fotografico_servicios
-            GROUP BY id_registro
-        ) rf ON rf.id_registro = rs.id
-        ORDER BY rs.id ASC;
+/*WHERE registro_servicios.user_id = ?*/;
     `;
     const [rows] = await conn.execute(query);
 
