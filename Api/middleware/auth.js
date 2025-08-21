@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { getConnection } from '../db.js';
 
 // Secret key para JWT (debe coincidir con auth.js)
 const JWT_SECRET = process.env.JWT_SECRET || 'terpel-plan-choque-secret-2025';
@@ -96,6 +97,44 @@ export const requireDirector = requireRole('director');
 
 // Middleware específico para Organización Terpel
 export const requireOT = requireRole('ot');
+
+// Middleware específico para verificar relación en users_agente (para reportes OT)
+export const requireUsersAgente = async (req, res, next) => {
+  let conn;
+  try {
+    if (!req.user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Usuario no autenticado' 
+      });
+    }
+
+    conn = await getConnection();
+    
+    // Verificar si el usuario tiene relación en users_agente
+    const [rows] = await conn.execute(
+      'SELECT COUNT(*) as count FROM users_agente WHERE user_id = ?',
+      [req.user.id]
+    );
+
+    if (rows[0].count === 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tiene permisos para acceder a los reportes. Usuario sin relación de agente asignada.'
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Error verificando relación users_agente:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  } finally {
+    if (conn) conn.release();
+  }
+};
 
 // Middleware específico para BackOffice
 export const requireBackOffice = requireRole('backoffice');

@@ -206,8 +206,7 @@ INNER JOIN agente ON agente.id = puntos_venta.id_agente  -- ✅ Corregido
 LEFT JOIN productos_agrupados pa ON pa.registro_id = registro_servicios.id
 LEFT JOIN fotos_agrupadas fa ON fa.id_registro = registro_servicios.id
 LEFT JOIN implementacion_agrupada ia ON ia.id_registro = registro_servicios.id
-
-/*WHERE registro_servicios.user_id = ?*/;
+ORDER BY registro_servicios.id DESC;
     `;
     const [rows] = await conn.execute(query);
 

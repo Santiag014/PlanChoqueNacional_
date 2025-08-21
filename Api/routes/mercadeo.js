@@ -1795,7 +1795,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
         `SELECT SUM(registro_puntos.puntos) as totalPuntos
          FROM registro_servicios
          INNER JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id
-         WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 1`, [asesor.id]
+         WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 1 AND (registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2)`, [asesor.id]
       );
 
       // Puntos por KPI 2 (Precios) - igual que en mis-puntos-totales
@@ -1803,7 +1803,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
         `SELECT SUM(registro_puntos.puntos) as totalPuntos
          FROM registro_servicios
          INNER JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id
-         WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 2`, [asesor.id]
+         WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 2 AND (registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2)`, [asesor.id]
       );
 
       // Puntos por KPI 3 (Visitas/Frecuencia) - igual que en mis-puntos-totales
@@ -1811,7 +1811,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
         `SELECT SUM(registro_puntos.puntos) as totalPuntos
          FROM registro_servicios
          INNER JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id
-         WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 3`, [asesor.id]
+         WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 3 AND (registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2)`, [asesor.id]
       );
 
       // Calcular totales - convertir a números para evitar concatenación (igual que mis-puntos-totales)

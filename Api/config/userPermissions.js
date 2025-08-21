@@ -259,7 +259,7 @@ export async function getUserAllowedAgents(userId) {
     // Obtener información detallada de los agentes permitidos
     const placeholders = restrictions.agenteIds.map(() => '?').join(',');
     const [agents] = await conn.execute(
-      `SELECT id, name, email, phone FROM users WHERE id IN (${placeholders})`,
+      `SELECT id, descripcion FROM agente WHERE id IN (${placeholders})`,
       restrictions.agenteIds
     );
 

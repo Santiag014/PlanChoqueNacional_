@@ -5,7 +5,15 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start:4gb": "node --max-old-space-size=4096 --expose-gc server.js",
+    "start:8gb": "node --max-old-space-size=8192 --expose-gc server.js",
+    "start:16gb": "node --max-old-space-size=16384 --expose-gc server.js",
+    "start:32gb": "node --max-old-space-size=32768 --expose-gc server.js",
+    "dev": "nodemon server.js",
+    "dev:4gb": "nodemon --exec \"node --max-old-space-size=4096 --expose-gc\" server.js",
+    "dev:8gb": "nodemon --exec \"node --max-old-space-size=8192 --expose-gc\" server.js",
+    "dev:16gb": "nodemon --exec \"node --max-old-space-size=16384 --expose-gc\" server.js",
+    "dev:32gb": "nodemon --exec \"node --max-old-space-size=32768 --expose-gc\" server.js"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +23,7 @@
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
+    "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "moment-timezone": "^0.6.0",

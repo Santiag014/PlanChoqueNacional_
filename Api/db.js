@@ -2,9 +2,9 @@ import mysql from 'mysql2/promise';
 
 const dbConfig = {
   host: '82.197.82.139',
-  user: 'u716541625_terpel_dev2',
-  password: 'K2$Ej8I41UNb',
-  database: 'u716541625_terpel_dev2',
+  user: 'u716541625_terpel_prod_2',
+  password: 'N5p@rBKOM1l@',
+  database: 'u716541625_terpel_prod_2',
   port: 3306,
   waitForConnections: true,
   connectionLimit: 500,

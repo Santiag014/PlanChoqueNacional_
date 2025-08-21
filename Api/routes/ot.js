@@ -1,7 +1,10 @@
 import express from 'express';
+import ExcelJS from 'exceljs';
+import path from 'path';
+import fs from 'fs';
 import { getConnection } from '../db.js';
-import { authenticateToken, requireOT, logAccess } from '../middleware/auth.js';
-import { applyUserFilters, addUserRestrictions, getUserAgentsByName } from '../config/userPermissions.js';
+import { authenticateToken, requireOT, requireUsersAgente, logAccess } from '../middleware/auth.js';
+import { applyUserFilters, addUserRestrictions, getUserAgentsByName, getUserRestrictions } from '../config/userPermissions.js';
 
 const router = express.Router();
 
@@ -917,4 +920,415 @@ router.get('/buscar-agentes', authenticateToken, requireOT, async (req, res) => 
   }
 });
 
+router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
+  let conn;
+  let workbook = null;
+  
+  try {
+    console.log('🚀 Iniciando generación de Excel de implementaciones con ExcelJS...');
+    console.log('🧠 Memoria inicial:', process.memoryUsage());
+    
+    // Verificar que el usuario tenga el dominio permitido para descargar el reporte
+    const userEmail = req.user?.email || '';
+    const emailLowerCase = userEmail.toLowerCase();
+    
+    if (!emailLowerCase.includes('@bullmarketing.com.co')) {
+      console.log(`❌ Acceso denegado para el usuario: ${userEmail}. Dominio no autorizado.`);
+      return res.status(403).json({
+        success: false,
+        message: 'Acceso denegado. Solo los usuarios con dominio @bullmarketing.com.co pueden descargar este reporte.'
+      });
+    }
+    
+    console.log(`✅ Acceso autorizado para el usuario: ${userEmail}`);
+    
+    conn = await getConnection();
+    
+    // Query SQL optimizada para evitar problemas de memoria
+    const baseQuery = `
+      SELECT 
+          agente.descripcion AS agente,
+          pv.codigo,
+          pv.nit,
+          pv.descripcion AS nombre_PDV,
+          pv.direccion,
+          pv.segmento,
+          pv.ciudad,
+          COALESCE(g.GalonajeVendido, 0) AS GalonajeVendido,
+          COALESCE(pvi.compra_1, 0) AS compra_1,
+          COALESCE(pvi.compra_2, 0) AS compra_2,
+          COALESCE(pvi.compra_3, 0) AS compra_3,
+          COALESCE(pvi.compra_4, 0) AS compra_4,
+          COALESCE(pvi.compra_5, 0) AS compra_5,
+          COALESCE(impl.impl_1, 0) AS impl_1_realizada,
+          COALESCE(impl.impl_2, 0) AS impl_2_realizada,
+          COALESCE(impl.impl_3, 0) AS impl_3_realizada,
+          COALESCE(impl.impl_4, 0) AS impl_4_realizada,
+          COALESCE(impl.impl_5, 0) AS impl_5_realizada
+      FROM puntos_venta pv
+      LEFT JOIN puntos_venta__implementacion pvi 
+          ON pvi.pdv_id = pv.id
+      INNER JOIN agente 
+          ON agente.id = pv.id_agente
+      -- Subconsulta optimizada para galonaje
+      LEFT JOIN (
+          SELECT rs.pdv_id, COALESCE(SUM(rp.conversion_galonaje), 0) AS GalonajeVendido
+          FROM registro_servicios rs
+          INNER JOIN registro_productos rp ON rp.registro_id = rs.id
+          WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2
+          GROUP BY rs.pdv_id
+      ) g ON g.pdv_id = pv.id
+      -- Subconsulta optimizada para implementaciones realizadas
+      LEFT JOIN (
+          SELECT 
+              rs.pdv_id,
+              SUM(CASE WHEN ri.nro_implementacion = 1 THEN 1 ELSE 0 END) AS impl_1,
+              SUM(CASE WHEN ri.nro_implementacion = 2 THEN 1 ELSE 0 END) AS impl_2,
+              SUM(CASE WHEN ri.nro_implementacion = 3 THEN 1 ELSE 0 END) AS impl_3,
+              SUM(CASE WHEN ri.nro_implementacion = 4 THEN 1 ELSE 0 END) AS impl_4,
+              SUM(CASE WHEN ri.nro_implementacion = 5 THEN 1 ELSE 0 END) AS impl_5
+          FROM registro_servicios rs
+          INNER JOIN registros_implementacion ri ON ri.id_registro = rs.id
+          GROUP BY rs.pdv_id
+      ) impl ON impl.pdv_id = pv.id
+      ORDER BY agente.descripcion, pv.descripcion
+    `;
+
+    // Obtener restricciones de usuario para aplicarlas manualmente
+    const userRestrictions = await getUserRestrictions(req.user.id);
+    
+    let finalQuery = baseQuery;
+    let queryParams = [];
+    
+    // Si el usuario tiene restricciones, agregar filtro WHERE en el lugar correcto
+    if (userRestrictions && userRestrictions.hasRestrictions) {
+      // Agregar filtro de agente al final de la consulta principal (antes del ORDER BY)
+      const agenteFilter = `pv.id_agente IN (${userRestrictions.agenteIds.map(() => '?').join(',')})`;
+      finalQuery = baseQuery.replace(
+        'ORDER BY agente.descripcion, pv.descripcion',
+        `WHERE ${agenteFilter}\n      ORDER BY agente.descripcion, pv.descripcion`
+      );
+      queryParams = userRestrictions.agenteIds;
+      console.log('🔒 [Excel Implementaciones] Aplicando filtro de usuario para agentes:', userRestrictions.agenteIds);
+    } else {
+      console.log('🔓 [Excel Implementaciones] Usuario sin restricciones - puede ver todos los datos');
+    }
+    
+    // Ejecutar query
+    const [rawResults] = await conn.execute(finalQuery, queryParams);
+    console.log(`📊 Consulta ejecutada. Registros encontrados: ${rawResults.length}`);
+
+    if (rawResults.length === 0) {
+      console.log('⚠️ No se encontraron registros en la base de datos');
+      return res.status(404).json({ 
+        success: false,
+        message: 'No se encontraron registros de implementaciones' 
+      });
+    }
+
+    // Procesar datos para calcular estados de implementación de manera eficiente
+    console.log('🔄 Procesando estados de implementación...');
+    const results = rawResults.map(row => {
+      // Función auxiliar para determinar estado de implementación
+      const getImplementacionStatus = (numeroImpl, galonaje, compraRequerida, implementacionRealizada) => {
+        if (implementacionRealizada > 0) {
+          return 'Realizada';
+        } else if (galonaje >= compraRequerida) {
+          return 'Pendiente';
+        } else {
+          return 'No Habilitado';
+        }
+      };
+
+      // Calcular estados de cada implementación
+      const impl1Status = getImplementacionStatus(1, row.GalonajeVendido, row.compra_1, row.impl_1_realizada);
+      const impl2Status = getImplementacionStatus(2, row.GalonajeVendido, row.compra_2, row.impl_2_realizada);
+      const impl3Status = getImplementacionStatus(3, row.GalonajeVendido, row.compra_3, row.impl_3_realizada);
+      const impl4Status = getImplementacionStatus(4, row.GalonajeVendido, row.compra_4, row.impl_4_realizada);
+      const impl5Status = getImplementacionStatus(5, row.GalonajeVendido, row.compra_5, row.impl_5_realizada);
+
+      // Calcular total de implementaciones habilitadas
+      const totalHabilitadas = [impl1Status, impl2Status, impl3Status, impl4Status, impl5Status]
+        .filter(status => status === 'Realizada' || status === 'Pendiente').length;
+
+      return {
+        ...row,
+        Total_Habilitadas: totalHabilitadas,
+        Implementacion_1: impl1Status,
+        Implementacion_2: impl2Status,
+        Implementacion_3: impl3Status,
+        Implementacion_4: impl4Status,
+        Implementacion_5: impl5Status
+      };
+    });
+
+    console.log(`✅ Procesamiento completado. Total de registros procesados: ${results.length}`);
+    console.log('🧠 Memoria después del procesamiento:', process.memoryUsage());
+
+    // Crear nuevo workbook con ExcelJS
+    console.log('📋 Creando workbook con ExcelJS...');
+    workbook = new ExcelJS.Workbook();
+    
+    // Intentar cargar plantilla si existe
+    const templatePath = path.join(process.cwd(), 'config', 'Plantilla_Implementaciones.xlsx');
+    let worksheet;
+    
+    try {
+      if (fs.existsSync(templatePath)) {
+        console.log('📋 Cargando plantilla desde:', templatePath);
+        await workbook.xlsx.readFile(templatePath);
+        worksheet = workbook.worksheets[0]; // Primera hoja
+        console.log('✅ Plantilla cargada exitosamente');
+        
+        // Limpiar datos existentes (desde fila 5 en adelante)
+        console.log('🧹 Limpiando datos existentes de la plantilla...');
+        const maxRows = worksheet.rowCount;
+        for (let i = 5; i <= maxRows; i++) {
+          const row = worksheet.getRow(i);
+          for (let j = 2; j <= 13; j++) { // Columnas B a M
+            row.getCell(j).value = null;
+          }
+        }
+      } else {
+        console.log('⚠️ Plantilla no encontrada, creando hoja nueva');
+        worksheet = workbook.addWorksheet('Implementaciones');
+      }
+    } catch (templateError) {
+      console.log('⚠️ Error cargando plantilla, creando hoja nueva:', templateError.message);
+      worksheet = workbook.addWorksheet('Implementaciones');
+    }
+
+    // Definir headers
+    const headers = [
+      'Empresa', 'Código', 'Nombre P.D.V', 'Dirección', 'Segmento', 
+      'Galones Comprado', 'Cuantas implementaciones puede tener',
+      'Primera implementación', 'Segunda implementación', 'Tercera implementación', 
+      'Cuarta implementación', 'Quinta implementación'
+    ];
+
+    // Configurar la fila de headers (fila 4)
+    console.log('🎨 Configurando headers con formato naranja...');
+    const headerRow = worksheet.getRow(4);
+    
+    headers.forEach((header, index) => {
+      const cell = headerRow.getCell(index + 2); // Empezar en columna B (índice 2)
+      cell.value = header;
+      
+      // Aplicar estilo naranja al header
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'E97132' } // Naranja
+      };
+      cell.font = {
+        name: 'Calibri Light',
+        size: 11,
+        bold: true,
+        color: { argb: 'FFFFFFFF' } // Blanco
+      };
+      cell.alignment = {
+        horizontal: 'center',
+        vertical: 'middle'
+      };
+      cell.border = {
+        top: { style: 'thin', color: { argb: '#E97132' } },
+        left: { style: 'thin', color: { argb: '#E97132' } },
+        bottom: { style: 'thin', color: { argb: '#E97132' } },
+        right: { style: 'thin', color: { argb: '#E97132' } }
+      };
+    });
+
+    // Función para obtener el color según el estado
+    const getColorFill = (estado) => {
+      switch (estado) {
+        case 'Realizada':
+          return { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF95DF8A' } }; // Verde #95DF8A
+        case 'Pendiente':
+          return { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFDF84' } }; // Amarillo #EFDF84
+        case 'No Habilitado':
+        default:
+          return { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDA7683' } }; // Rosa #DA7683
+      }
+    };
+
+    // Escribir datos empezando desde la fila 5
+    console.log(`📝 Escribiendo ${results.length} registros con colores de semáforo...`);
+    let currentRow = 5;
+
+    // Procesar en lotes para evitar problemas de memoria
+    const batchSize = 100;
+    for (let i = 0; i < results.length; i += batchSize) {
+      const batch = results.slice(i, i + batchSize);
+      console.log(`📦 Procesando lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(results.length/batchSize)} (${batch.length} registros)`);
+      
+      batch.forEach((row, batchIndex) => {
+        const dataRow = worksheet.getRow(currentRow + i + batchIndex);
+        
+        // Datos básicos
+        const rowData = [
+          row.agente || '',
+          row.codigo || '',
+          row.nombre_PDV || '',
+          row.direccion || '',
+          row.segmento || '',
+          row.GalonajeVendido || 0,
+          row.Total_Habilitadas || 0,
+          row.Implementacion_1 || 'No Habilitado',
+          row.Implementacion_2 || 'No Habilitado',
+          row.Implementacion_3 || 'No Habilitado',
+          row.Implementacion_4 || 'No Habilitado',
+          row.Implementacion_5 || 'No Habilitado'
+        ];
+
+        // Escribir cada celda con formato
+        rowData.forEach((value, colIndex) => {
+          const cell = dataRow.getCell(colIndex + 2); // Empezar en columna B
+          cell.value = value;
+          
+          // Aplicar color de fondo si es columna de implementación (índices 7-11)
+          if (colIndex >= 7 && colIndex <= 11) {
+            cell.fill = getColorFill(value);
+          }
+          
+          // Fuente Calibri Light 10pt para todas las celdas
+          cell.font = {
+            name: 'Calibri Light',
+            size: 10
+          };
+          
+          // Bordes para todas las celdas con color #E97132
+          cell.border = {
+            top: { style: 'thin', color: { argb: '#E97132' } },
+            left: { style: 'thin', color: { argb: '#E97132' } },
+            bottom: { style: 'thin', color: { argb: '#E97132' } },
+            right: { style: 'thin', color: { argb: '#E97132' } }
+          };
+          
+          // Alineación
+          if (typeof value === 'number') {
+            cell.alignment = { horizontal: 'center' };
+          } else {
+            cell.alignment = { horizontal: 'left' };
+          }
+        });
+      });
+      
+      // Forzar garbage collection después de cada lote si está disponible
+      if (global.gc) {
+        global.gc();
+        console.log('🗑️ Garbage collection ejecutado');
+      }
+    }
+
+    // Auto-ajustar anchos SOLO de las columnas con datos (B a M)
+    console.log('📐 Auto-ajustando anchos de columna SOLO para las columnas con datos (B-M)...');
+    
+    // Definir explícitamente las columnas que contienen datos
+    const columnasConDatos = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M'];
+    
+    // Función optimizada para calcular el ancho óptimo basado en el contenido
+    const calculateColumnWidth = (columnLetter) => {
+      const column = worksheet.getColumn(columnLetter);
+      let maxWidth = 8; // Ancho mínimo
+      
+      // Solo revisar las filas que contienen datos (header + datos)
+      const maxRowToCheck = Math.min(currentRow + results.length, worksheet.rowCount);
+      
+      for (let rowNumber = 4; rowNumber <= maxRowToCheck; rowNumber++) {
+        const cell = worksheet.getCell(`${columnLetter}${rowNumber}`);
+        if (cell.value) {
+          const length = String(cell.value).length;
+          maxWidth = Math.max(maxWidth, length);
+        }
+      }
+      
+      // Agregar padding y limitar el ancho máximo
+      return Math.min(Math.max(maxWidth + 2, 8), 50);
+    };
+
+    // Aplicar auto-ajuste SOLO a las columnas que contienen datos
+    columnasConDatos.forEach(columnLetter => {
+      const autoWidth = calculateColumnWidth(columnLetter);
+      const column = worksheet.getColumn(columnLetter);
+      column.width = autoWidth;
+      console.log(`📏 Columna ${columnLetter}: ancho ajustado a ${autoWidth}`);
+    });
+    
+    console.log('✅ Auto-ajuste completado solo para columnas con datos');
+
+    // Generar archivo Excel
+    console.log('💾 Generando archivo Excel...');
+    console.log('🧠 Memoria antes de generar buffer:', process.memoryUsage());
+    
+    const buffer = await workbook.xlsx.writeBuffer();
+    
+    console.log('🧠 Memoria después de generar buffer:', process.memoryUsage());
+    
+    // Limpiar workbook de memoria
+    workbook = null;
+    
+    // Forzar garbage collection si está disponible
+    if (global.gc) {
+      global.gc();
+      console.log('🗑️ Garbage collection final ejecutado');
+    }
+
+    // Configurar headers para descarga
+    const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
+    const filename = `Reporte_Implementaciones_${timestamp}.xlsx`;
+
+    console.log(`📦 Archivo generado: ${filename} (${buffer.length} bytes)`);
+
+    // Configurar headers de respuesta
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Length', buffer.length);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('ETag', '');
+    res.setHeader('Last-Modified', new Date().toUTCString());
+
+    console.log(`📤 Enviando archivo: ${filename} (${buffer.length} bytes)`);
+
+    // Enviar archivo
+    res.end(buffer, 'binary');
+
+  } catch (error) {
+    console.error('❌ Error generando Excel de implementaciones:', error);
+    console.log('🧠 Memoria en error:', process.memoryUsage());
+    
+    // Limpiar workbook en caso de error
+    if (workbook) {
+      workbook = null;
+    }
+    
+    // Forzar garbage collection en caso de error
+    if (global.gc) {
+      global.gc();
+      console.log('🗑️ Garbage collection de error ejecutado');
+    }
+    
+    if (res.headersSent) {
+      console.error('Headers ya enviados, no se puede cambiar la respuesta');
+      return;
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error al generar el reporte de implementaciones',
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  } finally {
+    if (conn) conn.release();
+    
+    // Limpiar memoria final
+    if (workbook) {
+      workbook = null;
+    }
+    
+    console.log('🧠 Memoria al finalizar:', process.memoryUsage());
+  }
+});
 export default router;
