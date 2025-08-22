@@ -925,7 +925,7 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
   let workbook = null;
   
   try {
-    console.log('🚀 Iniciando generación de Excel de implementaciones con ExcelJS...');
+    console.log('🚀 Iniciando generación de Excel con múltiples hojas (Implementaciones y Visitas)...');
     console.log('🧠 Memoria inicial:', process.memoryUsage());
     
     // Verificar que el usuario tenga el dominio permitido para descargar el reporte
@@ -944,93 +944,216 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     
     conn = await getConnection();
     
-    // Query SQL optimizada para evitar problemas de memoria
-    const baseQuery = `
-      SELECT 
-          agente.descripcion AS agente,
-          pv.codigo,
-          pv.nit,
-          pv.descripcion AS nombre_PDV,
-          pv.direccion,
-          pv.segmento,
-          pv.ciudad,
-          COALESCE(g.GalonajeVendido, 0) AS GalonajeVendido,
-          COALESCE(pvi.compra_1, 0) AS compra_1,
-          COALESCE(pvi.compra_2, 0) AS compra_2,
-          COALESCE(pvi.compra_3, 0) AS compra_3,
-          COALESCE(pvi.compra_4, 0) AS compra_4,
-          COALESCE(pvi.compra_5, 0) AS compra_5,
-          COALESCE(impl.impl_1, 0) AS impl_1_realizada,
-          COALESCE(impl.impl_2, 0) AS impl_2_realizada,
-          COALESCE(impl.impl_3, 0) AS impl_3_realizada,
-          COALESCE(impl.impl_4, 0) AS impl_4_realizada,
-          COALESCE(impl.impl_5, 0) AS impl_5_realizada
-      FROM puntos_venta pv
-      LEFT JOIN puntos_venta__implementacion pvi 
-          ON pvi.pdv_id = pv.id
-      INNER JOIN agente 
-          ON agente.id = pv.id_agente
-      -- Subconsulta optimizada para galonaje
-      LEFT JOIN (
-          SELECT rs.pdv_id, COALESCE(SUM(rp.conversion_galonaje), 0) AS GalonajeVendido
-          FROM registro_servicios rs
-          INNER JOIN registro_productos rp ON rp.registro_id = rs.id
-          WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2
-          GROUP BY rs.pdv_id
-      ) g ON g.pdv_id = pv.id
-      -- Subconsulta optimizada para implementaciones realizadas
-      LEFT JOIN (
-          SELECT 
-              rs.pdv_id,
-              SUM(CASE WHEN ri.nro_implementacion = 1 THEN 1 ELSE 0 END) AS impl_1,
-              SUM(CASE WHEN ri.nro_implementacion = 2 THEN 1 ELSE 0 END) AS impl_2,
-              SUM(CASE WHEN ri.nro_implementacion = 3 THEN 1 ELSE 0 END) AS impl_3,
-              SUM(CASE WHEN ri.nro_implementacion = 4 THEN 1 ELSE 0 END) AS impl_4,
-              SUM(CASE WHEN ri.nro_implementacion = 5 THEN 1 ELSE 0 END) AS impl_5
-          FROM registro_servicios rs
-          INNER JOIN registros_implementacion ri ON ri.id_registro = rs.id
-          GROUP BY rs.pdv_id
-      ) impl ON impl.pdv_id = pv.id
-      ORDER BY agente.descripcion, pv.descripcion
+    // Query SQL optimizada para implementaciones
+    const baseQueryImplementaciones = `
+              SELECT 
+            a.descripcion AS agente,
+            pv.codigo,
+            pv.nit,
+            pv.descripcion AS nombre_PDV,
+            pv.direccion,
+            pv.segmento,
+            pv.ciudad,
+            d.descripcion AS departamento,
+            u.name as Asesor,
+            -- Total de compras redondeado a 2 decimales
+            ROUND(
+                COALESCE(pvi.compra_1,0) +
+                COALESCE(pvi.compra_2,0) +
+                COALESCE(pvi.compra_3,0) +
+                COALESCE(pvi.compra_4,0) +
+                COALESCE(pvi.compra_5,0)
+            ,2) AS "Meta Volumen (TOTAL)",
+            -- Galonaje vendido redondeado a 2 decimales
+            ROUND(COALESCE(g.GalonajeVendido, 0),2) AS GalonajeVendido,
+            -- Compras individuales
+            COALESCE(pvi.compra_1, 0) AS compra_1,
+            COALESCE(pvi.compra_2, 0) AS compra_2,
+            COALESCE(pvi.compra_3, 0) AS compra_3,
+            COALESCE(pvi.compra_4, 0) AS compra_4,
+            COALESCE(pvi.compra_5, 0) AS compra_5,
+            -- Implementaciones realizadas
+            COALESCE(impl.impl_1, 0) AS impl_1_realizada,
+            COALESCE(impl.impl_2, 0) AS impl_2_realizada,
+            COALESCE(impl.impl_3, 0) AS impl_3_realizada,
+            COALESCE(impl.impl_4, 0) AS impl_4_realizada,
+            COALESCE(impl.impl_5, 0) AS impl_5_realizada
+        FROM puntos_venta pv
+        LEFT JOIN depar_ciudades dc 
+              ON dc.descripcion = pv.ciudad
+        LEFT JOIN departamento d 
+              ON d.id = dc.id_departamento
+        LEFT JOIN puntos_venta__implementacion pvi 
+              ON pvi.pdv_id = pv.id
+        INNER JOIN agente a 
+              ON a.id = pv.id_agente
+        INNER JOIN users u 
+              ON u.id = pv.user_id
+        -- Galonaje vendido
+        LEFT JOIN (
+            SELECT 
+                rs.pdv_id, 
+                SUM(rp.conversion_galonaje) AS GalonajeVendido
+            FROM registro_servicios rs
+            INNER JOIN registro_productos rp 
+                    ON rp.registro_id = rs.id
+            WHERE rs.estado_id = 2 
+              AND rs.estado_agente_id = 2
+            GROUP BY rs.pdv_id
+        ) g ON g.pdv_id = pv.id
+        -- Implementaciones
+        LEFT JOIN (
+            SELECT 
+                rs.pdv_id,
+                SUM(CASE WHEN ri.nro_implementacion = 1 THEN 1 ELSE 0 END) AS impl_1,
+                SUM(CASE WHEN ri.nro_implementacion = 2 THEN 1 ELSE 0 END) AS impl_2,
+                SUM(CASE WHEN ri.nro_implementacion = 3 THEN 1 ELSE 0 END) AS impl_3,
+                SUM(CASE WHEN ri.nro_implementacion = 4 THEN 1 ELSE 0 END) AS impl_4,
+                SUM(CASE WHEN ri.nro_implementacion = 5 THEN 1 ELSE 0 END) AS impl_5
+            FROM registro_servicios rs
+            INNER JOIN registros_implementacion ri 
+                    ON ri.id_registro = rs.id
+            GROUP BY rs.pdv_id
+        ) impl ON impl.pdv_id = pv.id
+        ORDER BY a.descripcion, pv.descripcion;
+      `;
+
+    // Query SQL para visitas con subconsultas para productos y fotos
+    const baseQueryVisitas = `
+        WITH productos_agrupados AS (
+            SELECT 
+                registro_id,
+                GROUP_CONCAT(referencia_id) AS referencias,
+                GROUP_CONCAT(presentacion) AS presentaciones,
+                GROUP_CONCAT(cantidad_cajas) AS cantidades_cajas,
+                GROUP_CONCAT(ROUND(conversion_galonaje, 2)) AS galonajes,
+                GROUP_CONCAT(ROUND(precio_sugerido, 0)) AS precios_sugeridos,
+                GROUP_CONCAT(ROUND(precio_real, 0)) AS precios_reales
+            FROM registro_productos
+            GROUP BY registro_id
+        ),
+        fotos_agrupadas AS (
+            SELECT 
+                id_registro,
+                GROUP_CONCAT(CONCAT("https://api.plandelamejorenergia.com/uploads/", foto_factura)) AS fotos_factura,
+                GROUP_CONCAT(CONCAT("https://api.plandelamejorenergia.com/uploads/", foto_seguimiento)) AS fotos_seguimiento
+            FROM registro_fotografico_servicios
+            GROUP BY id_registro
+        )
+        SELECT 
+            agente.descripcion AS agente_comercial,
+            puntos_venta.codigo,
+            puntos_venta.nit,
+            puntos_venta.descripcion AS nombre_pdv,
+            puntos_venta.direccion,
+            users.name,
+            users.documento AS cedula,
+            registro_servicios.fecha_registro,
+            registro_servicios.created_at AS FechaCreacion,
+            CASE
+                WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Galonaje/Precios'
+                WHEN kpi_volumen = 1 THEN 'Galonaje'
+                WHEN kpi_precio = 1 THEN 'Precios'
+                WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Visita'
+                ELSE 'Otro'
+            END AS tipo_accion,
+            e1.descripcion AS estado_backoffice,
+            e2.descripcion AS estado_agente,
+            registro_servicios.observacion AS observacion_asesor,
+            registro_servicios.observacion_agente AS observacion_agente,
+            
+            -- Datos de subconsultas
+            pa.referencias,
+            pa.presentaciones,
+            pa.cantidades_cajas,
+            pa.galonajes,
+            pa.precios_sugeridos,
+            pa.precios_reales,
+            fa.fotos_factura,
+            fa.fotos_seguimiento
+            
+        FROM registro_servicios
+        INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
+        INNER JOIN users ON users.id = registro_servicios.user_id
+        INNER JOIN estados e1 ON e1.id = registro_servicios.estado_id
+        INNER JOIN estados e2 ON e2.id = registro_servicios.estado_agente_id
+        INNER JOIN agente ON agente.id = puntos_venta.id_agente
+        LEFT JOIN productos_agrupados pa ON pa.registro_id = registro_servicios.id
+        LEFT JOIN fotos_agrupadas fa ON fa.id_registro = registro_servicios.id
+        ORDER BY registro_servicios.id DESC;
     `;
 
     // Obtener restricciones de usuario para aplicarlas manualmente
     const userRestrictions = await getUserRestrictions(req.user.id);
     
-    let finalQuery = baseQuery;
-    let queryParams = [];
+    // ========== EJECUTAR CONSULTA DE IMPLEMENTACIONES ==========
+    let finalQueryImplementaciones = baseQueryImplementaciones;
+    let queryParamsImplementaciones = [];
     
-    // Si el usuario tiene restricciones, agregar filtro WHERE en el lugar correcto
+    // Si el usuario tiene restricciones, agregar filtro WHERE
     if (userRestrictions && userRestrictions.hasRestrictions) {
-      // Agregar filtro de agente al final de la consulta principal (antes del ORDER BY)
       const agenteFilter = `pv.id_agente IN (${userRestrictions.agenteIds.map(() => '?').join(',')})`;
-      finalQuery = baseQuery.replace(
-        'ORDER BY agente.descripcion, pv.descripcion',
-        `WHERE ${agenteFilter}\n      ORDER BY agente.descripcion, pv.descripcion`
+      finalQueryImplementaciones = baseQueryImplementaciones.replace(
+        'ORDER BY a.descripcion, pv.descripcion',
+        `WHERE ${agenteFilter}\n      ORDER BY a.descripcion, pv.descripcion`
       );
-      queryParams = userRestrictions.agenteIds;
+      queryParamsImplementaciones = userRestrictions.agenteIds;
       console.log('🔒 [Excel Implementaciones] Aplicando filtro de usuario para agentes:', userRestrictions.agenteIds);
     } else {
       console.log('🔓 [Excel Implementaciones] Usuario sin restricciones - puede ver todos los datos');
     }
     
-    // Ejecutar query
-    const [rawResults] = await conn.execute(finalQuery, queryParams);
-    console.log(`📊 Consulta ejecutada. Registros encontrados: ${rawResults.length}`);
+    // Ejecutar query de implementaciones
+    const [rawResultsImplementaciones] = await conn.execute(finalQueryImplementaciones, queryParamsImplementaciones);
+    console.log(`📊 Consulta Implementaciones ejecutada. Registros encontrados: ${rawResultsImplementaciones.length}`);
 
-    if (rawResults.length === 0) {
+    // ========== EJECUTAR CONSULTA DE VISITAS ==========
+    let finalQueryVisitas = baseQueryVisitas;
+    let queryParamsVisitas = [];
+    
+    // Si el usuario tiene restricciones, agregar filtro WHERE
+    if (userRestrictions && userRestrictions.hasRestrictions) {
+      const agenteFilter = `puntos_venta.id_agente IN (${userRestrictions.agenteIds.map(() => '?').join(',')})`;
+      finalQueryVisitas = baseQueryVisitas.replace(
+        'ORDER BY registro_servicios.id DESC',
+        `WHERE ${agenteFilter}\n        ORDER BY registro_servicios.id DESC`
+      );
+      queryParamsVisitas = userRestrictions.agenteIds;
+      console.log('🔒 [Excel Visitas] Aplicando filtro de usuario para agentes:', userRestrictions.agenteIds);
+    } else {
+      console.log('🔓 [Excel Visitas] Usuario sin restricciones - puede ver todos los datos');
+    }
+    
+    // Ejecutar query de visitas
+    const [rawResultsVisitas] = await conn.execute(finalQueryVisitas, queryParamsVisitas);
+    console.log(`📊 Consulta Visitas ejecutada. Registros encontrados: ${rawResultsVisitas.length}`);
+
+    if (rawResultsImplementaciones.length === 0 && rawResultsVisitas.length === 0) {
       console.log('⚠️ No se encontraron registros en la base de datos');
       return res.status(404).json({ 
         success: false,
-        message: 'No se encontraron registros de implementaciones' 
+        message: 'No se encontraron registros para generar el reporte' 
       });
     }
 
     // Procesar datos para calcular estados de implementación de manera eficiente
     console.log('🔄 Procesando estados de implementación...');
-    const results = rawResults.map(row => {
+    console.log('🔍 DEBUG: Primeros 3 registros crudos:', rawResultsImplementaciones.slice(0, 3).map(row => ({
+      codigo: row.codigo,
+      GalonajeVendido: row.GalonajeVendido,
+      compra_1: row.compra_1,
+      compra_2: row.compra_2,
+      impl_1_realizada: row.impl_1_realizada,
+      impl_2_realizada: row.impl_2_realizada
+    })));
+    
+    const resultsImplementaciones = rawResultsImplementaciones.map((row, index) => {
       // Función auxiliar para determinar estado de implementación
       const getImplementacionStatus = (numeroImpl, galonaje, compraRequerida, implementacionRealizada) => {
+        // Solo hacer debug en los primeros 3 registros
+        if (index < 3) {
+          console.log(`🔍 PDV ${row.codigo} - Impl ${numeroImpl}: galonaje=${galonaje}, compraReq=${compraRequerida}, realizada=${implementacionRealizada}`);
+        }
         if (implementacionRealizada > 0) {
           return 'Realizada';
         } else if (galonaje >= compraRequerida) {
@@ -1062,56 +1185,97 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       };
     });
 
-    console.log(`✅ Procesamiento completado. Total de registros procesados: ${results.length}`);
+    console.log(`✅ Procesamiento completado. Total de registros procesados: ${resultsImplementaciones.length}`);
+    console.log('🎯 DEBUG: Estados calculados en los primeros 3 registros:', resultsImplementaciones.slice(0, 3).map(row => ({
+      codigo: row.codigo,
+      Total_Habilitadas: row.Total_Habilitadas,
+      Implementacion_1: row.Implementacion_1,
+      Implementacion_2: row.Implementacion_2,
+      Implementacion_3: row.Implementacion_3,
+      Implementacion_4: row.Implementacion_4,
+      Implementacion_5: row.Implementacion_5
+    })));
     console.log('🧠 Memoria después del procesamiento:', process.memoryUsage());
 
     // Crear nuevo workbook con ExcelJS
-    console.log('📋 Creando workbook con ExcelJS...');
+    console.log('📋 Creando workbook con ExcelJS para múltiples hojas...');
     workbook = new ExcelJS.Workbook();
+    
+    // ========== HOJA 1: IMPLEMENTACIONES ==========
+    console.log('📋 Creando hoja de Implementaciones...');
+    let worksheetImplementaciones;
     
     // Intentar cargar plantilla si existe
     const templatePath = path.join(process.cwd(), 'config', 'Plantilla_Implementaciones.xlsx');
-    let worksheet;
     
     try {
       if (fs.existsSync(templatePath)) {
         console.log('📋 Cargando plantilla desde:', templatePath);
         await workbook.xlsx.readFile(templatePath);
-        worksheet = workbook.worksheets[0]; // Primera hoja
+        worksheetImplementaciones = workbook.worksheets[0]; // Primera hoja
+        worksheetImplementaciones.name = 'Implementaciones'; // Asegurar el nombre
         console.log('✅ Plantilla cargada exitosamente');
         
         // Limpiar datos existentes (desde fila 5 en adelante)
         console.log('🧹 Limpiando datos existentes de la plantilla...');
-        const maxRows = worksheet.rowCount;
+        const maxRows = worksheetImplementaciones.rowCount;
         for (let i = 5; i <= maxRows; i++) {
-          const row = worksheet.getRow(i);
-          for (let j = 2; j <= 13; j++) { // Columnas B a M
+          const row = worksheetImplementaciones.getRow(i);
+          for (let j = 2; j <= 18; j++) { // Columnas B a R (expandido para más columnas)
             row.getCell(j).value = null;
           }
         }
       } else {
         console.log('⚠️ Plantilla no encontrada, creando hoja nueva');
-        worksheet = workbook.addWorksheet('Implementaciones');
+        worksheetImplementaciones = workbook.addWorksheet('Implementaciones');
       }
     } catch (templateError) {
       console.log('⚠️ Error cargando plantilla, creando hoja nueva:', templateError.message);
-      worksheet = workbook.addWorksheet('Implementaciones');
+      worksheetImplementaciones = workbook.addWorksheet('Implementaciones');
     }
 
-    // Definir headers
-    const headers = [
-      'Empresa', 'Código', 'Nombre P.D.V', 'Dirección', 'Segmento', 
-      'Galones Comprado', 'Cuantas implementaciones puede tener',
+    // ========== HOJA 2: VISITAS ==========
+    console.log('📋 Configurando hoja de Visitas existente...');
+    let worksheetVisitas;
+    
+    // Buscar la hoja de Visitas existente en la plantilla
+    worksheetVisitas = workbook.getWorksheet('Visitas');
+    
+    if (!worksheetVisitas) {
+      // Si no existe la hoja Visitas, crearla
+      console.log('⚠️ Hoja Visitas no encontrada en plantilla, creando nueva...');
+      worksheetVisitas = workbook.addWorksheet('Visitas');
+    } else {
+      console.log('✅ Hoja Visitas encontrada en plantilla');
+      
+      // Limpiar datos existentes en la hoja de Visitas (desde fila 5 en adelante)
+      console.log('🧹 Limpiando datos existentes de la hoja Visitas...');
+      const maxRowsVisitas = worksheetVisitas.rowCount;
+      for (let i = 5; i <= maxRowsVisitas; i++) {
+        const row = worksheetVisitas.getRow(i);
+        for (let j = 2; j <= 25; j++) { // Columnas B a Y (expandido para visitas)
+          row.getCell(j).value = null;
+        }
+      }
+    }
+
+    // ========== CONFIGURAR HOJA DE IMPLEMENTACIONES ==========
+    console.log('🎨 Configurando hoja de Implementaciones...');
+    
+    // Definir headers para implementaciones
+    const headersImplementaciones = [
+      'Empresa', 'Código', 'nit', 'Nombre P.D.V', 'Dirección', 'Segmento', 'Ciudad', 'Departamento', 'Asesor',
+      'Galones Comprado', 'Meta Volumen (TOTAL)','Cuantas implementaciones puede tener',
       'Primera implementación', 'Segunda implementación', 'Tercera implementación', 
       'Cuarta implementación', 'Quinta implementación'
     ];
 
-    // Configurar la fila de headers (fila 4)
-    console.log('🎨 Configurando headers con formato naranja...');
-    const headerRow = worksheet.getRow(4);
+    // Configurar la fila de headers (fila 4) para implementaciones
+    console.log('🎨 Configurando headers con formato naranja para Implementaciones...');
+    const headerRowImplementaciones = worksheetImplementaciones.getRow(4);
     
-    headers.forEach((header, index) => {
-      const cell = headerRow.getCell(index + 2); // Empezar en columna B (índice 2)
+    headersImplementaciones.forEach((header, index) => {
+      const cell = headerRowImplementaciones.getCell(index + 2); // Empezar en columna B (índice 2)
       cell.value = header;
       
       // Aplicar estilo naranja al header
@@ -1138,8 +1302,62 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       };
     });
 
-    // Función para obtener el color según el estado
-    const getColorFill = (estado) => {
+    // ========== CONFIGURAR HOJA DE VISITAS ==========
+    console.log('🎨 Configurando hoja de Visitas...');
+    
+    // Verificar si la fila 4 ya tiene headers configurados
+    const headerRowVisitas = worksheetVisitas.getRow(4);
+    const primeracelda = headerRowVisitas.getCell(2).value;
+    
+    // Solo configurar headers si no existen ya en la plantilla
+    if (!primeracelda || primeracelda === '') {
+      console.log('🎨 Configurando headers para Visitas (no existen en plantilla)...');
+      
+      // Definir headers para visitas
+      const headersVisitas = [
+        'Agente Comercial', 'Código', 'NIT', 'Nombre PDV', 'Dirección', 'Asesor', 'Cédula', 
+        'Fecha Registro', 'Fecha Creación', 'Tipo Acción', 'Estado Backoffice', 'Estado Agente',
+        'Observación Asesor', 'Observación Agente', 'Referencias', 'Presentaciones', 
+        'Cantidad Cajas', 'Galonajes', 'Precios Sugeridos', 'Precios Reales', 
+        'Fotos Factura', 'Fotos Seguimiento'
+      ];
+
+      // Configurar la fila de headers (fila 4) para visitas
+      headersVisitas.forEach((header, index) => {
+        const cell = headerRowVisitas.getCell(index + 2); // Empezar en columna B (índice 2)
+        cell.value = header;
+        
+        // Aplicar estilo naranja al header
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'E97132' } // Naranja
+        };
+        cell.font = {
+          name: 'Calibri Light',
+          size: 11,
+          bold: true,
+          color: { argb: 'FFFFFFFF' } // Blanco
+        };
+        cell.alignment = {
+          horizontal: 'center',
+          vertical: 'middle'
+        };
+        cell.border = {
+          top: { style: 'thin', color: { argb: '#E97132' } },
+          left: { style: 'thin', color: { argb: '#E97132' } },
+          bottom: { style: 'thin', color: { argb: '#E97132' } },
+          right: { style: 'thin', color: { argb: '#E97132' } }
+        };
+      });
+    } else {
+      console.log('✅ Headers de Visitas ya existen en plantilla, reutilizando formato existente');
+    }
+
+    // ========== FUNCIONES DE COLORES ==========
+    
+    // Función para obtener el color según el estado de implementación
+    const getImplementacionColorFill = (estado) => {
       switch (estado) {
         case 'Realizada':
           return { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF95DF8A' } }; // Verde #95DF8A
@@ -1151,26 +1369,47 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       }
     };
 
-    // Escribir datos empezando desde la fila 5
-    console.log(`📝 Escribiendo ${results.length} registros con colores de semáforo...`);
-    let currentRow = 5;
+    // Función para obtener el color según el estado de backoffice/agente
+    const getEstadoColorFill = (estado) => {
+      if (!estado) return null;
+      
+      const estadoLower = estado.toLowerCase();
+      
+      if (estadoLower.includes('revision') || estadoLower.includes('revisión')) {
+        return { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFDF84' } }; // Amarillo #EFDF84
+      } else if (estadoLower.includes('aceptado') || estadoLower.includes('aprobado')) {
+        return { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF95DF8A' } }; // Verde #95DF8A
+      } else if (estadoLower.includes('rechazado') || estadoLower.includes('rechazada')) {
+        return { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDA7683' } }; // Rosa/Rojo #DA7683
+      }
+      
+      return null; // Sin color para otros estados
+    };
+    // ========== ESCRIBIR DATOS DE IMPLEMENTACIONES ==========
+    console.log(`📝 Escribiendo ${resultsImplementaciones.length} registros de implementaciones con colores de semáforo...`);
+    let currentRowImplementaciones = 5;
 
     // Procesar en lotes para evitar problemas de memoria
     const batchSize = 100;
-    for (let i = 0; i < results.length; i += batchSize) {
-      const batch = results.slice(i, i + batchSize);
-      console.log(`📦 Procesando lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(results.length/batchSize)} (${batch.length} registros)`);
+    for (let i = 0; i < resultsImplementaciones.length; i += batchSize) {
+      const batch = resultsImplementaciones.slice(i, i + batchSize);
+      console.log(`📦 Procesando lote implementaciones ${Math.floor(i/batchSize) + 1}/${Math.ceil(resultsImplementaciones.length/batchSize)} (${batch.length} registros)`);
       
       batch.forEach((row, batchIndex) => {
-        const dataRow = worksheet.getRow(currentRow + i + batchIndex);
+        const dataRow = worksheetImplementaciones.getRow(currentRowImplementaciones + i + batchIndex);
         
-        // Datos básicos
+        // Datos básicos de implementaciones
         const rowData = [
           row.agente || '',
           row.codigo || '',
+          row.nit || '',
           row.nombre_PDV || '',
           row.direccion || '',
           row.segmento || '',
+          row.ciudad || '',
+          row.departamento || '',
+          row.Asesor || '',
+          row['Meta Volumen (TOTAL)'] || 0,
           row.GalonajeVendido || 0,
           row.Total_Habilitadas || 0,
           row.Implementacion_1 || 'No Habilitado',
@@ -1185,9 +1424,9 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
           const cell = dataRow.getCell(colIndex + 2); // Empezar en columna B
           cell.value = value;
           
-          // Aplicar color de fondo si es columna de implementación (índices 7-11)
-          if (colIndex >= 7 && colIndex <= 11) {
-            cell.fill = getColorFill(value);
+          // Aplicar color de fondo si es columna de implementación (índices 12-16, que corresponden a las 5 implementaciones)
+          if (colIndex >= 12 && colIndex <= 16) {
+            cell.fill = getImplementacionColorFill(value);
           }
           
           // Fuente Calibri Light 10pt para todas las celdas
@@ -1220,19 +1459,101 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       }
     }
 
-    // Auto-ajustar anchos SOLO de las columnas con datos (B a M)
-    console.log('📐 Auto-ajustando anchos de columna SOLO para las columnas con datos (B-M)...');
+    // ========== ESCRIBIR DATOS DE VISITAS ==========
+    console.log(`📝 Escribiendo ${rawResultsVisitas.length} registros de visitas con semáforo de estados...`);
+    let currentRowVisitas = 5;
+
+    // Procesar visitas en lotes para evitar problemas de memoria
+    for (let i = 0; i < rawResultsVisitas.length; i += batchSize) {
+      const batch = rawResultsVisitas.slice(i, i + batchSize);
+      console.log(`📦 Procesando lote visitas ${Math.floor(i/batchSize) + 1}/${Math.ceil(rawResultsVisitas.length/batchSize)} (${batch.length} registros)`);
+      
+      batch.forEach((row, batchIndex) => {
+        const dataRow = worksheetVisitas.getRow(currentRowVisitas + i + batchIndex);
+        
+        // Datos básicos de visitas
+        const rowData = [
+          row.agente_comercial || '',
+          row.codigo || '',
+          row.nit || '',
+          row.nombre_pdv || '',
+          row.direccion || '',
+          row.name || '', // Asesor
+          row.cedula || '',
+          row.fecha_registro ? new Date(row.fecha_registro).toLocaleDateString() : '',
+          row.FechaCreacion ? new Date(row.FechaCreacion).toLocaleDateString() : '',
+          row.tipo_accion || '',
+          row.estado_backoffice || '',
+          row.estado_agente || '',
+          row.observacion_asesor || '',
+          row.observacion_agente || '',
+          row.referencias || '',
+          row.presentaciones || '',
+          row.cantidades_cajas || '',
+          row.galonajes || '',
+          row.precios_sugeridos || '',
+          row.precios_reales || '',
+          row.fotos_factura || '',
+          row.fotos_seguimiento || ''
+        ];
+
+        // Escribir cada celda con formato
+        rowData.forEach((value, colIndex) => {
+          const cell = dataRow.getCell(colIndex + 2); // Empezar en columna B
+          cell.value = value;
+          
+          // Aplicar color de fondo para estados (columnas 10 y 11: Estado Backoffice y Estado Agente)
+          if (colIndex === 10 || colIndex === 11) { // Estado Backoffice y Estado Agente
+            const colorFill = getEstadoColorFill(value);
+            if (colorFill) {
+              cell.fill = colorFill;
+            }
+          }
+          
+          // Fuente Calibri Light 10pt para todas las celdas
+          cell.font = {
+            name: 'Calibri Light',
+            size: 10
+          };
+          
+          // Bordes para todas las celdas con color #E97132
+          cell.border = {
+            top: { style: 'thin', color: { argb: '#E97132' } },
+            left: { style: 'thin', color: { argb: '#E97132' } },
+            bottom: { style: 'thin', color: { argb: '#E97132' } },
+            right: { style: 'thin', color: { argb: '#E97132' } }
+          };
+          
+          // Alineación
+          if (typeof value === 'number') {
+            cell.alignment = { horizontal: 'center' };
+          } else {
+            cell.alignment = { horizontal: 'left' };
+          }
+        });
+      });
+      
+      // Forzar garbage collection después de cada lote si está disponible
+      if (global.gc) {
+        global.gc();
+        console.log('🗑️ Garbage collection visitas ejecutado');
+      }
+    }
+    // ========== AUTO-AJUSTAR COLUMNAS ==========
     
-    // Definir explícitamente las columnas que contienen datos
-    const columnasConDatos = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M'];
+    // Auto-ajustar anchos SOLO de las columnas con datos en la hoja de Implementaciones (B a R)
+    console.log('📐 Auto-ajustando anchos de columna para Implementaciones (B-R)...');
+    
+    // Definir explícitamente las columnas que contienen datos para implementaciones
+    const columnasImplementaciones = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'];
     
     // Función optimizada para calcular el ancho óptimo basado en el contenido
-    const calculateColumnWidth = (columnLetter) => {
+    const calculateColumnWidth = (worksheet, columnLetter, maxRow) => {
       const column = worksheet.getColumn(columnLetter);
       let maxWidth = 8; // Ancho mínimo
       
       // Solo revisar las filas que contienen datos (header + datos)
-      const maxRowToCheck = Math.min(currentRow + results.length, worksheet.rowCount);
+      const maxRowToCheck = Math.min(maxRow, worksheet.rowCount);
       
       for (let rowNumber = 4; rowNumber <= maxRowToCheck; rowNumber++) {
         const cell = worksheet.getCell(`${columnLetter}${rowNumber}`);
@@ -1246,15 +1567,29 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       return Math.min(Math.max(maxWidth + 2, 8), 50);
     };
 
-    // Aplicar auto-ajuste SOLO a las columnas que contienen datos
-    columnasConDatos.forEach(columnLetter => {
-      const autoWidth = calculateColumnWidth(columnLetter);
-      const column = worksheet.getColumn(columnLetter);
+    // Aplicar auto-ajuste SOLO a las columnas que contienen datos de implementaciones
+    columnasImplementaciones.forEach(columnLetter => {
+      const autoWidth = calculateColumnWidth(worksheetImplementaciones, columnLetter, currentRowImplementaciones + resultsImplementaciones.length);
+      const column = worksheetImplementaciones.getColumn(columnLetter);
       column.width = autoWidth;
-      console.log(`📏 Columna ${columnLetter}: ancho ajustado a ${autoWidth}`);
+      console.log(`📏 Implementaciones Columna ${columnLetter}: ancho ajustado a ${autoWidth}`);
     });
     
-    console.log('✅ Auto-ajuste completado solo para columnas con datos');
+    // Auto-ajustar anchos SOLO de las columnas con datos en la hoja de Visitas (B a W)
+    console.log('📐 Auto-ajustando anchos de columna para Visitas (B-W)...');
+    
+    // Definir explícitamente las columnas que contienen datos para visitas
+    const columnasVisitas = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W'];
+    
+    // Aplicar auto-ajuste SOLO a las columnas que contienen datos de visitas
+    columnasVisitas.forEach(columnLetter => {
+      const autoWidth = calculateColumnWidth(worksheetVisitas, columnLetter, currentRowVisitas + rawResultsVisitas.length);
+      const column = worksheetVisitas.getColumn(columnLetter);
+      column.width = autoWidth;
+      console.log(`📏 Visitas Columna ${columnLetter}: ancho ajustado a ${autoWidth}`);
+    });
+    
+    console.log('✅ Auto-ajuste completado para ambas hojas');
 
     // Generar archivo Excel
     console.log('💾 Generando archivo Excel...');
@@ -1275,7 +1610,7 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
 
     // Configurar headers para descarga
     const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
-    const filename = `Reporte_Implementaciones_${timestamp}.xlsx`;
+    const filename = `Reporte_Implementaciones_y_Visitas_${timestamp}.xlsx`;
 
     console.log(`📦 Archivo generado: ${filename} (${buffer.length} bytes)`);
 
