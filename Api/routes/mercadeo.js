@@ -536,22 +536,63 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
     }
     
     const whereClause = whereConditions.join(' AND ');
-    
-    // Primero obtener totales para calcular proporción
+
+    // MÉTRICAS FILTRADAS: Para mostrar en UI (aplicar todos los filtros)
     const [totalesResult] = await conn.execute(
       `SELECT 
         COUNT(DISTINCT puntos_venta.id) as totalAsignados,
-        COUNT(DISTINCT CASE WHEN registro_servicios.id IS NOT NULL THEN puntos_venta.id END) as totalImpactados
+        COUNT(DISTINCT CASE 
+          WHEN registro_servicios.id IS NOT NULL 
+            AND registro_servicios.estado_id = 2 
+            AND registro_servicios.estado_agente_id = 2 
+          THEN puntos_venta.id 
+        END) as totalImpactados
        FROM puntos_venta
        INNER JOIN users ON users.id = puntos_venta.user_id
-       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id AND registro_servicios.estado_id =2 AND registro_servicios.estado_agente_id = 2
+       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id 
+         AND registro_servicios.estado_id = 2 
+         AND registro_servicios.estado_agente_id = 2
        WHERE ${whereClause}`, queryParams
     );
     
     const totalAsignados = totalesResult[0]?.totalAsignados || 0;
     const totalImpactados = totalesResult[0]?.totalImpactados || 0;
+
+    // MÉTRICAS BASE: Para cálculo de puntos (SIN filtros de PDV, solo agente/asesor)
+    const whereConditionsBase = ['puntos_venta.id_agente = ?'];
+    const queryParamsBase = [agente_id];
+    
+    if (asesor_id) {
+      whereConditionsBase.push('puntos_venta.user_id = ?');
+      queryParamsBase.push(asesor_id);
+    }
+    
+    const whereClauseBase = whereConditionsBase.join(' AND ');
+
+    const [totalesBaseResult] = await conn.execute(
+      `SELECT 
+        COUNT(DISTINCT puntos_venta.id) as totalAsignadosBase,
+        COUNT(DISTINCT CASE 
+          WHEN registro_servicios.id IS NOT NULL 
+            AND registro_servicios.estado_id = 2 
+            AND registro_servicios.estado_agente_id = 2 
+          THEN puntos_venta.id 
+        END) as totalImpactadosBase
+       FROM puntos_venta
+       INNER JOIN users ON users.id = puntos_venta.user_id
+       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id 
+         AND registro_servicios.estado_id = 2 
+         AND registro_servicios.estado_agente_id = 2
+       WHERE ${whereClauseBase}`, queryParamsBase
+    );
+    
+    const totalAsignadosBase = totalesBaseResult[0]?.totalAsignadosBase || 0;
+    const totalImpactadosBase = totalesBaseResult[0]?.totalImpactadosBase || 0;
+
     const porcentajeCobertura = totalAsignados > 0 ? (totalImpactados / totalAsignados) : 0;
-    const puntosBasePorPDV = totalAsignados > 0 ? (150 / totalAsignados) : 0;
+    
+    // PUNTOS BASE: Calculados con métricas base (sin filtros de PDV) - ESTÁTICOS
+    const puntosBasePorPDV = totalAsignadosBase > 0 ? (150 / totalAsignadosBase) : 0;
 
     const query = `
       SELECT 
@@ -561,12 +602,18 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
         users.name as nombre_asesor,
         users.id as asesor_id,
         CASE 
-          WHEN (COUNT(registro_servicios.id) > 0 AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2) THEN 'Registrado'
+          WHEN COUNT(CASE 
+            WHEN registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2 
+            THEN registro_servicios.id 
+          END) > 0 THEN 'Registrado'
           ELSE 'No Registrado'
         END as estado,
         CASE 
-          WHEN COUNT(registro_servicios.id) > 0 AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2 THEN ${puntosBasePorPDV}
-          ELSE 0
+          WHEN COUNT(CASE 
+            WHEN registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2 
+            THEN registro_servicios.id 
+          END) > 0 THEN ROUND(${puntosBasePorPDV}, 1)
+          ELSE 0.0
         END as puntos
       FROM puntos_venta
       INNER JOIN users ON users.id = puntos_venta.user_id
@@ -578,8 +625,18 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
     
     const [rows] = await conn.execute(query, queryParams);
 
-    // Calcular puntos totales (IGUAL QUE ASESOR: 150 puntos máximo)
-    const puntosCobertura = totalAsignados > 0 ? Math.round((totalImpactados / totalAsignados) * 150) : 0;
+    // PUNTOS BASE: Calculados con métricas base (sin filtros de PDV) - ESTÁTICOS
+    const puntosCoberturaBase = totalAsignadosBase > 0 ? Math.round((totalImpactadosBase / totalAsignadosBase) * 150) : 0;
+    
+    // CORREGIDO: Si hay filtro PDV específico y ese PDV no tiene datos → 0 puntos
+    const puntosFinales = pdv_id && totalImpactados === 0 ? 0 : puntosCoberturaBase;
+    
+    console.log('=== DEBUG COBERTURA BASE vs FILTRADA ===');
+    console.log('BASE - Asignados:', totalAsignadosBase, 'Impactados:', totalImpactadosBase, 'Puntos:', puntosCoberturaBase);
+    console.log('FILTRADA - Asignados:', totalAsignados, 'Impactados:', totalImpactados);
+    console.log('PDV filtro:', pdv_id, 'Puntos finales:', puntosFinales);
+    console.log('Filtros aplicados:', { asesor_id, pdv_id, agente_id });
+    console.log('===============================');
     
     res.json({
       success: true,
@@ -587,19 +644,19 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
       data: rows,
       total: rows.length,
       // Métricas principales para el dashboard
-      puntos: puntosCobertura,
-      meta: totalAsignados,
-      real: totalImpactados,
+      puntos: puntosFinales, // Puntos ajustados (0 si PDV filtrado no tiene datos)
+      meta: totalAsignados, // Meta filtrada (para UI)
+      real: totalImpactados, // Impactados filtrados (para UI)
       porcentajeCumplimiento: Math.round(porcentajeCobertura * 100),
       // Propiedades adicionales para compatibilidad
-      totalAsignados,
+      totalAsignados: totalAsignados,
       totalImplementados: totalImpactados,
-      puntosCobertura,
+      puntosCobertura: puntosFinales, // Puntos ajustados
       estadisticas: {
         totalAsignados,
         totalImpactados,
         porcentajeCobertura: Math.round(porcentajeCobertura * 100),
-        puntosTotal: puntosCobertura,
+        puntosTotal: puntosFinales, // Puntos ajustados
         puntosPorPDV: Number(puntosBasePorPDV.toFixed(2))
       }
     });
@@ -681,35 +738,139 @@ router.get('/volumen', authenticateToken, requireMercadeo, logAccess, async (req
     
     const whereClause = whereConditions.join(' AND ');
 
-    // Obtener meta y real totales
-    const [metaResult] = await conn.execute(
-      `SELECT SUM(meta_volumen) as totalMeta
-       FROM puntos_venta
-       WHERE ${whereClause}`, queryParams
-    );
+    // Obtener meta volumen - CORREGIDO: Aplicar TODOS los filtros (asesor_id y pdv_id)
+    let metaQuery, metaParams;
+    
+    if (asesor_id && pdv_id) {
+      // Filtro por asesor Y PDV específico
+      metaQuery = `SELECT SUM(meta_volumen) as totalMeta FROM puntos_venta WHERE user_id = ? AND id = ?`;
+      metaParams = [asesor_id, pdv_id];
+    } else if (asesor_id) {
+      // Solo filtro por asesor
+      metaQuery = `SELECT SUM(meta_volumen) as totalMeta FROM puntos_venta WHERE user_id = ?`;
+      metaParams = [asesor_id];
+    } else if (pdv_id) {
+      // Solo filtro por PDV (verificar que pertenezca al agente)
+      metaQuery = `SELECT SUM(meta_volumen) as totalMeta FROM puntos_venta WHERE id_agente = ? AND id = ?`;
+      metaParams = [agente_id, pdv_id];
+    } else {
+      // Sin filtros específicos, consultar por agente_id
+      metaQuery = `SELECT SUM(meta_volumen) as totalMeta FROM puntos_venta WHERE id_agente = ?`;
+      metaParams = [agente_id];
+    }
+    
+    const [metaResult] = await conn.execute(metaQuery, metaParams);
     const totalMeta = metaResult[0]?.totalMeta || 0;
 
-    const [realResult] = await conn.execute(
-      `SELECT SUM(registro_productos.conversion_galonaje) as totalReal
-       FROM registro_servicios
-       INNER JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
-       INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
-       WHERE ${whereClause} AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id `, queryParams
-    );
+    // Obtener volumen real - CORREGIDO: Aplicar TODOS los filtros (asesor_id y pdv_id)
+    let realQuery, realParams;
+    
+    if (asesor_id && pdv_id) {
+      // Filtro por asesor Y PDV específico
+      realQuery = `SELECT SUM(registro_productos.conversion_galonaje) as totalReal
+         FROM registro_servicios
+         INNER JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id AND registro_servicios.user_id = ? AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2
+         WHERE registro_servicios.pdv_id = ?`;
+      realParams = [asesor_id, pdv_id];
+    } else if (asesor_id) {
+      // Solo filtro por asesor (consulta idéntica a asesor.js)
+      realQuery = `SELECT SUM(registro_productos.conversion_galonaje) as totalReal
+         FROM registro_servicios
+         INNER JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id AND registro_servicios.user_id = ? AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2`;
+      realParams = [asesor_id];
+    } else if (pdv_id) {
+      // Solo filtro por PDV (verificar que pertenezca al agente)
+      realQuery = `SELECT SUM(registro_productos.conversion_galonaje) as totalReal
+         FROM registro_servicios
+         INNER JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
+         INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
+         WHERE puntos_venta.id_agente = ? AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2 AND puntos_venta.id = ?`;
+      realParams = [agente_id, pdv_id];
+    } else {
+      // Sin filtros específicos, consultar por agente_id
+      realQuery = `SELECT SUM(registro_productos.conversion_galonaje) as totalReal
+         FROM registro_servicios
+         INNER JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
+         INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
+         WHERE puntos_venta.id_agente = ? AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2`;
+      realParams = [agente_id];
+    }
+    
+    const [realResult] = await conn.execute(realQuery, realParams);
     const totalReal = realResult[0]?.totalReal || 0;
 
-    // Calcular puntos como en asesor (PERO ASESOR USA registro_puntos, aquí calculamos proporcionalmente)
-    // LÓGICA CONSISTENTE: 200 puntos máximo por volumen
-    const porcentajeVolumen = totalMeta > 0 ? (totalReal / totalMeta) : 0;
-    const puntosVolumen = Math.round(porcentajeVolumen * 200);
+    // CORREGIDO: Usar la misma lógica exacta que asesor.js - consultar registro_puntos con id_kpi = 1
+    // CLAVE: Aplicar TODOS los filtros (asesor_id y pdv_id) para garantizar consistencia
+    let puntosQuery, puntosParams;
+    
+    if (asesor_id && pdv_id) {
+      // Filtro por asesor Y PDV específico (idéntico a asesor.js pero con filtro adicional de PDV)
+      puntosQuery = `SELECT COALESCE(SUM(rpt.puntos), 0) as totalPuntos
+         FROM puntos_venta pv
+         LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
+         LEFT JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 1
+         WHERE pv.user_id = ? AND pv.id = ?`;
+      puntosParams = [asesor_id, asesor_id, pdv_id];
+    } else if (asesor_id) {
+      // Solo filtro por asesor (IDÉNTICO a asesor.js)
+      puntosQuery = `SELECT COALESCE(SUM(rpt.puntos), 0) as totalPuntos
+         FROM puntos_venta pv
+         LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
+         LEFT JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 1
+         WHERE pv.user_id = ?`;
+      puntosParams = [asesor_id, asesor_id];
+    } else if (pdv_id) {
+      // Solo filtro por PDV (verificar que pertenezca al agente)
+      puntosQuery = `SELECT COALESCE(SUM(rpt.puntos), 0) as totalPuntos
+         FROM puntos_venta pv
+         LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
+         LEFT JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 1
+         WHERE pv.id_agente = ? AND pv.id = ?`;
+      puntosParams = [agente_id, pdv_id];
+    } else {
+      // Sin filtros específicos, consultar por agente_id
+      puntosQuery = `SELECT COALESCE(SUM(rpt.puntos), 0) as totalPuntos
+         FROM puntos_venta pv
+         LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
+         LEFT JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 1
+         WHERE pv.id_agente = ?`;
+      puntosParams = [agente_id];
+    }
+    
+    const [puntosVolumenResult] = await conn.execute(puntosQuery, puntosParams);
+    const puntosVolumen = Number(puntosVolumenResult[0]?.totalPuntos) || 0;
 
-    console.log('=== DEBUG VOLUMEN MERCADEO ===');
+    console.log('=== DEBUG VOLUMEN MERCADEO (CORREGIDO + FILTRO PDV) ===');
+    console.log('Filtros aplicados:', { asesor_id, pdv_id, agente_id });
     console.log('totalMeta:', totalMeta);
     console.log('totalReal:', totalReal);
-    console.log('porcentajeVolumen:', porcentajeVolumen);
-    console.log('puntosVolumen:', puntosVolumen);
+    console.log('puntosVolumen (desde registro_puntos):', puntosVolumen);
+    
+    let logicaAplicada = 'CONSULTA POR AGENTE_ID';
+    if (asesor_id && pdv_id) {
+      logicaAplicada = 'FILTRO POR ASESOR Y PDV ESPECÍFICO';
+    } else if (asesor_id) {
+      logicaAplicada = 'FILTRO POR ASESOR - Consulta idéntica a asesor.js';
+    } else if (pdv_id) {
+      logicaAplicada = 'FILTRO POR PDV ESPECÍFICO';
+    }
+    
+    console.log('Lógica aplicada:', logicaAplicada);
+    console.log('Parámetros meta:', metaParams);
+    console.log('Parámetros real:', realParams);
+    console.log('Parámetros puntos:', puntosParams);
+    console.log('=======================================================');
 
-    // Obtener detalle por PDV
+    // Obtener detalle por PDV incluyendo puntos reales de registro_puntos
+    // CORREGIDO: Usar subconsultas para evitar duplicación de puntos cuando hay múltiples productos
+    let pdvWhereClause = whereClause;
+    let asesorFilter = '';
+    
+    // Si hay filtro por asesor_id, agregarlo a las subconsultas
+    if (asesor_id) {
+      asesorFilter = ' AND rs.user_id = ' + asesor_id;
+    }
+
     const [pdvs] = await conn.execute(
       `SELECT 
          puntos_venta.id,
@@ -719,30 +880,57 @@ router.get('/volumen', authenticateToken, requireMercadeo, logAccess, async (req
          puntos_venta.meta_volumen as meta,
          users.name as nombre_asesor,
          users.id as asesor_id,
-         COALESCE(SUM(registro_productos.conversion_galonaje), 0) as \`real\`,
+         COALESCE(vol.total_volumen, 0) as \`real\`,
          ROUND(
-           (COALESCE(SUM(registro_productos.conversion_galonaje), 0) / puntos_venta.meta_volumen) * 100, 2
-         ) as porcentaje
+           (COALESCE(vol.total_volumen, 0) / puntos_venta.meta_volumen) * 100, 2
+         ) as porcentaje,
+         COALESCE(pts.total_puntos, 0) as puntos_registro
        FROM puntos_venta
        INNER JOIN users ON users.id = puntos_venta.user_id
-       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2
-       LEFT JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
+       LEFT JOIN (
+         SELECT rs.pdv_id, SUM(rp.conversion_galonaje) as total_volumen
+         FROM registro_servicios rs
+         INNER JOIN registro_productos rp ON rp.registro_id = rs.id
+         WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2${asesorFilter}
+         GROUP BY rs.pdv_id
+       ) vol ON vol.pdv_id = puntos_venta.id
+       LEFT JOIN (
+         SELECT rs.pdv_id, SUM(rpt.puntos) as total_puntos
+         FROM registro_servicios rs
+         INNER JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 1
+         WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2${asesorFilter}
+         GROUP BY rs.pdv_id
+       ) pts ON pts.pdv_id = puntos_venta.id
        WHERE ${whereClause}
-       GROUP BY puntos_venta.id, puntos_venta.codigo, puntos_venta.descripcion, puntos_venta.segmento, puntos_venta.meta_volumen, users.name, users.id
        ORDER BY puntos_venta.codigo`, queryParams
     );
 
-    // Calcular puntos individuales por PDV (contribución proporcional)
+    // CORREGIDO: Usar puntos reales de registro_puntos con subconsultas para evitar duplicación
+    // PROBLEMA ANTERIOR: Los puntos se duplicaban cuando había múltiples productos en un registro
+    // SOLUCIÓN: Usar subconsultas separadas para volumen y puntos, igual que en asesor.js
     const pdvsConPuntos = pdvs.map(pdv => {
       const cumplimiento = pdv.meta > 0 ? (pdv.real / pdv.meta) * 100 : 0;
-      const puntosIndividuales = totalMeta > 0 ? Math.round((pdv.real / totalMeta) * 200) : 0;
       
       return {
         ...pdv,
-        puntos: puntosIndividuales,
+        puntos: Number(pdv.puntos_registro) || 0, // Usar puntos reales de registro_puntos SIN duplicación
         cumplimiento: Number(cumplimiento.toFixed(2))
       };
     });
+
+    // Debug: Verificar que la suma de puntos por PDV coincida con el total
+    const sumaPuntosPorPDV = pdvsConPuntos.reduce((sum, pdv) => sum + pdv.puntos, 0);
+    console.log('=== VERIFICACIÓN DE CONSISTENCIA (SIN DUPLICACIÓN) ===');
+    console.log('Puntos totales (consulta directa):', puntosVolumen);
+    console.log('Suma de puntos por PDV:', sumaPuntosPorPDV);
+    console.log('¿Coinciden?', puntosVolumen === sumaPuntosPorPDV);
+    console.log('PDVs con puntos:', pdvsConPuntos.filter(p => p.puntos > 0).map(p => ({
+      codigo: p.codigo,
+      nombre: p.nombre,
+      puntos: p.puntos,
+      asesor: p.nombre_asesor
+    })));
+    console.log('===============================================');
 
     // Obtener resumen por segmento
     const [segmentos] = await conn.execute(
@@ -882,7 +1070,7 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
     
     const whereClause = whereConditions.join(' AND ');
 
-    // Obtener meta y real de visitas
+    // MÉTRICAS FILTRADAS: Para mostrar en UI (aplicar todos los filtros)
     const [metaResult] = await conn.execute(
       `SELECT COUNT(*) * 20 as metaVisitas
        FROM puntos_venta
@@ -898,13 +1086,44 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
     );
     const totalVisitas = realResult[0]?.totalVisitas || 0;
 
+    // MÉTRICAS BASE: Para cálculo de puntos (SIN filtros de PDV, solo agente/asesor)
+    const whereConditionsBase = ['puntos_venta.id_agente = ?'];
+    const queryParamsBase = [agente_id];
+    
+    if (asesor_id) {
+      whereConditionsBase.push('puntos_venta.user_id = ?');
+      queryParamsBase.push(asesor_id);
+    }
+    
+    const whereClauseBase = whereConditionsBase.join(' AND ');
+
+    const [metaBaseResult] = await conn.execute(
+      `SELECT COUNT(*) * 20 as metaBase
+       FROM puntos_venta
+       WHERE ${whereClauseBase}`, queryParamsBase
+    );
+    const metaBase = metaBaseResult[0]?.metaBase || 0;
+
+    const [realBaseResult] = await conn.execute(
+      `SELECT COUNT(registro_servicios.id) as totalVisitasBase
+       FROM registro_servicios
+       INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
+       WHERE ${whereClauseBase} AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2`, queryParamsBase
+    );
+    const totalVisitasBase = realBaseResult[0]?.totalVisitasBase || 0;
+
     const porcentajeVisitas = metaVisitas > 0 ? (totalVisitas / metaVisitas) : 0;
-    const puntosVisitas = Math.round(porcentajeVisitas * 100);
+    
+    // PUNTOS BASE: Calculados con métricas base (sin filtros de PDV) - ESTÁTICOS
+    const puntosVisitasBase = metaBase > 0 ? Math.round((totalVisitasBase / metaBase) * 150) : 0;
+    
+    console.log('=== DEBUG MÉTRICAS BASE vs FILTRADAS ===');
+    console.log('Meta BASE (puntos):', metaBase, 'Visitas BASE:', totalVisitasBase, 'Puntos BASE:', puntosVisitasBase);
+    console.log('Meta FILTRADA (UI):', metaVisitas, 'Visitas FILTRADAS:', totalVisitas);
+    console.log('Filtros aplicados:', { asesor_id, pdv_id, agente_id });
+    console.log('==========================================');
 
     // Obtener detalle por PDV
-    // LÓGICA DE PUNTOS POR VISITAS:
-    // Cada PDV contribuye proporcionalmente al total de 100 puntos
-    // Obtener detalle por PDV (ESTRUCTURA SIMPLIFICADA PARA DEBUG)
     const [pdvs] = await conn.execute(
       `SELECT 
         puntos_venta.id,
@@ -915,7 +1134,7 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
         COUNT(registro_servicios.id) AS cantidadVisitas,
         20 AS meta,
         ROUND((COUNT(registro_servicios.id) / 20) * 100, 2) AS porcentaje,
-        ROUND((COUNT(registro_servicios.id) / 20) * 100, 2) AS puntos
+        COUNT(registro_servicios.id) AS visitasReales
       FROM puntos_venta
       INNER JOIN users ON users.id = puntos_venta.user_id
       LEFT JOIN registro_servicios 
@@ -933,12 +1152,49 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
       queryParams
     );
 
+    // CORREGIDO: Distribuir puntos BASE proporcionalmente (puntos estáticos)
+    const pdvsConPuntos = pdvs.map(pdv => {
+      // Distribuir proporcionalmente los puntos BASE según las visitas de cada PDV
+      const puntosPdv = totalVisitasBase > 0 ? 
+        Math.round((pdv.visitasReales / totalVisitasBase) * puntosVisitasBase) : 0;
+      
+      return {
+        ...pdv,
+        puntos: puntosPdv
+      };
+    });
+
+    // Los puntos totales son BASE (estáticos, no cambian con filtros de PDV)
+    const puntosVisitasReal = puntosVisitasBase;
+    
+    // CORREGIDO: Si hay filtro PDV específico y ese PDV no tiene datos → 0 puntos
+    const puntosFinalesVisitas = pdv_id && totalVisitas === 0 ? 0 : puntosVisitasReal;
+
     console.log('=== DEBUG PDV QUERY ===');
     console.log('whereClause:', whereClause);
     console.log('queryParams:', queryParams);
     console.log('metaVisitas:', metaVisitas);
-    console.log('pdvs result length:', pdvs.length);
-    console.log('pdvs result:', pdvs);
+    console.log('puntosVisitasBase (estáticos):', puntosVisitasBase);
+    console.log('PDV filtro:', pdv_id, 'Puntos finales:', puntosFinalesVisitas);
+
+    // CORREGIDO: Los puntos totales ya están calculados arriba correctamente
+    // Verificar consistencia (solo para debug)
+    const sumaPuntosPorPDV = pdvsConPuntos.reduce((sum, pdv) => sum + Number(pdv.puntos), 0);
+    
+    console.log('=== VERIFICACIÓN PUNTOS ESTÁTICOS ===');
+    console.log('Puntos BASE (estáticos):', puntosVisitasBase);
+    console.log('Puntos usados en response:', puntosVisitasReal);
+    console.log('Suma puntos PDVs:', sumaPuntosPorPDV);
+    console.log('Meta FILTRADA (UI):', metaVisitas);
+    console.log('Visitas FILTRADAS (UI):', totalVisitas);
+    console.log('PDVs con puntos:', pdvsConPuntos.filter(p => p.puntos > 0).map(p => ({
+      codigo: p.codigo,
+      nombre: p.nombre,
+      cantidadVisitas: p.cantidadVisitas,
+      puntos: p.puntos,
+      asesor: p.nombre_asesor
+    })));
+    console.log('=======================================');
 
     // DEBUG: Verificar si existen PDVs para este agente
     const [debugPdvs] = await conn.execute(
@@ -976,7 +1232,7 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
        GROUP BY tipo`, queryParams
     );
 
-    // Obtener resumen por asesor
+    // Obtener resumen por asesor - CORREGIDO: Usar cálculo manual como el total general
     const [resumenAsesores] = await conn.execute(
       `SELECT 
          users.id as asesor_id,
@@ -985,7 +1241,7 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
          COUNT(registro_servicios.id) as totalVisitas,
          COUNT(DISTINCT puntos_venta.id) * 20 as metaVisitas,
          ROUND((COUNT(registro_servicios.id) / (COUNT(DISTINCT puntos_venta.id) * 20)) * 100, 2) as porcentajeCumplimiento,
-         COUNT(registro_servicios.id) * 2 as puntosGanados
+         ROUND((COUNT(registro_servicios.id) / (COUNT(DISTINCT puntos_venta.id) * 20)) * 150, 0) as puntosGanados
        FROM puntos_venta
        INNER JOIN users ON users.id = puntos_venta.user_id
        LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id 
@@ -998,12 +1254,12 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
 
     res.json({
       success: true,
-      pdvs,
-      data: pdvs,
+      pdvs: pdvsConPuntos,
+      data: pdvsConPuntos,
       // Métricas principales para el dashboard
-      puntos: puntosVisitas,
-      meta: metaVisitas,
-      real: totalVisitas,
+      puntos: puntosFinalesVisitas, // Puntos ajustados (0 si PDV filtrado no tiene datos)
+      meta: metaVisitas, // Meta filtrada
+      real: totalVisitas, // Visitas filtradas
       porcentajeCumplimiento: metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 100) : 0,
       // Propiedades adicionales para compatibilidad
       meta_visitas: metaVisitas,
@@ -1011,12 +1267,12 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
       tiposVisita,
       resumenAsesores,
       totales: {
-        totalPdvs: pdvs.length,
-        totalMetaVisitas: metaVisitas,
-        totalRealVisitas: totalVisitas,
-        totalPuntosGanados: pdvs.reduce((sum, pdv) => sum + pdv.puntos, 0),
-        promedioVisitasPorPdv: pdvs.length > 0 ? 
-          Number((pdvs.reduce((sum, pdv) => sum + pdv.cantidadVisitas, 0) / pdvs.length).toFixed(2)) : 0
+        totalPdvs: pdvsConPuntos.length,
+        totalMetaVisitas: metaVisitas, // Meta filtrada
+        totalRealVisitas: totalVisitas, // Visitas filtradas
+        totalPuntosGanados: Number(pdvsConPuntos.reduce((sum, pdv) => sum + Number(pdv.puntos), 0).toFixed(2)),
+        promedioVisitasPorPdv: pdvsConPuntos.length > 0 ? 
+          Number((pdvsConPuntos.reduce((sum, pdv) => sum + pdv.cantidadVisitas, 0) / pdvsConPuntos.length).toFixed(2)) : 0
       }
     });
 
@@ -1227,7 +1483,7 @@ router.get('/download-kpis', authenticateToken, requireMercadeo, logAccess, asyn
        ORDER BY puntos_venta.codigo`, queryParams
     );
 
-    // Obtener datos de visitas
+    // Obtener datos de visitas (usando nueva lógica de 150 puntos)
     const [visitas] = await conn.execute(
       `SELECT 
          puntos_venta.codigo,
@@ -1236,7 +1492,7 @@ router.get('/download-kpis', authenticateToken, requireMercadeo, logAccess, asyn
          COUNT(registro_servicios.id) as cantidadVisitas,
          20 as meta,
          ROUND((COUNT(registro_servicios.id) / 20) * 100, 2) as porcentaje,
-         COUNT(registro_servicios.id) * 2 as puntos
+         ROUND((COUNT(registro_servicios.id) / 20) * 150, 2) as puntos
        FROM puntos_venta
        INNER JOIN users ON users.id = puntos_venta.user_id
        LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id AND registro_servicios.estado_id =2 AND registro_servicios.estado_agente_id = 2
@@ -1485,7 +1741,8 @@ router.get('/historial-registros-mercadeo', authenticateToken, requireMercadeo, 
         puntos_venta.direccion,
         users.name,
         users.documento,
-        registro_servicios.fecha_registro,
+        DATE_FORMAT(registro_servicios.fecha_registro, '%Y-%m-%d') AS fecha_registro,
+        DATE_FORMAT(registro_servicios.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
         CASE
             WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Volumen / Precio'
             WHEN kpi_volumen = 1 THEN 'Volumen'
@@ -1533,7 +1790,7 @@ router.get('/historial-registros-mercadeo', authenticateToken, requireMercadeo, 
     LEFT JOIN implementacion_agrupada ia ON ia.id_registro = registro_servicios.id
 
     WHERE ${whereClause}
-    ORDER BY registro_servicios.fecha_registro DESC`;
+    ORDER BY registro_servicios.created_at DESC, registro_servicios.fecha_registro DESC`;
     const [rows] = await conn.execute(query, queryParams);
 
     res.json({
@@ -1786,39 +2043,57 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
        ORDER BY name`, [miAgenteId]
     );
 
-    // Para cada asesor, calcular sus puntos usando la misma lógica que mis-puntos-totales
+    // Para cada asesor, calcular sus puntos usando la MISMA LÓGICA EXACTA que el ranking de asesor
     const rankingDetallado = [];
 
     for (const asesor of asesores) {
-      // Puntos por KPI 1 (Volumen) - igual que en mis-puntos-totales
-      const [puntosVolumen] = await conn.execute(
-        `SELECT SUM(registro_puntos.puntos) as totalPuntos
-         FROM registro_servicios
-         INNER JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id
-         WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 1 AND (registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2)`, [asesor.id]
+      // 1. PUNTOS COBERTURA - Igual que asesor.js
+      const [pdvsAsesor] = await conn.execute(
+        `SELECT id FROM puntos_venta WHERE user_id = ?`, [asesor.id]
       );
+      const totalAsignados = pdvsAsesor.length;
 
-      // Puntos por KPI 2 (Precios) - igual que en mis-puntos-totales
-      const [puntosPrecios] = await conn.execute(
-        `SELECT SUM(registro_puntos.puntos) as totalPuntos
-         FROM registro_servicios
-         INNER JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id
-         WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 2 AND (registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2)`, [asesor.id]
+      const [implementados] = await conn.execute(
+        `SELECT DISTINCT pdv_id FROM registro_servicios
+         WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [asesor.id]
       );
+      const totalImplementados = implementados.length;
+      const puntosCobertura = totalAsignados > 0 ? Math.round((totalImplementados / totalAsignados) * 150) : 0;
 
-      // Puntos por KPI 3 (Visitas/Frecuencia) - igual que en mis-puntos-totales
-      const [puntosVisitas] = await conn.execute(
-        `SELECT SUM(registro_puntos.puntos) as totalPuntos
-         FROM registro_servicios
-         INNER JOIN registro_puntos ON registro_puntos.id_visita = registro_servicios.id
-         WHERE registro_servicios.user_id = ? AND registro_puntos.id_kpi = 3 AND (registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2)`, [asesor.id]
+      // 2. PUNTOS VOLUMEN - USANDO registro_puntos (igual que asesor.js)
+      const [puntosVolumenResult] = await conn.execute(
+        `SELECT COALESCE(SUM(rpt.puntos), 0) as totalPuntos
+         FROM puntos_venta pv
+         LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
+         LEFT JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 1
+         WHERE pv.user_id = ?`, [asesor.id, asesor.id]
       );
+      const puntosVolumen = Number(puntosVolumenResult[0]?.totalPuntos) || 0;
 
-      // Calcular totales - convertir a números para evitar concatenación (igual que mis-puntos-totales)
-      const puntosVolumenTotal = Number(puntosVolumen[0]?.totalPuntos) || 0;
-      const puntosPreciosTotal = Number(puntosPrecios[0]?.totalPuntos) || 0;
-      const puntosVisitasTotal = Number(puntosVisitas[0]?.totalPuntos) || 0;
-      const totalGeneral = puntosVolumenTotal + puntosPreciosTotal + puntosVisitasTotal;
+      // 3. PUNTOS VISITAS - Igual que cobertura pero con meta de 20 visitas por PDV
+      const totalPdvs = pdvsAsesor.length;
+      const metaVisitas = totalPdvs * 20; // 20 visitas por cada PDV
+      
+      const [realVisitas] = await conn.execute(
+        `SELECT COUNT(id) as totalVisitas FROM registro_servicios
+         WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [asesor.id]
+      );
+      const totalVisitas = realVisitas[0]?.totalVisitas || 0;
+
+      // Calcular puntos como porcentaje de cumplimiento * 150 puntos (igual que cobertura)
+      const puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 150) : 0;
+
+      // 4. PUNTOS PRECIOS - Igual que asesor.js
+      const [reportadosPrecios] = await conn.execute(
+        `SELECT DISTINCT pdv_id FROM registro_servicios
+         LEFT JOIN registros_mistery_shopper ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
+         WHERE user_id = ? AND kpi_precio = 1 AND registros_mistery_shopper.id IS NOT NULL`, [asesor.id]
+      );
+      const totalReportados = reportadosPrecios.length;
+      const puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * 150) : 0;
+
+      // TOTAL DE PUNTOS - Igual que asesor.js
+      const totalGeneral = puntosCobertura + puntosVolumen + puntosVisitas + puntosPrecios;
 
       rankingDetallado.push({
         id: asesor.id,
@@ -1828,7 +2103,18 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
         ciudad: asesor.ciudad,
         departamento_id: asesor.departamento_id,
         ciudad_id: asesor.ciudad_id,
+        // Desglose de puntos por KPI (igual que asesor.js)
+        puntos_cobertura: puntosCobertura,
+        puntos_volumen: puntosVolumen,
+        puntos_visitas: puntosVisitas,
+        puntos_precios: puntosPrecios,
         total_puntos: totalGeneral,
+        // Información adicional para debugging (igual que asesor.js)
+        pdvs_asignados: totalAsignados,
+        pdvs_implementados: totalImplementados,
+        meta_visitas: metaVisitas,
+        real_visitas: totalVisitas,
+        pdvs_con_precios: totalReportados,
         es_usuario_actual: false // Para mercadeo, ningún asesor es el usuario actual
       });
     }

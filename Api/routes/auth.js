@@ -33,6 +33,15 @@ router.post('/login', async (req, res) => {
     }
     
     const user = rows[0];
+    
+    // LOG DE DEPURACIÓN - DATOS DEL USUARIO
+    console.log('🔍 DATOS COMPLETOS DEL USUARIO DESDE DB:', JSON.stringify(user, null, 2));
+    console.log('🔗 Campo power_bi:', user.power_bi);
+    console.log('🔗 Campo powerBI:', user.powerBI);
+    console.log('🔗 Campo powerbi:', user.powerbi);
+    console.log('📧 Email:', user.email);
+    console.log('🎭 Tipo/Rol:', user.tipo || user.rol || user.rol_id);
+    
     let hash = user.password || user.contrasena;
     
     // Verificar que exista el hash de la contraseña
@@ -62,14 +71,15 @@ router.post('/login', async (req, res) => {
           nombre: user.nombre || user.name,
           apellido: user.apellido,
           agente_id: user.agente_id,
-          IsPromotoria: user.IsPromotoria 
+          IsPromotoria: user.IsPromotoria,
+          powerBI: user.power_bi  // Incluir el enlace de PowerBI en el token
         },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
       );
 
       // Respuesta exitosa con token y datos del usuario
-      res.json({
+      const responseData = {
         success: true,
         message: 'Login exitoso',
         token: token,
@@ -82,9 +92,16 @@ router.post('/login', async (req, res) => {
           zona_id: user.zona_id,
           regional_id: user.regional_id,
           agente_id: user.agente_id,
+          powerBI: user.power_bi,
           IsPromotoria: user.IsPromotoria
         }
-      });
+      };
+      
+      // LOG DE DEPURACIÓN - RESPUESTA ENVIADA AL FRONTEND
+      console.log('📤 RESPUESTA ENVIADA AL FRONTEND:', JSON.stringify(responseData, null, 2));
+      console.log('🔗 PowerBI en respuesta:', responseData.user.powerBI);
+      
+      res.json(responseData);
     } else {
       res.status(401).json({ success: false, message: 'Contraseña incorrecta' });
     }

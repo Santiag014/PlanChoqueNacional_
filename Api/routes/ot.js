@@ -1264,8 +1264,8 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     
     // Definir headers para implementaciones
     const headersImplementaciones = [
-      'Empresa', 'Código', 'nit', 'Nombre P.D.V', 'Dirección', 'Segmento', 'Ciudad', 'Departamento', 'Asesor',
-      'Galones Comprado', 'Meta Volumen (TOTAL)','Cuantas implementaciones puede tener',
+      'Empresa', 'Código', 'nit', 'Nombre P.D.V', 'Dirección', 'Segmento', 'Ciudad', 'Departamento', 'Asesor', 'Meta Volumen (TOTAL)',
+      'Galones Comprado','Cuantas implementaciones puede tener',
       'Primera implementación', 'Segunda implementación', 'Tercera implementación', 
       'Cuarta implementación', 'Quinta implementación'
     ];
