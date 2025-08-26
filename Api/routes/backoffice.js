@@ -23,6 +23,7 @@
 import express from 'express';
 import { getConnection } from '../db.js';
 import { authenticateToken, requireBackOffice, logAccess } from '../middleware/auth.js';
+import { enviarNotificacionCambioEstado } from '../config/email.js';
 
 const router = express.Router();
 
@@ -296,6 +297,48 @@ router.put('/registro/:registro_id/estado', authenticateToken, requireBackOffice
         message: 'No se pudo actualizar el registro'
       });
     }
+
+    // // Obtener información completa del registro para el email
+    // const [registroInfo] = await connection.execute(`
+    //   SELECT 
+    //     rs.id,
+    //     rs.fecha_registro,
+    //     rs.created,
+    //     pv.codigo as codigo_pdv,
+    //     pv.descripcion as nombre_pdv,
+    //     ag.email as asesor_email,
+    //     ag.descripcion as asesor_nombre,
+    //     es.descripcion as estado_descripcion
+    //   FROM registro_servicios rs
+    //   LEFT JOIN puntos_venta pv ON rs.pdv_id = pv.id
+    //   LEFT JOIN agente ag ON rs.agente_id = ag.id
+    //   LEFT JOIN estados es ON rs.estado_id = es.id
+    //   WHERE rs.id = ?
+    // `, [registro_id]);
+
+    // const registro = registroInfo[0];
+
+    // Enviar notificación por email si hay información del asesor
+    // if (registro && registro.asesor_email) {
+    //   try {
+    //     await enviarNotificacionCambioEstado({
+    //       registroId: registro_id,
+    //       codigoPdv: registro.codigo_pdv || 'No asignado',
+    //       nombrePdv: registro.nombre_pdv || 'Punto de venta no definido',
+    //       nuevoEstado: registro.estado_descripcion || estadoTexto,
+    //       fechaRegistro: registro.fecha_registro,
+    //       fechaSubida: registro.created,
+    //       comentarios: comentarios || '',
+    //       asesorEmail: registro.asesor_email,
+    //       asesorNombre: registro.asesor_nombre || 'Asesor',
+    //       validadoPor: 'BackOffice'
+    //     });
+    //     console.log(`✅ Email enviado correctamente para el registro ${registro_id}`);
+    //   } catch (emailError) {
+    //     console.error(`❌ Error al enviar email para el registro ${registro_id}:`, emailError.message);
+    //     // No fallar la respuesta por error de email, solo loguearlo
+    //   }
+    // }
 
     const estadoTexto = estado == 2 ? 'aprobado' : estado == 3 ? 'rechazado' : 'pendiente';
 

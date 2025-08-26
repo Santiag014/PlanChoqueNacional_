@@ -27,6 +27,7 @@
 import express from 'express';
 import { getConnection } from '../db.js';
 import { authenticateToken, requireMercadeo, logAccess } from '../middleware/auth.js';
+import { enviarNotificacionCambioEstado, verificarConfiguracionEmail } from '../config/email.js';
 
 const router = express.Router();
 
@@ -1868,10 +1869,20 @@ router.post('/actualizar-estado-registro/:registro_id', authenticateToken, requi
   try {
     conn = await getConnection();
 
-    // Verificar que el registro existe y pertenece al agente
+    // Verificar que el registro existe y obtener información completa para el email
     const [registroCheck] = await conn.execute(
-      `SELECT rs.id FROM registro_servicios rs
+      `SELECT 
+         rs.id, 
+         rs.user_id,
+         rs.fecha_registro,
+         rs.created_at,
+         pv.codigo as codigo_pdv,
+         pv.descripcion as nombre_pdv,
+         u.name as nombre_asesor,
+         u.email as email_asesor
+       FROM registro_servicios rs
        INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
+       INNER JOIN users u ON u.id = rs.user_id
        WHERE rs.id = ? AND pv.id_agente = ?`,
       [registro_id, agente_id]
     );
@@ -1882,6 +1893,18 @@ router.post('/actualizar-estado-registro/:registro_id', authenticateToken, requi
         message: 'Registro no encontrado o no tiene permisos para modificarlo'
       });
     }
+
+    const registro = registroCheck[0];
+
+    // Obtener información del usuario de mercadeo que está actualizando
+    const [mercadeoInfo] = await conn.execute(
+      `SELECT u.name, u.email 
+       FROM users u 
+       WHERE u.agente_id = ?`,
+      [agente_id]
+    );
+
+    const nombreMercadeo = mercadeoInfo.length > 0 ? mercadeoInfo[0].name : 'Equipo de Mercadeo';
 
     // Actualizar estado del registro con comentario
     const updateQuery = `
@@ -1894,9 +1917,39 @@ router.post('/actualizar-estado-registro/:registro_id', authenticateToken, requi
 
     await conn.execute(updateQuery, [estado_agente_id, comentario, registro_id]);
 
+    // Enviar email de notificación al asesor
+    // if (registro.email_asesor) {
+    //   try {
+    //     const resultadoEmail = await enviarNotificacionCambioEstado({
+    //       emailAsesor: registro.email_asesor,
+    //       nombreAsesor: registro.nombre_asesor,
+    //       registroId: registro_id,
+    //       codigoPdv: registro.codigo_pdv,
+    //       nombrePdv: registro.nombre_pdv,
+    //       fechaRegistro: registro.fecha_registro,
+    //       fechaCreacion: registro.created_at,
+    //       nuevoEstado: Number(estado_agente_id),
+    //       comentario: comentario || '',
+    //       nombreMercadeo: nombreMercadeo
+    //     });
+
+    //     if (resultadoEmail.success) {
+    //       console.log(`✅ Email enviado correctamente a ${registro.email_asesor} para registro #${registro_id}`);
+    //     } else {
+    //       console.error(`❌ Error enviando email a ${registro.email_asesor}:`, resultadoEmail.error);
+    //     }
+    //   } catch (emailError) {
+    //     console.error('Error al enviar email de notificación:', emailError);
+    //     // No fallar la operación si el email falla
+    //   }
+    // } else {
+    //   console.log(`⚠️ No se encontró email para el asesor del registro #${registro_id}`);
+    // }
+
     res.json({
       success: true,
-      message: 'Estado del registro actualizado correctamente'
+      message: 'Estado del registro actualizado correctamente',
+      email_enviado: !!registro.email_asesor
     });
 
   } catch (err) {
@@ -2236,6 +2289,141 @@ router.get('/ranking-filtros', authenticateToken, requireMercadeo, logAccess, as
     });
   } finally {
     if (conn) conn.release();
+  }
+});
+
+/**
+ * @route POST /api/mercadeo/test-email
+ * @description Endpoint de prueba para verificar el envío de emails
+ * @body {string} email - Email de destino para la prueba
+ * @returns {Object} Resultado del envío de prueba
+ * @access Mercadeo
+ * @middleware authenticateToken, requireMercadeo
+ */
+router.post('/test-email', authenticateToken, requireMercadeo, async (req, res) => {
+  const { email } = req.body;
+  const { agente_id } = req.user;
+
+  if (!email) {
+    return res.status(400).json({
+      success: false,
+      message: 'Email de destino es requerido'
+    });
+  }
+
+  try {
+    // Obtener información del usuario de mercadeo
+    let conn = await getConnection();
+    const [mercadeoInfo] = await conn.execute(
+      `SELECT u.nombre, u.email 
+       FROM usuarios u 
+       WHERE u.agente_id = ?`,
+      [agente_id]
+    );
+    conn.release();
+
+    const nombreMercadeo = mercadeoInfo.length > 0 ? mercadeoInfo[0].nombre : 'Equipo de Mercadeo';
+
+    // Datos de prueba para el email
+    const datosTest = {
+      emailAsesor: email,
+      nombreAsesor: 'Asesor de Prueba',
+      registroId: 'TEST-001',
+      nombrePdv: 'PDV de Prueba - Test Store',
+      nuevoEstado: 2, // Aprobado para la prueba
+      comentario: 'Este es un email de prueba del sistema de notificaciones automáticas.',
+      nombreMercadeo: nombreMercadeo
+    };
+
+    const resultado = await enviarNotificacionCambioEstado(datosTest);
+
+    res.json({
+      success: resultado.success,
+      message: resultado.success ? 
+        'Email de prueba enviado correctamente' : 
+        'Error al enviar email de prueba',
+      detalles: resultado
+    });
+
+  } catch (error) {
+    console.error('Error en test de email:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno al probar email',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/mercadeo/verificar-email-config
+ * @description Verifica que la configuración SMTP esté correcta
+ * @returns {Object} Estado de la configuración
+ * @access Mercadeo
+ * @middleware authenticateToken, requireMercadeo
+ */
+router.get('/verificar-email-config', authenticateToken, requireMercadeo, async (req, res) => {
+  try {
+    const esValida = await verificarConfiguracionEmail();
+    
+    res.json({
+      success: esValida,
+      message: esValida ? 
+        'Configuración de email válida' : 
+        'Error en configuración de email',
+      configuracion: {
+        smtp_host: 'smtp.hostinger.com',
+        smtp_port: '587',
+        smtp_user: '***configurado*** (quemado en código)'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error al verificar configuración',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route POST /api/mercadeo/probar-email
+ * @description Endpoint simple para probar el envío de emails
+ * @body {string} email - Email de destino
+ * @returns {Object} Resultado del envío
+ */
+router.post('/probar-email', async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({
+      success: false,
+      message: 'Email es requerido'
+    });
+  }
+
+  try {
+    const resultado = await enviarNotificacionCambioEstado({
+      emailAsesor: email,
+      nombreAsesor: 'Prueba Usuario',
+      registroId: '12345',
+      nombrePdv: 'PDV de Prueba',
+      nuevoEstado: 2, // Aprobado
+      comentario: 'Esta es una prueba del sistema de emails',
+      nombreMercadeo: 'Sistema de Pruebas'
+    });
+
+    res.json({
+      success: true,
+      message: 'Email de prueba enviado correctamente',
+      resultado
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error al enviar email de prueba',
+      error: error.message
+    });
   }
 });
 

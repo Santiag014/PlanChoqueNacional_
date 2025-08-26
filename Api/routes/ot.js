@@ -972,12 +972,18 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
             COALESCE(pvi.compra_3, 0) AS compra_3,
             COALESCE(pvi.compra_4, 0) AS compra_4,
             COALESCE(pvi.compra_5, 0) AS compra_5,
-            -- Implementaciones realizadas
+            -- Implementaciones realizadas (autorizadas)
             COALESCE(impl.impl_1, 0) AS impl_1_realizada,
             COALESCE(impl.impl_2, 0) AS impl_2_realizada,
             COALESCE(impl.impl_3, 0) AS impl_3_realizada,
             COALESCE(impl.impl_4, 0) AS impl_4_realizada,
-            COALESCE(impl.impl_5, 0) AS impl_5_realizada
+            COALESCE(impl.impl_5, 0) AS impl_5_realizada,
+            -- Implementaciones no autorizadas
+            COALESCE(impl.impl_1_no_autorizado, 0) AS impl_1_no_autorizado,
+            COALESCE(impl.impl_2_no_autorizado, 0) AS impl_2_no_autorizado,
+            COALESCE(impl.impl_3_no_autorizado, 0) AS impl_3_no_autorizado,
+            COALESCE(impl.impl_4_no_autorizado, 0) AS impl_4_no_autorizado,
+            COALESCE(impl.impl_5_no_autorizado, 0) AS impl_5_no_autorizado
         FROM puntos_venta pv
         LEFT JOIN depar_ciudades dc 
               ON dc.descripcion = pv.ciudad
@@ -1005,11 +1011,16 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
         LEFT JOIN (
             SELECT 
                 rs.pdv_id,
-                SUM(CASE WHEN ri.nro_implementacion = 1 THEN 1 ELSE 0 END) AS impl_1,
-                SUM(CASE WHEN ri.nro_implementacion = 2 THEN 1 ELSE 0 END) AS impl_2,
-                SUM(CASE WHEN ri.nro_implementacion = 3 THEN 1 ELSE 0 END) AS impl_3,
-                SUM(CASE WHEN ri.nro_implementacion = 4 THEN 1 ELSE 0 END) AS impl_4,
-                SUM(CASE WHEN ri.nro_implementacion = 5 THEN 1 ELSE 0 END) AS impl_5
+                SUM(CASE WHEN ri.nro_implementacion = 1 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_1,
+                SUM(CASE WHEN ri.nro_implementacion = 2 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_2,
+                SUM(CASE WHEN ri.nro_implementacion = 3 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_3,
+                SUM(CASE WHEN ri.nro_implementacion = 4 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_4,
+                SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_5,
+                SUM(CASE WHEN ri.nro_implementacion = 1 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_1_no_autorizado,
+                SUM(CASE WHEN ri.nro_implementacion = 2 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_2_no_autorizado,
+                SUM(CASE WHEN ri.nro_implementacion = 3 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_3_no_autorizado,
+                SUM(CASE WHEN ri.nro_implementacion = 4 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_4_no_autorizado,
+                SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_5_no_autorizado
             FROM registro_servicios rs
             INNER JOIN registros_implementacion ri 
                     ON ri.id_registro = rs.id
@@ -1035,7 +1046,7 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
         fotos_agrupadas AS (
             SELECT 
                 id_registro,
-                GROUP_CONCAT(CONCAT("https://api.plandelamejorenergia.com/uploads/", foto_factura)) AS fotos_factura,
+                GROUP_CONCAT(CONCAT("https://api.plandelamejorenergia.com", foto_factura)) AS fotos_factura,
                 GROUP_CONCAT(CONCAT("https://api.plandelamejorenergia.com/uploads/", foto_seguimiento)) AS fotos_seguimiento
             FROM registro_fotografico_servicios
             GROUP BY id_registro
@@ -1144,18 +1155,22 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       compra_1: row.compra_1,
       compra_2: row.compra_2,
       impl_1_realizada: row.impl_1_realizada,
-      impl_2_realizada: row.impl_2_realizada
+      impl_2_realizada: row.impl_2_realizada,
+      impl_1_no_autorizado: row.impl_1_no_autorizado,
+      impl_2_no_autorizado: row.impl_2_no_autorizado
     })));
     
     const resultsImplementaciones = rawResultsImplementaciones.map((row, index) => {
       // Función auxiliar para determinar estado de implementación
-      const getImplementacionStatus = (numeroImpl, galonaje, compraRequerida, implementacionRealizada) => {
+      const getImplementacionStatus = (numeroImpl, galonaje, compraRequerida, implementacionRealizada, implementacionNoAutorizada) => {
         // Solo hacer debug en los primeros 3 registros
         if (index < 3) {
-          console.log(`🔍 PDV ${row.codigo} - Impl ${numeroImpl}: galonaje=${galonaje}, compraReq=${compraRequerida}, realizada=${implementacionRealizada}`);
+          console.log(`🔍 PDV ${row.codigo} - Impl ${numeroImpl}: galonaje=${galonaje}, compraReq=${compraRequerida}, realizada=${implementacionRealizada}, noAutorizada=${implementacionNoAutorizada}`);
         }
         if (implementacionRealizada > 0) {
           return 'Realizada';
+        } else if (implementacionNoAutorizada > 0) {
+          return 'No Autorizo';
         } else if (galonaje >= compraRequerida) {
           return 'Pendiente';
         } else {
@@ -1164,15 +1179,15 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       };
 
       // Calcular estados de cada implementación
-      const impl1Status = getImplementacionStatus(1, row.GalonajeVendido, row.compra_1, row.impl_1_realizada);
-      const impl2Status = getImplementacionStatus(2, row.GalonajeVendido, row.compra_2, row.impl_2_realizada);
-      const impl3Status = getImplementacionStatus(3, row.GalonajeVendido, row.compra_3, row.impl_3_realizada);
-      const impl4Status = getImplementacionStatus(4, row.GalonajeVendido, row.compra_4, row.impl_4_realizada);
-      const impl5Status = getImplementacionStatus(5, row.GalonajeVendido, row.compra_5, row.impl_5_realizada);
+      const impl1Status = getImplementacionStatus(1, row.GalonajeVendido, row.compra_1, row.impl_1_realizada, row.impl_1_no_autorizado);
+      const impl2Status = getImplementacionStatus(2, row.GalonajeVendido, row.compra_2, row.impl_2_realizada, row.impl_2_no_autorizado);
+      const impl3Status = getImplementacionStatus(3, row.GalonajeVendido, row.compra_3, row.impl_3_realizada, row.impl_3_no_autorizado);
+      const impl4Status = getImplementacionStatus(4, row.GalonajeVendido, row.compra_4, row.impl_4_realizada, row.impl_4_no_autorizado);
+      const impl5Status = getImplementacionStatus(5, row.GalonajeVendido, row.compra_5, row.impl_5_realizada, row.impl_5_no_autorizado);
 
-      // Calcular total de implementaciones habilitadas
+      // Calcular total de implementaciones habilitadas (incluye Realizada, Pendiente y No Autorizo)
       const totalHabilitadas = [impl1Status, impl2Status, impl3Status, impl4Status, impl5Status]
-        .filter(status => status === 'Realizada' || status === 'Pendiente').length;
+        .filter(status => status === 'Realizada' || status === 'Pendiente' || status === 'No Autorizo').length;
 
       return {
         ...row,

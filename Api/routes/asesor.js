@@ -523,7 +523,8 @@ router.get('/historial-registros-asesor/:user_id', authenticateToken, requireAse
         puntos_venta.direccion,
         users.name,
         DATE_FORMAT(registro_servicios.fecha_registro, '%Y-%m-%d') AS fecha_registro,
-        DATE_FORMAT(registro_servicios.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+        DATE_FORMAT(registro_servicios.created_at, '%Y-%m-%d') AS created_at,
+
         CASE
             WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Volumen / Precio'
             WHEN kpi_volumen = 1 THEN 'Volumen'
