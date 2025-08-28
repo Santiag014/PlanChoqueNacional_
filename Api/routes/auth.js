@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { getConnection } from '../db.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -18,7 +19,6 @@ const JWT_EXPIRES_IN = '24h';
 // ========================================================================
 
 // LOGIN DE USUARIOS - ENDPOINT PRINCIPAL DE AUTENTICACIÓN
-// LOGIN DE USUARIOS - ENDPOINT PRINCIPAL DE AUTENTICACIÓN
 router.post('/login', async (req, res) => {
   let { email, password } = req.body;
   let conn;
@@ -34,13 +34,8 @@ router.post('/login', async (req, res) => {
     
     const user = rows[0];
     
-    // LOG DE DEPURACIÓN - DATOS DEL USUARIO
-    console.log('🔍 DATOS COMPLETOS DEL USUARIO DESDE DB:', JSON.stringify(user, null, 2));
-    console.log('🔗 Campo power_bi:', user.power_bi);
-    console.log('🔗 Campo powerBI:', user.powerBI);
-    console.log('🔗 Campo powerbi:', user.powerbi);
-    console.log('📧 Email:', user.email);
-    console.log('🎭 Tipo/Rol:', user.tipo || user.rol || user.rol_id);
+    // Solo log en debug para datos sensibles
+    logger.debug('Usuario encontrado:', user.email);
     
     let hash = user.password || user.contrasena;
     
@@ -97,9 +92,8 @@ router.post('/login', async (req, res) => {
         }
       };
       
-      // LOG DE DEPURACIÓN - RESPUESTA ENVIADA AL FRONTEND
-      console.log('📤 RESPUESTA ENVIADA AL FRONTEND:', JSON.stringify(responseData, null, 2));
-      console.log('🔗 PowerBI en respuesta:', responseData.user.powerBI);
+      // Solo log de seguridad para login exitoso
+      logger.security('Login exitoso para usuario:', user.email);
       
       res.json(responseData);
     } else {

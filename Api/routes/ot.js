@@ -3,8 +3,10 @@ import ExcelJS from 'exceljs';
 import path from 'path';
 import fs from 'fs';
 import { getConnection } from '../db.js';
-import { authenticateToken, requireOT, requireUsersAgente, logAccess } from '../middleware/auth.js';
+import { authenticateToken, requireOT, requireUsersAgente, requireJefeZona, logAccess } from '../middleware/auth.js';
 import { applyUserFilters, addUserRestrictions, getUserAgentsByName, getUserRestrictions } from '../config/userPermissions.js';
+import { upload } from '../config/multer.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -50,7 +52,7 @@ router.get('/historial-registros', authenticateToken, requireOT, addUserRestrict
     });
 
   } catch (err) {
-    console.error('Error obteniendo historial de registros:', err);
+    logger.error('Error obteniendo historial de registros:', err.message);
     res.status(500).json({
       success: false,
       message: 'Error al obtener historial de registros',
@@ -65,7 +67,7 @@ router.get('/historial-registros', authenticateToken, requireOT, addUserRestrict
 router.get('/registro-detalles/:registro_id', authenticateToken, requireOT, logAccess, async (req, res) => {
   const { registro_id } = req.params;
 
-  console.log('Obteniendo detalles para registro ID:', registro_id);
+  // logger.debug('Obteniendo detalles para registro ID:', registro_id); // Solo en debug
 
   // Validar que el registro_id es un número
   if (!registro_id || isNaN(registro_id)) {
@@ -182,7 +184,7 @@ router.get('/registro-detalles/:registro_id', authenticateToken, requireOT, logA
     
     const [detalles] = await conn.execute(queryDetalles, [registro_id]);
     
-    console.log('Detalles obtenidos de la BD:', detalles);
+    // logger.debug('Detalles obtenidos de la BD:', detalles); // Solo en debug cuando sea necesario
 
     if (detalles.length === 0) {
       return res.status(404).json({
@@ -238,7 +240,7 @@ router.get('/registro-detalles/:registro_id', authenticateToken, requireOT, logA
     });
 
   } catch (err) {
-    console.error('Error obteniendo detalles del registro:', err);
+    logger.error('Error obteniendo detalles del registro:', err.message);
     res.status(500).json({
       success: false,
       message: 'Error al obtener detalles del registro',
@@ -299,7 +301,7 @@ router.get('/cobertura', authenticateToken, requireOT, addUserRestrictions, logA
     // Asignar puntos individuales por PDV (máximo 5 puntos por PDV implementado)
     const pdvsDetalle = pdvs.map(pdv => ({
       ...pdv,
-      estado: implementadosSet.has(pdv.id) ? 'IMPLEMENTADO' : 'NO IMPLEMENTADO',
+      estado: implementadosSet.has(pdv.id) ? 'REGISTRADO' : 'NO REGISTRADO',
       puntos: implementadosSet.has(pdv.id) ? 5 : 0
     }));
 
@@ -601,7 +603,8 @@ router.get('/precios', authenticateToken, requireOT, addUserRestrictions, logAcc
        INNER JOIN users u ON u.id = pv.user_id
        LEFT JOIN agente ag ON ag.id = pv.id_agente`;
     
-    const [pdvs] = await conn.execute(applyUserFilters(basePdvQuery, req.userRestrictions));
+    const { query: pdvsQuery, params: pdvsParams } = await applyUserFilters(basePdvQuery, req.user.id, 'pv');
+    const [pdvs] = await conn.execute(pdvsQuery, pdvsParams);
     
     // 2. Obtener PDVs con al menos un reporte de precio (kpi_precio = 1) filtrados por usuario  
     const reportadosQuery = `SELECT DISTINCT rs.pdv_id
@@ -611,7 +614,8 @@ router.get('/precios', authenticateToken, requireOT, addUserRestrictions, logAcc
        LEFT JOIN registros_mistery_shopper rms ON rms.id_registro_pdv = rs.id 
        WHERE rs.kpi_precio = 1 AND rms.id IS NOT NULL`;
     
-    const [reportados] = await conn.execute(applyUserFilters(reportadosQuery, req.userRestrictions));
+    const { query: reportadosQueryFinal, params: reportadosParams } = await applyUserFilters(reportadosQuery, req.user.id, 'pv');
+    const [reportados] = await conn.execute(reportadosQueryFinal, reportadosParams);
     const reportadosSet = new Set(reportados.map(r => r.pdv_id));
 
     // 3. Cálculo de puntos por precios (más realista)
@@ -636,7 +640,7 @@ router.get('/precios', authenticateToken, requireOT, addUserRestrictions, logAcc
     });
     
   } catch (error) {
-    console.error('Error al consultar datos de precios:', error);
+    logger.error('Error al consultar datos de precios:', error.message);
     res.status(500).json({
       success: false,
       message: 'Error al consultar información de precios',
@@ -668,7 +672,8 @@ router.get('/profundidad', authenticateToken, requireOT, addUserRestrictions, lo
        INNER JOIN users u ON u.id = pv.user_id
        LEFT JOIN agente ag ON ag.id = pv.id_agente`;
     
-    const [pdvs] = await conn.execute(applyUserFilters(basePdvQuery, req.userRestrictions));
+    const { query: pdvsQuery2, params: pdvsParams2 } = await applyUserFilters(basePdvQuery, req.user.id, 'pv');
+    const [pdvs] = await conn.execute(pdvsQuery2, pdvsParams2);
     
     // 2. Obtener PDVs con al menos una nueva referencia vendida filtrados por usuario
     const profundidadQuery = `SELECT 
@@ -684,7 +689,8 @@ router.get('/profundidad', authenticateToken, requireOT, addUserRestrictions, lo
        GROUP BY rs.pdv_id
        HAVING nuevas_referencias > 0`;
     
-    const [conProfundidadQuery] = await conn.execute(applyUserFilters(profundidadQuery, req.userRestrictions));
+    const { query: profundidadQueryFinal, params: profundidadParams } = await applyUserFilters(profundidadQuery, req.user.id, 'pv');
+    const [conProfundidadQuery] = await conn.execute(profundidadQueryFinal, profundidadParams);
     
     const pdvsConProfundidad = new Set(conProfundidadQuery.map(r => r.pdv_id));
     
@@ -710,7 +716,7 @@ router.get('/profundidad', authenticateToken, requireOT, addUserRestrictions, lo
     });
     
   } catch (error) {
-    console.error('Error al consultar datos de profundidad:', error);
+    logger.error('Error al consultar datos de profundidad:', error.message);
     res.status(500).json({
       success: false,
       message: 'Error al consultar información de profundidad',
@@ -756,7 +762,7 @@ router.get('/asesores', authenticateToken, requireOT, addUserRestrictions, logAc
     });
 
   } catch (error) {
-    console.error('Error al obtener lista de asesores:', error);
+    logger.error('Error al obtener lista de asesores:', error.message);
     res.status(500).json({
       success: false,
       message: 'Error al obtener lista de asesores',
@@ -803,7 +809,7 @@ router.get('/agentes-comerciales', authenticateToken, requireOT, addUserRestrict
     });
 
   } catch (error) {
-    console.error('Error al obtener lista de agentes comerciales:', error);
+    logger.error('Error al obtener lista de agentes comerciales:', error.message);
     res.status(500).json({
       success: false,
       message: 'Error al obtener lista de agentes comerciales',
@@ -852,7 +858,7 @@ router.get('/puntos-venta', authenticateToken, requireOT, addUserRestrictions, l
     });
 
   } catch (error) {
-    console.error('Error al obtener lista de puntos de venta:', error);
+    logger.error('Error al obtener lista de puntos de venta:', error.message);
     res.status(500).json({
       success: false,
       message: 'Error al obtener lista de puntos de venta',
@@ -880,7 +886,7 @@ router.get('/user-permissions', authenticateToken, requireOT, addUserRestriction
     });
 
   } catch (error) {
-    console.error('Error obteniendo permisos de usuario:', error);
+    logger.error('Error obteniendo permisos de usuario:', error.message);
     res.status(500).json({
       success: false,
       message: 'Error al obtener permisos de usuario',
@@ -911,7 +917,7 @@ router.get('/buscar-agentes', authenticateToken, requireOT, async (req, res) => 
     });
 
   } catch (error) {
-    console.error('Error buscando agentes por nombre:', error);
+    logger.error('Error buscando agentes por nombre:', error.message);
     res.status(500).json({
       success: false,
       message: 'Error al buscar agentes',
@@ -925,108 +931,119 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
   let workbook = null;
   
   try {
-    console.log('🚀 Iniciando generación de Excel con múltiples hojas (Implementaciones y Visitas)...');
-    console.log('🧠 Memoria inicial:', process.memoryUsage());
-    
     // Verificar que el usuario tenga el dominio permitido para descargar el reporte
     const userEmail = req.user?.email || '';
     const emailLowerCase = userEmail.toLowerCase();
     
     if (!emailLowerCase.includes('@bullmarketing.com.co')) {
-      console.log(`❌ Acceso denegado para el usuario: ${userEmail}. Dominio no autorizado.`);
+      logger.security(`Acceso denegado para usuario: ${userEmail}. Dominio no autorizado.`);
       return res.status(403).json({
         success: false,
         message: 'Acceso denegado. Solo los usuarios con dominio @bullmarketing.com.co pueden descargar este reporte.'
       });
     }
     
-    console.log(`✅ Acceso autorizado para el usuario: ${userEmail}`);
-    
     conn = await getConnection();
     
     // Query SQL optimizada para implementaciones
     const baseQueryImplementaciones = `
-              SELECT 
-            a.descripcion AS agente,
-            pv.codigo,
-            pv.nit,
-            pv.descripcion AS nombre_PDV,
-            pv.direccion,
-            pv.segmento,
-            pv.ciudad,
-            d.descripcion AS departamento,
-            u.name as Asesor,
-            -- Total de compras redondeado a 2 decimales
-            ROUND(
-                COALESCE(pvi.compra_1,0) +
-                COALESCE(pvi.compra_2,0) +
-                COALESCE(pvi.compra_3,0) +
-                COALESCE(pvi.compra_4,0) +
-                COALESCE(pvi.compra_5,0)
-            ,2) AS "Meta Volumen (TOTAL)",
-            -- Galonaje vendido redondeado a 2 decimales
-            ROUND(COALESCE(g.GalonajeVendido, 0),2) AS GalonajeVendido,
-            -- Compras individuales
-            COALESCE(pvi.compra_1, 0) AS compra_1,
-            COALESCE(pvi.compra_2, 0) AS compra_2,
-            COALESCE(pvi.compra_3, 0) AS compra_3,
-            COALESCE(pvi.compra_4, 0) AS compra_4,
-            COALESCE(pvi.compra_5, 0) AS compra_5,
-            -- Implementaciones realizadas (autorizadas)
-            COALESCE(impl.impl_1, 0) AS impl_1_realizada,
-            COALESCE(impl.impl_2, 0) AS impl_2_realizada,
-            COALESCE(impl.impl_3, 0) AS impl_3_realizada,
-            COALESCE(impl.impl_4, 0) AS impl_4_realizada,
-            COALESCE(impl.impl_5, 0) AS impl_5_realizada,
-            -- Implementaciones no autorizadas
-            COALESCE(impl.impl_1_no_autorizado, 0) AS impl_1_no_autorizado,
-            COALESCE(impl.impl_2_no_autorizado, 0) AS impl_2_no_autorizado,
-            COALESCE(impl.impl_3_no_autorizado, 0) AS impl_3_no_autorizado,
-            COALESCE(impl.impl_4_no_autorizado, 0) AS impl_4_no_autorizado,
-            COALESCE(impl.impl_5_no_autorizado, 0) AS impl_5_no_autorizado
-        FROM puntos_venta pv
-        LEFT JOIN depar_ciudades dc 
-              ON dc.descripcion = pv.ciudad
-        LEFT JOIN departamento d 
-              ON d.id = dc.id_departamento
-        LEFT JOIN puntos_venta__implementacion pvi 
-              ON pvi.pdv_id = pv.id
-        INNER JOIN agente a 
-              ON a.id = pv.id_agente
-        INNER JOIN users u 
-              ON u.id = pv.user_id
-        -- Galonaje vendido
-        LEFT JOIN (
-            SELECT 
-                rs.pdv_id, 
-                SUM(rp.conversion_galonaje) AS GalonajeVendido
-            FROM registro_servicios rs
-            INNER JOIN registro_productos rp 
-                    ON rp.registro_id = rs.id
-            WHERE rs.estado_id = 2 
-              AND rs.estado_agente_id = 2
-            GROUP BY rs.pdv_id
-        ) g ON g.pdv_id = pv.id
-        -- Implementaciones
-        LEFT JOIN (
-            SELECT 
-                rs.pdv_id,
-                SUM(CASE WHEN ri.nro_implementacion = 1 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_1,
-                SUM(CASE WHEN ri.nro_implementacion = 2 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_2,
-                SUM(CASE WHEN ri.nro_implementacion = 3 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_3,
-                SUM(CASE WHEN ri.nro_implementacion = 4 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_4,
-                SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_5,
-                SUM(CASE WHEN ri.nro_implementacion = 1 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_1_no_autorizado,
-                SUM(CASE WHEN ri.nro_implementacion = 2 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_2_no_autorizado,
-                SUM(CASE WHEN ri.nro_implementacion = 3 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_3_no_autorizado,
-                SUM(CASE WHEN ri.nro_implementacion = 4 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_4_no_autorizado,
-                SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_5_no_autorizado
-            FROM registro_servicios rs
-            INNER JOIN registros_implementacion ri 
-                    ON ri.id_registro = rs.id
-            GROUP BY rs.pdv_id
-        ) impl ON impl.pdv_id = pv.id
-        ORDER BY a.descripcion, pv.descripcion;
+      SELECT 
+          a.descripcion AS agente,
+          pv.codigo,
+          pv.nit,
+          pv.descripcion AS nombre_PDV,
+          pv.direccion,
+          pv.segmento,
+          pv.ciudad,
+          TRUNCATE(pv.meta_volumen,2)AS meta_volumen,
+          d.descripcion AS departamento,
+          u.name as Asesor,
+
+          -- Total de compras redondeado a 2 decimales
+          ROUND(
+              COALESCE(pvi.compra_1,0) +
+              COALESCE(pvi.compra_2,0) +
+              COALESCE(pvi.compra_3,0) +
+              COALESCE(pvi.compra_4,0) +
+              COALESCE(pvi.compra_5,0)
+          ,2) AS "Meta Volumen (TOTAL)",
+
+          -- Galonaje vendido redondeado a 2 decimales
+          ROUND(COALESCE(g.GalonajeVendido, 0),2) AS GalonajeVendido,
+
+          -- Compras individuales
+          COALESCE(pvi.compra_1, 0) AS compra_1,
+          COALESCE(pvi.compra_2, 0) AS compra_2,
+          COALESCE(pvi.compra_3, 0) AS compra_3,
+          COALESCE(pvi.compra_4, 0) AS compra_4,
+          COALESCE(pvi.compra_5, 0) AS compra_5,
+
+          -- Implementaciones realizadas (autorizadas)
+          COALESCE(impl.impl_1, 0) AS impl_1_realizada,
+          COALESCE(impl.impl_2, 0) AS impl_2_realizada,
+          COALESCE(impl.impl_3, 0) AS impl_3_realizada,
+          COALESCE(impl.impl_4, 0) AS impl_4_realizada,
+          COALESCE(impl.impl_5, 0) AS impl_5_realizada,
+
+          -- Implementaciones no autorizadas
+          COALESCE(impl.impl_1_no_autorizado, 0) AS impl_1_no_autorizado,
+          COALESCE(impl.impl_2_no_autorizado, 0) AS impl_2_no_autorizado,
+          COALESCE(impl.impl_3_no_autorizado, 0) AS impl_3_no_autorizado,
+          COALESCE(impl.impl_4_no_autorizado, 0) AS impl_4_no_autorizado,
+          COALESCE(impl.impl_5_no_autorizado, 0) AS impl_5_no_autorizado
+
+      FROM puntos_venta pv
+      LEFT JOIN depar_ciudades dc 
+            ON dc.descripcion = pv.ciudad
+      LEFT JOIN departamento d 
+            ON d.id = dc.id_departamento
+      LEFT JOIN puntos_venta__implementacion pvi 
+            ON pvi.pdv_id = pv.id
+      INNER JOIN agente a 
+            ON a.id = pv.id_agente
+      INNER JOIN users u 
+            ON u.id = pv.user_id
+
+      -- Galonaje vendido
+      LEFT JOIN (
+          SELECT 
+              rs.pdv_id, 
+              SUM(rp.conversion_galonaje) AS GalonajeVendido
+          FROM registro_servicios rs
+          INNER JOIN registro_productos rp 
+                  ON rp.registro_id = rs.id
+          WHERE rs.estado_id = 2 
+            AND rs.estado_agente_id = 2   -- ✅ condición global
+          GROUP BY rs.pdv_id
+      ) g ON g.pdv_id = pv.id
+
+      -- Implementaciones
+      LEFT JOIN (
+          SELECT 
+              rs.pdv_id,
+              -- Autorizadas (Si)
+              SUM(CASE WHEN ri.nro_implementacion = 1 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_1,
+              SUM(CASE WHEN ri.nro_implementacion = 2 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_2,
+              SUM(CASE WHEN ri.nro_implementacion = 3 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_3,
+              SUM(CASE WHEN ri.nro_implementacion = 4 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_4,
+              SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_5,
+
+              -- No autorizadas (No)
+              SUM(CASE WHEN ri.nro_implementacion = 1 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_1_no_autorizado,
+              SUM(CASE WHEN ri.nro_implementacion = 2 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_2_no_autorizado,
+              SUM(CASE WHEN ri.nro_implementacion = 3 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_3_no_autorizado,
+              SUM(CASE WHEN ri.nro_implementacion = 4 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_4_no_autorizado,
+              SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_5_no_autorizado
+          FROM registro_servicios rs
+          INNER JOIN registros_implementacion ri 
+              ON ri.id_registro = rs.id
+          WHERE rs.estado_id = 2 
+            AND rs.estado_agente_id = 2   -- ✅ condición global
+          GROUP BY rs.pdv_id
+      ) impl ON impl.pdv_id = pv.id
+
+      GROUP BY pv.codigo
+      ORDER BY MAX(a.descripcion), MAX(pv.descripcion);
       `;
 
     // Query SQL para visitas con subconsultas para productos y fotos
@@ -1105,18 +1122,15 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     if (userRestrictions && userRestrictions.hasRestrictions) {
       const agenteFilter = `pv.id_agente IN (${userRestrictions.agenteIds.map(() => '?').join(',')})`;
       finalQueryImplementaciones = baseQueryImplementaciones.replace(
-        'ORDER BY a.descripcion, pv.descripcion',
-        `WHERE ${agenteFilter}\n      ORDER BY a.descripcion, pv.descripcion`
+        'GROUP BY pv.codigo\n      ORDER BY MAX(a.descripcion), MAX(pv.descripcion);',
+        `WHERE ${agenteFilter}\n      GROUP BY pv.codigo\n      ORDER BY MAX(a.descripcion), MAX(pv.descripcion);`
       );
       queryParamsImplementaciones = userRestrictions.agenteIds;
-      console.log('🔒 [Excel Implementaciones] Aplicando filtro de usuario para agentes:', userRestrictions.agenteIds);
-    } else {
-      console.log('🔓 [Excel Implementaciones] Usuario sin restricciones - puede ver todos los datos');
     }
     
     // Ejecutar query de implementaciones
     const [rawResultsImplementaciones] = await conn.execute(finalQueryImplementaciones, queryParamsImplementaciones);
-    console.log(`📊 Consulta Implementaciones ejecutada. Registros encontrados: ${rawResultsImplementaciones.length}`);
+    logger.metric(`Implementaciones: ${rawResultsImplementaciones.length} registros`);
 
     // ========== EJECUTAR CONSULTA DE VISITAS ==========
     let finalQueryVisitas = baseQueryVisitas;
@@ -1130,43 +1144,24 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
         `WHERE ${agenteFilter}\n        ORDER BY registro_servicios.id DESC`
       );
       queryParamsVisitas = userRestrictions.agenteIds;
-      console.log('🔒 [Excel Visitas] Aplicando filtro de usuario para agentes:', userRestrictions.agenteIds);
-    } else {
-      console.log('🔓 [Excel Visitas] Usuario sin restricciones - puede ver todos los datos');
     }
     
     // Ejecutar query de visitas
     const [rawResultsVisitas] = await conn.execute(finalQueryVisitas, queryParamsVisitas);
-    console.log(`📊 Consulta Visitas ejecutada. Registros encontrados: ${rawResultsVisitas.length}`);
+    logger.metric(`Visitas: ${rawResultsVisitas.length} registros`);
 
     if (rawResultsImplementaciones.length === 0 && rawResultsVisitas.length === 0) {
-      console.log('⚠️ No se encontraron registros en la base de datos');
       return res.status(404).json({ 
         success: false,
         message: 'No se encontraron registros para generar el reporte' 
       });
     }
 
-    // Procesar datos para calcular estados de implementación de manera eficiente
-    console.log('🔄 Procesando estados de implementación...');
-    console.log('🔍 DEBUG: Primeros 3 registros crudos:', rawResultsImplementaciones.slice(0, 3).map(row => ({
-      codigo: row.codigo,
-      GalonajeVendido: row.GalonajeVendido,
-      compra_1: row.compra_1,
-      compra_2: row.compra_2,
-      impl_1_realizada: row.impl_1_realizada,
-      impl_2_realizada: row.impl_2_realizada,
-      impl_1_no_autorizado: row.impl_1_no_autorizado,
-      impl_2_no_autorizado: row.impl_2_no_autorizado
-    })));
+    // Procesar datos para calcular estados de implementación
     
     const resultsImplementaciones = rawResultsImplementaciones.map((row, index) => {
       // Función auxiliar para determinar estado de implementación
       const getImplementacionStatus = (numeroImpl, galonaje, compraRequerida, implementacionRealizada, implementacionNoAutorizada) => {
-        // Solo hacer debug en los primeros 3 registros
-        if (index < 3) {
-          console.log(`🔍 PDV ${row.codigo} - Impl ${numeroImpl}: galonaje=${galonaje}, compraReq=${compraRequerida}, realizada=${implementacionRealizada}, noAutorizada=${implementacionNoAutorizada}`);
-        }
         if (implementacionRealizada > 0) {
           return 'Realizada';
         } else if (implementacionNoAutorizada > 0) {
@@ -1200,24 +1195,10 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       };
     });
 
-    console.log(`✅ Procesamiento completado. Total de registros procesados: ${resultsImplementaciones.length}`);
-    console.log('🎯 DEBUG: Estados calculados en los primeros 3 registros:', resultsImplementaciones.slice(0, 3).map(row => ({
-      codigo: row.codigo,
-      Total_Habilitadas: row.Total_Habilitadas,
-      Implementacion_1: row.Implementacion_1,
-      Implementacion_2: row.Implementacion_2,
-      Implementacion_3: row.Implementacion_3,
-      Implementacion_4: row.Implementacion_4,
-      Implementacion_5: row.Implementacion_5
-    })));
-    console.log('🧠 Memoria después del procesamiento:', process.memoryUsage());
-
     // Crear nuevo workbook con ExcelJS
-    console.log('📋 Creando workbook con ExcelJS para múltiples hojas...');
     workbook = new ExcelJS.Workbook();
     
     // ========== HOJA 1: IMPLEMENTACIONES ==========
-    console.log('📋 Creando hoja de Implementaciones...');
     let worksheetImplementaciones;
     
     // Intentar cargar plantilla si existe
@@ -1225,14 +1206,11 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     
     try {
       if (fs.existsSync(templatePath)) {
-        console.log('📋 Cargando plantilla desde:', templatePath);
         await workbook.xlsx.readFile(templatePath);
         worksheetImplementaciones = workbook.worksheets[0]; // Primera hoja
         worksheetImplementaciones.name = 'Implementaciones'; // Asegurar el nombre
-        console.log('✅ Plantilla cargada exitosamente');
         
         // Limpiar datos existentes (desde fila 5 en adelante)
-        console.log('🧹 Limpiando datos existentes de la plantilla...');
         const maxRows = worksheetImplementaciones.rowCount;
         for (let i = 5; i <= maxRows; i++) {
           const row = worksheetImplementaciones.getRow(i);
@@ -1241,16 +1219,13 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
           }
         }
       } else {
-        console.log('⚠️ Plantilla no encontrada, creando hoja nueva');
         worksheetImplementaciones = workbook.addWorksheet('Implementaciones');
       }
     } catch (templateError) {
-      console.log('⚠️ Error cargando plantilla, creando hoja nueva:', templateError.message);
       worksheetImplementaciones = workbook.addWorksheet('Implementaciones');
     }
 
     // ========== HOJA 2: VISITAS ==========
-    console.log('📋 Configurando hoja de Visitas existente...');
     let worksheetVisitas;
     
     // Buscar la hoja de Visitas existente en la plantilla
@@ -1258,13 +1233,9 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     
     if (!worksheetVisitas) {
       // Si no existe la hoja Visitas, crearla
-      console.log('⚠️ Hoja Visitas no encontrada en plantilla, creando nueva...');
       worksheetVisitas = workbook.addWorksheet('Visitas');
     } else {
-      console.log('✅ Hoja Visitas encontrada en plantilla');
-      
       // Limpiar datos existentes en la hoja de Visitas (desde fila 5 en adelante)
-      console.log('🧹 Limpiando datos existentes de la hoja Visitas...');
       const maxRowsVisitas = worksheetVisitas.rowCount;
       for (let i = 5; i <= maxRowsVisitas; i++) {
         const row = worksheetVisitas.getRow(i);
@@ -1275,7 +1246,6 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     }
 
     // ========== CONFIGURAR HOJA DE IMPLEMENTACIONES ==========
-    console.log('🎨 Configurando hoja de Implementaciones...');
     
     // Definir headers para implementaciones
     const headersImplementaciones = [
@@ -1286,7 +1256,6 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     ];
 
     // Configurar la fila de headers (fila 4) para implementaciones
-    console.log('🎨 Configurando headers con formato naranja para Implementaciones...');
     const headerRowImplementaciones = worksheetImplementaciones.getRow(4);
     
     headersImplementaciones.forEach((header, index) => {
@@ -1318,7 +1287,6 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     });
 
     // ========== CONFIGURAR HOJA DE VISITAS ==========
-    console.log('🎨 Configurando hoja de Visitas...');
     
     // Verificar si la fila 4 ya tiene headers configurados
     const headerRowVisitas = worksheetVisitas.getRow(4);
@@ -1326,7 +1294,6 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     
     // Solo configurar headers si no existen ya en la plantilla
     if (!primeracelda || primeracelda === '') {
-      console.log('🎨 Configurando headers para Visitas (no existen en plantilla)...');
       
       // Definir headers para visitas
       const headersVisitas = [
@@ -1365,8 +1332,6 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
           right: { style: 'thin', color: { argb: '#E97132' } }
         };
       });
-    } else {
-      console.log('✅ Headers de Visitas ya existen en plantilla, reutilizando formato existente');
     }
 
     // ========== FUNCIONES DE COLORES ==========
@@ -1401,14 +1366,12 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       return null; // Sin color para otros estados
     };
     // ========== ESCRIBIR DATOS DE IMPLEMENTACIONES ==========
-    console.log(`📝 Escribiendo ${resultsImplementaciones.length} registros de implementaciones con colores de semáforo...`);
     let currentRowImplementaciones = 5;
 
     // Procesar en lotes para evitar problemas de memoria
     const batchSize = 100;
     for (let i = 0; i < resultsImplementaciones.length; i += batchSize) {
       const batch = resultsImplementaciones.slice(i, i + batchSize);
-      console.log(`📦 Procesando lote implementaciones ${Math.floor(i/batchSize) + 1}/${Math.ceil(resultsImplementaciones.length/batchSize)} (${batch.length} registros)`);
       
       batch.forEach((row, batchIndex) => {
         const dataRow = worksheetImplementaciones.getRow(currentRowImplementaciones + i + batchIndex);
@@ -1424,7 +1387,7 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
           row.ciudad || '',
           row.departamento || '',
           row.Asesor || '',
-          row['Meta Volumen (TOTAL)'] || 0,
+          row['meta_volumen'] || 0,
           row.GalonajeVendido || 0,
           row.Total_Habilitadas || 0,
           row.Implementacion_1 || 'No Habilitado',
@@ -1470,18 +1433,15 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       // Forzar garbage collection después de cada lote si está disponible
       if (global.gc) {
         global.gc();
-        console.log('🗑️ Garbage collection ejecutado');
       }
     }
 
     // ========== ESCRIBIR DATOS DE VISITAS ==========
-    console.log(`📝 Escribiendo ${rawResultsVisitas.length} registros de visitas con semáforo de estados...`);
     let currentRowVisitas = 5;
 
     // Procesar visitas en lotes para evitar problemas de memoria
     for (let i = 0; i < rawResultsVisitas.length; i += batchSize) {
       const batch = rawResultsVisitas.slice(i, i + batchSize);
-      console.log(`📦 Procesando lote visitas ${Math.floor(i/batchSize) + 1}/${Math.ceil(rawResultsVisitas.length/batchSize)} (${batch.length} registros)`);
       
       batch.forEach((row, batchIndex) => {
         const dataRow = worksheetVisitas.getRow(currentRowVisitas + i + batchIndex);
@@ -1551,13 +1511,11 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       // Forzar garbage collection después de cada lote si está disponible
       if (global.gc) {
         global.gc();
-        console.log('🗑️ Garbage collection visitas ejecutado');
       }
     }
     // ========== AUTO-AJUSTAR COLUMNAS ==========
     
     // Auto-ajustar anchos SOLO de las columnas con datos en la hoja de Implementaciones (B a R)
-    console.log('📐 Auto-ajustando anchos de columna para Implementaciones (B-R)...');
     
     // Definir explícitamente las columnas que contienen datos para implementaciones
     const columnasImplementaciones = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'];
@@ -1587,11 +1545,9 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       const autoWidth = calculateColumnWidth(worksheetImplementaciones, columnLetter, currentRowImplementaciones + resultsImplementaciones.length);
       const column = worksheetImplementaciones.getColumn(columnLetter);
       column.width = autoWidth;
-      console.log(`📏 Implementaciones Columna ${columnLetter}: ancho ajustado a ${autoWidth}`);
     });
     
     // Auto-ajustar anchos SOLO de las columnas con datos en la hoja de Visitas (B a W)
-    console.log('📐 Auto-ajustando anchos de columna para Visitas (B-W)...');
     
     // Definir explícitamente las columnas que contienen datos para visitas
     const columnasVisitas = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W'];
@@ -1601,18 +1557,11 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       const autoWidth = calculateColumnWidth(worksheetVisitas, columnLetter, currentRowVisitas + rawResultsVisitas.length);
       const column = worksheetVisitas.getColumn(columnLetter);
       column.width = autoWidth;
-      console.log(`📏 Visitas Columna ${columnLetter}: ancho ajustado a ${autoWidth}`);
     });
     
-    console.log('✅ Auto-ajuste completado para ambas hojas');
-
     // Generar archivo Excel
-    console.log('💾 Generando archivo Excel...');
-    console.log('🧠 Memoria antes de generar buffer:', process.memoryUsage());
     
     const buffer = await workbook.xlsx.writeBuffer();
-    
-    console.log('🧠 Memoria después de generar buffer:', process.memoryUsage());
     
     // Limpiar workbook de memoria
     workbook = null;
@@ -1620,14 +1569,11 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     // Forzar garbage collection si está disponible
     if (global.gc) {
       global.gc();
-      console.log('🗑️ Garbage collection final ejecutado');
     }
 
     // Configurar headers para descarga
     const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
     const filename = `Reporte_Implementaciones_y_Visitas_${timestamp}.xlsx`;
-
-    console.log(`📦 Archivo generado: ${filename} (${buffer.length} bytes)`);
 
     // Configurar headers de respuesta
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -1639,14 +1585,11 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     res.setHeader('ETag', '');
     res.setHeader('Last-Modified', new Date().toUTCString());
 
-    console.log(`📤 Enviando archivo: ${filename} (${buffer.length} bytes)`);
-
     // Enviar archivo
     res.end(buffer, 'binary');
 
   } catch (error) {
     console.error('❌ Error generando Excel de implementaciones:', error);
-    console.log('🧠 Memoria en error:', process.memoryUsage());
     
     // Limpiar workbook en caso de error
     if (workbook) {
@@ -1656,11 +1599,9 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     // Forzar garbage collection en caso de error
     if (global.gc) {
       global.gc();
-      console.log('🗑️ Garbage collection de error ejecutado');
     }
     
     if (res.headersSent) {
-      console.error('Headers ya enviados, no se puede cambiar la respuesta');
       return;
     }
     
@@ -1677,8 +1618,373 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     if (workbook) {
       workbook = null;
     }
-    
-    console.log('🧠 Memoria al finalizar:', process.memoryUsage());
   }
 });
+
+// ========================================================================
+// 👨‍💼 ENDPOINTS PARA JEFE DE ZONA - FUNCIONALIDAD INTEGRADA
+// ========================================================================
+// 
+// NOTA: Esta funcionalidad se integró aquí porque el rol "Jefe de Zona" 
+// es conceptualmente parte de la "Organización Terpel" (OT).
+// Anteriormente estaba en un archivo separado jefe-zona.js pero se 
+// consolidó para simplificar la estructura de la API.
+//
+// Funcionalidades incluidas:
+// - Gestión de PDVs asignados al Jefe de Zona
+// - Registro de visitas de seguimiento 
+// - Historial de visitas realizadas
+// - Verificación de permisos de Jefe de Zona
+// ========================================================================
+
+// Obtener PDVs asignados al Jefe de Zona según su empresa
+router.get('/jefe-zona/pdvs-asignados', authenticateToken, requireOT, requireJefeZona, logAccess, async (req, res) => {
+  let conn;
+  try {
+    conn = await getConnection();
+
+    // Obtener las empresas asignadas al jefe de zona
+    const [agentesQuery] = await conn.execute(`
+      SELECT DISTINCT a.id as agente_id, a.descripcion as agente_nombre
+      FROM users_agente ua
+      INNER JOIN agente a ON a.id = ua.agente_id
+      WHERE ua.user_id = ? AND ua.rol_terpel LIKE '%Jefe%'
+    `, [req.user.id]);
+
+    if (agentesQuery.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tiene empresas asignadas como Jefe de Zona'
+      });
+    }
+
+    const agenteIds = agentesQuery.map(a => a.agente_id);
+    const placeholders = agenteIds.map(() => '?').join(',');
+
+    // Obtener todos los PDVs de las empresas asignadas
+    const [pdvs] = await conn.execute(`
+      SELECT 
+        pv.id,
+        pv.codigo,
+        pv.descripcion as nombre,
+        pv.direccion,
+        pv.ciudad,
+        pv.id_agente,
+        a.descripcion as agente_nombre
+      FROM puntos_venta pv
+      INNER JOIN agente a ON a.id = pv.id_agente
+      WHERE pv.id_agente IN (${placeholders})
+      ORDER BY pv.codigo ASC
+    `, agenteIds);
+
+    res.json({
+      success: true,
+      data: {
+        pdvs,
+        empresas: agentesQuery,
+        total_pdvs: pdvs.length,
+        total_empresas: agentesQuery.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo PDVs del Jefe de Zona:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener los puntos de venta asignados',
+      error: error.message
+    });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// Obtener información específica de un PDV por código
+router.get('/jefe-zona/pdv-info/:codigo', authenticateToken, requireOT, requireJefeZona, logAccess, async (req, res) => {
+  const { codigo } = req.params;
+  let conn;
+  
+  try {
+    conn = await getConnection();
+
+    // Primero verificar que el PDV pertenece a las empresas del jefe de zona
+    const [agentesQuery] = await conn.execute(`
+      SELECT agente_id FROM users_agente 
+      WHERE user_id = ? AND rol_terpel LIKE '%Jefe%'
+    `, [req.user.id]);
+
+    if (agentesQuery.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tiene empresas asignadas como Jefe de Zona'
+      });
+    }
+
+    const agenteIds = agentesQuery.map(a => a.agente_id);
+    const placeholders = agenteIds.map(() => '?').join(',');
+
+    // Buscar el PDV por código dentro de las empresas permitidas
+    const [pdvQuery] = await conn.execute(`
+      SELECT 
+        pv.id,
+        pv.codigo,
+        pv.descripcion as nombre,
+        pv.direccion,
+        pv.ciudad,
+        pv.id_agente,
+        a.descripcion as agente_nombre
+      FROM puntos_venta pv
+      INNER JOIN agente a ON a.id = pv.id_agente
+      WHERE pv.codigo = ? AND pv.id_agente IN (${placeholders})
+    `, [codigo, ...agenteIds]);
+
+    if (pdvQuery.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'PDV no encontrado o no autorizado para este usuario'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: pdvQuery[0]
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo información del PDV:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener información del PDV',
+      error: error.message
+    });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// Registrar visita de seguimiento por Jefe de Zona
+router.post('/jefe-zona/registrar-visita', 
+  authenticateToken, 
+  requireOT, 
+  requireJefeZona, 
+  upload.single('foto_seguimiento'),
+  logAccess, 
+  async (req, res) => {
+    const { codigo_pdv, fecha } = req.body;
+    let conn;
+
+    try {
+      // Validaciones básicas
+      if (!codigo_pdv || !fecha) {
+        return res.status(400).json({
+          success: false,
+          message: 'Código PDV y fecha son requeridos'
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: 'La foto de seguimiento es requerida'
+        });
+      }
+
+      conn = await getConnection();
+
+      // Verificar que el PDV pertenece a las empresas del jefe de zona
+      const [agentesQuery] = await conn.execute(`
+        SELECT agente_id FROM users_agente 
+        WHERE user_id = ? AND rol_terpel LIKE '%Jefe%'
+      `, [req.user.id]);
+
+      if (agentesQuery.length === 0) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tiene empresas asignadas como Jefe de Zona'
+        });
+      }
+
+      const agenteIds = agentesQuery.map(a => a.agente_id);
+      const placeholders = agenteIds.map(() => '?').join(',');
+
+      // Buscar el PDV
+      const [pdvQuery] = await conn.execute(`
+        SELECT id, codigo, descripcion 
+        FROM puntos_venta 
+        WHERE codigo = ? AND id_agente IN (${placeholders})
+      `, [codigo_pdv, ...agenteIds]);
+
+      if (pdvQuery.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'PDV no encontrado o no autorizado'
+        });
+      }
+
+      const pdv = pdvQuery[0];
+
+      // Preparar la ruta de la imagen
+      const fotoPath = req.file.path.replace(/\\/g, '/');
+      const fotoUrl = fotoPath.replace('uploads/', '');
+
+      // Insertar el registro de visita
+      const [result] = await conn.execute(`
+        INSERT INTO registro_visitas_jefe_zona (
+          user_id,
+          pdv_id,
+          codigo_pdv,
+          fecha_visita,
+          foto_seguimiento,
+          fecha_registro,
+          estado
+        ) VALUES (?, ?, ?, ?, ?, NOW(), 'activo')
+      `, [
+        req.user.id,
+        pdv.id,
+        codigo_pdv,
+        fecha,
+        fotoUrl
+      ]);
+
+      res.json({
+        success: true,
+        message: 'Visita registrada exitosamente',
+        data: {
+          id: result.insertId,
+          codigo_pdv,
+          nombre_pdv: pdv.descripcion,
+          fecha_visita: fecha,
+          foto_seguimiento: fotoUrl
+        }
+      });
+
+    } catch (error) {
+      console.error('Error registrando visita:', error);
+      
+      // Eliminar archivo subido si hay error
+      if (req.file && fs.existsSync(req.file.path)) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (unlinkError) {
+          console.error('Error eliminando archivo:', unlinkError);
+        }
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Error al registrar la visita',
+        error: error.message
+      });
+    } finally {
+      if (conn) conn.release();
+    }
+  }
+);
+
+// Obtener historial de visitas del Jefe de Zona
+router.get('/jefe-zona/historial-visitas', authenticateToken, requireOT, requireJefeZona, logAccess, async (req, res) => {
+  const { fecha_inicio, fecha_fin, codigo_pdv } = req.query;
+  let conn;
+
+  try {
+    conn = await getConnection();
+
+    // Construir query dinámico
+    let whereClause = 'WHERE rv.user_id = ? AND rv.estado = "activo"';
+    let queryParams = [req.user.id];
+
+    if (fecha_inicio) {
+      whereClause += ' AND DATE(rv.fecha_visita) >= ?';
+      queryParams.push(fecha_inicio);
+    }
+
+    if (fecha_fin) {
+      whereClause += ' AND DATE(rv.fecha_visita) <= ?';
+      queryParams.push(fecha_fin);
+    }
+
+    if (codigo_pdv) {
+      whereClause += ' AND rv.codigo_pdv = ?';
+      queryParams.push(codigo_pdv);
+    }
+
+    const query = `
+      SELECT 
+        rv.id,
+        rv.codigo_pdv,
+        rv.fecha_visita,
+        rv.foto_seguimiento,
+        rv.fecha_registro,
+        pv.descripcion as nombre_pdv,
+        pv.direccion,
+        pv.ciudad,
+        a.descripcion as agente_nombre
+      FROM registro_visitas_jefe_zona rv
+      INNER JOIN puntos_venta pv ON pv.id = rv.pdv_id
+      INNER JOIN agente a ON a.id = pv.id_agente
+      ${whereClause}
+      ORDER BY rv.fecha_registro DESC
+      LIMIT 100
+    `;
+
+    const [visitas] = await conn.execute(query, queryParams);
+
+    res.json({
+      success: true,
+      data: visitas,
+      total: visitas.length
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo historial de visitas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener el historial de visitas',
+      error: error.message
+    });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// Verificar si el usuario es Jefe de Zona
+router.get('/jefe-zona/verificar-jefe-zona', authenticateToken, requireOT, logAccess, async (req, res) => {
+  let conn;
+  try {
+    conn = await getConnection();
+
+    const [rows] = await conn.execute(`
+      SELECT 
+        ua.rol_terpel,
+        ua.agente_id,
+        a.descripcion as agente_nombre
+      FROM users_agente ua
+      INNER JOIN agente a ON a.id = ua.agente_id
+      WHERE ua.user_id = ?
+    `, [req.user.id]);
+
+    const esJefeZona = rows.some(row => row.rol_terpel && row.rol_terpel.includes('Jefe'));
+    const empresasAsignadas = rows.filter(row => row.rol_terpel && row.rol_terpel.includes('Jefe'));
+
+    res.json({
+      success: true,
+      data: {
+        esJefeZona,
+        empresasAsignadas,
+        totalEmpresas: empresasAsignadas.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Error verificando Jefe de Zona:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al verificar estado de Jefe de Zona',
+      error: error.message
+    });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 export default router;

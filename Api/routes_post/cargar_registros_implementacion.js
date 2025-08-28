@@ -142,15 +142,27 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
         // Buscar la foto correspondiente a este producto
         let fotoProductoUrl = null;
         if (req.files && req.files.length > 0) {
-          // Buscar por diferentes variaciones del nombre del producto
+          // Buscar foto de implementación usando diferentes estrategias
           const nombreProducto = producto.nombre;
           const fotoProductoFile = req.files.find(f => {
             console.log(`🔍 Buscando foto para producto "${nombreProducto}", checking fieldname: "${f.fieldname}"`);
             return (
+              // Buscar por fieldname específico de implementación
+              f.fieldname === `foto_implementacion_${nro_implementacion}` ||
+              // Buscar por nombre exacto del producto
+              f.fieldname === nombreProducto ||
+              // Buscar por variaciones del nombre
               f.fieldname === `foto_${nombreProducto}` || 
               f.fieldname === `producto_${nombreProducto}` ||
-              f.fieldname.includes(nombreProducto) ||
-              f.fieldname === nombreProducto
+              f.fieldname.includes(nombreProducto.replace(/[^a-zA-Z0-9]/g, '')) ||
+              // Buscar por coincidencia parcial
+              f.fieldname.includes('implementacion') ||
+              f.fieldname.includes('Implementacion') ||
+              // NUEVO: Buscar por patrón con codificación mal formada
+              f.fieldname.includes('ImplementaciÃ³n') ||
+              f.fieldname.includes(`ImplementaciÃ³n ${nro_implementacion}`) ||
+              // Buscar cualquier archivo que no sea fotoRemision (como fallback)
+              (f.fieldname !== 'fotoRemision' && f.fieldname.includes(nro_implementacion))
             );
           });
           

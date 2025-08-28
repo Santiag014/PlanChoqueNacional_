@@ -65,7 +65,7 @@ router.get('/cobertura/:user_id', authenticateToken, requireAsesor, logAccess, a
     const puntosPorPDV = totalAsignados > 0 ? Math.floor(150 / totalAsignados) : 0;
     const pdvsDetalle = pdvs.map(pdv => ({
       ...pdv,
-      estado: implementadosSet.has(pdv.id) ? 'IMPLEMENTADO' : 'NO IMPLEMENTADO',
+      estado: implementadosSet.has(pdv.id) ? 'REGISTRADO' : 'NO REGISTRADO',
       puntos: implementadosSet.has(pdv.id) ? puntosPorPDV : 0
     }));
 
@@ -1323,7 +1323,7 @@ router.get('/galonaje-implementacion/:codigo_pdv', async (req, res) => {
 
     // 2. Obtener el galonaje real total
     const [realResult] = await conn.execute(
-      `SELECT SUM(registro_productos.conversion_galonaje) AS totalReal
+      `SELECT TRUNCATE(SUM(registro_productos.conversion_galonaje),2) AS totalReal
        FROM registro_servicios
        INNER JOIN registro_productos 
          ON registro_productos.registro_id = registro_servicios.id

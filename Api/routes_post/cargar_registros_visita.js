@@ -24,7 +24,10 @@ const parseJSONSafely = (data) => {
 
 // NUEVO ENDPOINT: Recibe el objeto completo como lo ves en el modal de detalles
 router.post('/cargar-registros-visita', upload.any(), async (req, res) => {
-  console.log('LLEGA A LA RUTA /cargar-registro-visita')
+  // Logging de entrada para debugging (solo en desarrollo)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('LLEGA A LA RUTA /cargar-registro-visita');
+  }
   let conn;
   try {
     // Cuando se usa FormData, los campos complejos llegan como string, hay que parsearlos

@@ -3,27 +3,34 @@
  * Basado en la tabla users_agente que relaciona usuarios con agentes específicos
  */
 
-import { getConnection } from '../db.js';
+import { executeQuery } from '../db.js';
+import logger from '../utils/logger.js';
+
+// Cache para almacenar restricciones de usuarios temporalmente
+const userRestrictionsCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
 /**
- * Obtiene las restricciones de un usuario desde la base de datos
+ * Obtiene las restricciones de un usuario desde la base de datos con cache
  * @param {number} userId - ID del usuario
  * @param {string} filterByName - Filtro opcional por nombre/descripción del agente
  * @returns {Promise<Object|null>} - Restricciones del usuario o null si no tiene
  */
 export async function getUserRestrictions(userId, filterByName = null) {
-  console.log('🚀 [getUserRestrictions] Iniciando para userId:', userId);
-  
   if (!userId) {
-    console.log('❌ [getUserRestrictions] No userId provided');
+    logger.debug('UserID no proporcionado');
     return null;
   }
 
-  let conn;
+  // Verificar cache primero
+  const cacheKey = `${userId}_${filterByName || ''}`;
+  const cachedData = userRestrictionsCache.get(cacheKey);
+  
+  if (cachedData && (Date.now() - cachedData.timestamp) < CACHE_DURATION) {
+    return cachedData.data;
+  }
+
   try {
-    conn = await getConnection();
-    console.log('✅ [getUserRestrictions] Conexión a BD establecida');
-    
     // Construir la consulta base - obtener nombres de empresas/agentes
     let query = 'SELECT agente.id as agente_id, agente.descripcion FROM users_agente INNER JOIN agente ON agente.id = users_agente.agente_id WHERE user_id = ?';
     let params = [userId];
@@ -32,44 +39,39 @@ export async function getUserRestrictions(userId, filterByName = null) {
     if (filterByName && filterByName.trim() !== '') {
       query += ' AND agente.descripcion LIKE ?';
       params.push(`%${filterByName.trim()}%`);
-      console.log('🔍 [getUserRestrictions] Aplicando filtro por nombre:', filterByName);
     }
     
-    console.log('🔍 [getUserRestrictions] Executing query:', query);
-    console.log('📋 [getUserRestrictions] With params:', params);
-    
-    // Obtener los agentes asociados al usuario
-    const [userAgents] = await conn.execute(query, params);
-    
-    console.log('📊 [getUserRestrictions] Query result:', userAgents);
-    console.log('📊 [getUserRestrictions] Número de agentes encontrados:', userAgents.length);
+    // Usar executeQuery en lugar de conexiones manuales
+    const userAgents = await executeQuery(query, params);
 
     if (userAgents.length === 0) {
-      console.log('⚠️ [getUserRestrictions] No user restrictions found for user:', userId);
-      console.log('🔓 [getUserRestrictions] Usuario SIN restricciones - puede ver TODO');
-      // Si no tiene restricciones específicas, puede ver todo
+      // Cache resultado negativo también
+      userRestrictionsCache.set(cacheKey, {
+        data: null,
+        timestamp: Date.now()
+      });
       return null;
     }
 
     // Extraer IDs y nombres de agentes para el filtrado
-    const agenteIds = userAgents.map(row => row.agente_id);
-    const agenteNames = userAgents.map(row => row.descripcion);
-    
-    console.log('🏢 [getUserRestrictions] User agente IDs:', agenteIds);
-    console.log('🏢 [getUserRestrictions] User agente Names:', agenteNames);
-    console.log('🔒 [getUserRestrictions] Usuario CON restricciones - solo ve empresas asignadas');
-
-    return {
-      agenteIds,
-      agenteNames, // ¡IMPORTANTE! Agregar los nombres para filtrar como antes
+    const restrictions = {
+      agenteIds: userAgents.map(row => row.agente_id),
+      agenteNames: userAgents.map(row => row.descripcion),
       hasRestrictions: true
     };
+    
+    // Guardar en cache
+    userRestrictionsCache.set(cacheKey, {
+      data: restrictions,
+      timestamp: Date.now()
+    });
+
+    logger.debug(`Usuario ${userId} tiene restricciones para ${restrictions.agenteIds.length} agentes`);
+    return restrictions;
 
   } catch (error) {
-    console.error('Error obteniendo restricciones de usuario:', error);
+    logger.error('Error obteniendo restricciones de usuario:', error.message);
     return null;
-  } finally {
-    if (conn) await conn.release();
   }
 }
 
@@ -133,13 +135,9 @@ export function generateAgenteNameFilter(agenteNames, agenteField = 'agente') {
  * @returns {Promise<Object>} - { query, params } con la consulta modificada y parámetros
  */
 export async function applyUserFilters(baseQuery, userId, tableAlias = '', filterByName = null, filterType = 'id', agenteField = 'agente') {
-  console.log('🔧 [applyUserFilters] Iniciando filtros para userId:', userId);
-  console.log('🔧 [applyUserFilters] filterType:', filterType, 'agenteField:', agenteField);
-  
   const restrictions = await getUserRestrictions(userId, filterByName);
   
   if (!restrictions || !restrictions.hasRestrictions) {
-    console.log('🔓 [applyUserFilters] Sin restricciones - consulta original');
     // Sin restricciones, devolver consulta original
     return {
       query: baseQuery,
@@ -147,12 +145,10 @@ export async function applyUserFilters(baseQuery, userId, tableAlias = '', filte
     };
   }
 
-  console.log('🔒 [applyUserFilters] Aplicando restricciones...');
-
   // Separar la consulta en partes más cuidadosamente
   const trimmedQuery = baseQuery.trim();
   
-  // Buscar ORDER BY, GROUP BY, HAVING al final (pero no capturar todo hasta el final)
+  // Buscar ORDER BY, GROUP BY, HAVING al final
   const orderByMatch = trimmedQuery.match(/\s+ORDER\s+BY\s+[^;]+?(?=\s*$)/i);
   const groupByMatch = trimmedQuery.match(/\s+GROUP\s+BY\s+[^;]+?(?=\s+ORDER|\s*$)/i);
   const havingMatch = trimmedQuery.match(/\s+HAVING\s+[^;]+?(?=\s+ORDER|\s*$)/i);
@@ -179,37 +175,27 @@ export async function applyUserFilters(baseQuery, userId, tableAlias = '', filte
     cleanQuery = cleanQuery.replace(havingMatch[0], '').trim();
   }
 
-  console.log('🔍 [applyUserFilters] Query limpia:', cleanQuery);
-  console.log('🔍 [applyUserFilters] Cláusulas finales:', finalClauses);
-
   // Verificar si la consulta limpia ya tiene WHERE clause
   const hasWhere = cleanQuery.toLowerCase().includes(' where ');
   const connector = hasWhere ? ' AND ' : ' WHERE ';
-  
-  console.log('🔍 [applyUserFilters] ¿Tiene WHERE?:', hasWhere, '| Conector:', connector);
   
   let agenteFilter;
   let filterParams;
   
   if (filterType === 'name') {
-    // Filtrar por nombres de agentes (como se hacía antes en frontend)
+    // Filtrar por nombres de agentes
     agenteFilter = generateAgenteNameFilter(restrictions.agenteNames, agenteField);
     filterParams = restrictions.agenteNames;
-    console.log('🏷️ [applyUserFilters] Filtrando por nombres:', restrictions.agenteNames);
   } else {
-    // Filtrar por IDs de agentes (por defecto) - CORREGIR campo
+    // Filtrar por IDs de agentes (por defecto)
     const prefix = tableAlias ? `${tableAlias}.` : '';
-    const fieldName = `${prefix}id_agente`; // Cambiado de agente_id a id_agente
+    const fieldName = `${prefix}id_agente`;
     agenteFilter = generateAgenteFilterWithField(restrictions.agenteIds, fieldName);
     filterParams = restrictions.agenteIds;
-    console.log('🆔 [applyUserFilters] Filtrando por IDs:', restrictions.agenteIds);
   }
   
-  // Construir la consulta final: Query base + WHERE/AND + Filtro + Cláusulas finales
+  // Construir la consulta final
   const modifiedQuery = cleanQuery + connector + agenteFilter + (finalClauses ? ' ' + finalClauses : '');
-  
-  console.log('📝 [applyUserFilters] Consulta modificada:', modifiedQuery);
-  console.log('📋 [applyUserFilters] Parámetros:', filterParams);
 
   return {
     query: modifiedQuery,
@@ -222,20 +208,12 @@ export async function applyUserFilters(baseQuery, userId, tableAlias = '', filte
  */
 export const addUserRestrictions = async (req, res, next) => {
   try {
-    console.log('🔧 [addUserRestrictions] Iniciando middleware');
-    console.log('👤 [addUserRestrictions] req.user:', req.user);
-    console.log('🆔 [addUserRestrictions] req.user.id:', req.user?.id);
-    
     if (req.user && req.user.id) {
-      console.log('✅ [addUserRestrictions] Usuario encontrado, obteniendo restricciones...');
       req.userRestrictions = await getUserRestrictions(req.user.id);
-      console.log('📋 [addUserRestrictions] Restricciones obtenidas:', req.userRestrictions);
-    } else {
-      console.log('❌ [addUserRestrictions] No se encontró usuario o ID');
     }
     next();
   } catch (error) {
-    console.error('Error en middleware de restricciones:', error);
+    logger.error('Error en middleware de restricciones:', error.message);
     next();
   }
 };
@@ -252,13 +230,10 @@ export async function getUserAllowedAgents(userId) {
     return []; // Sin restricciones específicas
   }
 
-  let conn;
   try {
-    conn = await getConnection();
-    
     // Obtener información detallada de los agentes permitidos
     const placeholders = restrictions.agenteIds.map(() => '?').join(',');
-    const [agents] = await conn.execute(
+    const agents = await executeQuery(
       `SELECT id, descripcion FROM agente WHERE id IN (${placeholders})`,
       restrictions.agenteIds
     );
@@ -266,10 +241,8 @@ export async function getUserAllowedAgents(userId) {
     return agents;
 
   } catch (error) {
-    console.error('Error obteniendo agentes permitidos:', error);
+    logger.error('Error obteniendo agentes permitidos:', error.message);
     return [];
-  } finally {
-    if (conn) await conn.release();
   }
 }
 
@@ -282,12 +255,9 @@ export async function getUserAllowedAgents(userId) {
 export async function getUserAgentsByName(userId, searchName) {
   if (!userId || !searchName) return [];
 
-  let conn;
   try {
-    conn = await getConnection();
-    
     // Obtener agentes del usuario filtrados por nombre
-    const [agents] = await conn.execute(
+    const agents = await executeQuery(
       `SELECT agente.id, agente.descripcion 
        FROM users_agente 
        INNER JOIN agente ON agente.id = users_agente.agente_id 
@@ -298,9 +268,19 @@ export async function getUserAgentsByName(userId, searchName) {
     return agents;
 
   } catch (error) {
-    console.error('Error obteniendo agentes por nombre:', error);
+    logger.error('Error buscando agentes por nombre:', error.message);
     return [];
-  } finally {
-    if (conn) await conn.release();
+  }
+}
+
+// Función para limpiar cache (útil cuando se actualizan permisos)
+export function clearUserRestrictionsCache(userId = null) {
+  if (userId) {
+    // Limpiar cache específico del usuario
+    const keysToDelete = Array.from(userRestrictionsCache.keys()).filter(key => key.startsWith(`${userId}_`));
+    keysToDelete.forEach(key => userRestrictionsCache.delete(key));
+  } else {
+    // Limpiar todo el cache
+    userRestrictionsCache.clear();
   }
 }

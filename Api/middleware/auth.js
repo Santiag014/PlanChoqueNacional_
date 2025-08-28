@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { getConnection } from '../db.js';
+import logger from '../utils/logger.js';
 
 // Secret key para JWT (debe coincidir con auth.js)
 const JWT_SECRET = process.env.JWT_SECRET || 'terpel-plan-choque-secret-2025';
@@ -8,9 +9,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'terpel-plan-choque-secret-2025';
 export const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-  console.log('🔐 [authenticateToken] Auth header:', authHeader ? 'Present' : 'Missing');
-  console.log('🔐 [authenticateToken] Token:', token ? 'Present' : 'Missing');
 
   if (!token) {
     return res.status(401).json({ 
@@ -21,17 +19,12 @@ export const authenticateToken = (req, res, next) => {
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
-      console.log('❌ [authenticateToken] Token verification failed:', err.message);
+      //logger.warn('Token inválido desde IP:', req.ip);
       return res.status(403).json({ 
         success: false, 
         message: 'Token inválido o expirado' 
       });
     }
-    
-    console.log('✅ [authenticateToken] Token verified successfully');
-    console.log('👤 [authenticateToken] User data from token:', user);
-    console.log('🆔 [authenticateToken] User ID:', user.id);
-    console.log('📧 [authenticateToken] User email:', user.email);
     
     req.user = user;
     next();
@@ -127,6 +120,54 @@ export const requireUsersAgente = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Error verificando relación users_agente:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  } finally {
+    if (conn) conn.release();
+  }
+};
+
+// Middleware específico para verificar si el usuario es Jefe de Zona
+export const requireJefeZona = async (req, res, next) => {
+  let conn;
+  try {
+    if (!req.user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Usuario no autenticado' 
+      });
+    }
+
+    // Verificar que el usuario tenga rol 5 (OT)
+    if (req.user.tipo !== 5) {
+      return res.status(403).json({
+        success: false,
+        message: 'Acceso denegado. Se requiere rol de Organización Terpel.'
+      });
+    }
+
+    conn = await getConnection();
+    
+    // Verificar si el usuario es Jefe de Zona en users_agente
+    const [rows] = await conn.execute(
+      "SELECT rol_terpel FROM users_agente WHERE user_id = ? AND rol_terpel like '%Jefe%'",
+      [req.user.id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'Acceso denegado. Se requiere ser Jefe de Zona.'
+      });
+    }
+
+    // Agregar información de jefe de zona al request
+    req.user.isJefeZona = true;
+    next();
+  } catch (error) {
+    console.error('Error verificando Jefe de Zona:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
