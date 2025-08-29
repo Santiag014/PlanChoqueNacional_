@@ -1,16 +1,8 @@
-// ✅ ARCHIVO OPTIMIZADO PARA POOL COMPARTIDO
-// ============================================
-// - NO crea conexiones individuales por consulta
-// - USA executeQueryForMultipleUsers() para consultas normales
-// - USA executeQueryFast() para consultas rápidas
-// - El pool de 50 conexiones se comparte entre TODOS los usuarios
-// - NUNCA excede el límite de 500 conexiones/hora
-
 import express from 'express';
 import ExcelJS from 'exceljs';
 import path from 'path';
 import fs from 'fs';
-import { getConnection, executeQueryForMultipleUsers, executeQueryFast } from '../db.js';
+import { getConnection } from '../db.js';
 import { authenticateToken, requireOT, requireUsersAgente, requireJefeZona, logAccess } from '../middleware/auth.js';
 import { applyUserFilters, addUserRestrictions, getUserAgentsByName, getUserRestrictions } from '../config/userPermissions.js';
 import { upload } from '../config/multer.js';
@@ -20,8 +12,9 @@ const router = express.Router();
 
 // Consulta básica de historial - CON RESTRICCIONES POR USUARIO
 router.get('/historial-registros', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
-  
+  let conn;
   try {
+    conn = await getConnection();
 
     // Consulta base sin filtros de usuario
     const baseQuery = `
@@ -49,7 +42,7 @@ router.get('/historial-registros', authenticateToken, requireOT, addUserRestrict
 
     // Aplicar filtros de usuario según permisos
     const { query, params } = await applyUserFilters(baseQuery, req.user.id, 'puntos_venta');
-    const rows = await executeQueryForMultipleUsers(query, params);
+    const [rows] = await conn.execute(query, params);
 
     res.json({
       success: true,
@@ -65,6 +58,8 @@ router.get('/historial-registros', authenticateToken, requireOT, addUserRestrict
       message: 'Error al obtener historial de registros',
       error: err.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -82,10 +77,12 @@ router.get('/registro-detalles/:registro_id', authenticateToken, requireOT, logA
     });
   }
 
+  let conn;
   try {
+    conn = await getConnection();
 
     // Verificar que el registro existe
-    const registroCheck = await executeQueryForMultipleUsers(
+    const [registroCheck] = await conn.execute(
       'SELECT id FROM registro_servicios WHERE id = ?',
       [registro_id]
     );
@@ -185,7 +182,7 @@ router.get('/registro-detalles/:registro_id', authenticateToken, requireOT, logA
         agente.telefono
     `;
     
-    const detalles = await executeQueryForMultipleUsers(queryDetalles, [registro_id]);
+    const [detalles] = await conn.execute(queryDetalles, [registro_id]);
     
     // logger.debug('Detalles obtenidos de la BD:', detalles); // Solo en debug cuando sea necesario
 
@@ -249,13 +246,16 @@ router.get('/registro-detalles/:registro_id', authenticateToken, requireOT, logA
       message: 'Error al obtener detalles del registro',
       error: err.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
 // ENDPOINT DE COBERTURA GLOBAL PARA DASHBOARD OT
 router.get('/cobertura', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
-  
+  let conn;
   try {
+    conn = await getConnection();
 
     // Consulta base para PDVs del sistema
     const basePdvsQuery = `
@@ -277,7 +277,7 @@ router.get('/cobertura', authenticateToken, requireOT, addUserRestrictions, logA
 
     // Aplicar filtros de usuario según permisos - filtrar por nombre de agente
     const { query: pdvsQuery, params: pdvsParams } = await applyUserFilters(basePdvsQuery, req.user.id, '', null, 'name', 'ag.descripcion');
-    const pdvs = await executeQueryForMultipleUsers(pdvsQuery, pdvsParams);
+    const [pdvs] = await conn.execute(pdvsQuery, pdvsParams);
 
     // Consulta base para registros implementados
     const baseImplementadosQuery = `
@@ -290,7 +290,7 @@ router.get('/cobertura', authenticateToken, requireOT, addUserRestrictions, logA
 
     // Aplicar filtros de usuario a los implementados - filtrar por nombre de agente
     const { query: implementadosQuery, params: implementadosParams } = await applyUserFilters(baseImplementadosQuery, req.user.id, '', null, 'name', 'ag.descripcion');
-    const implementados = await executeQueryForMultipleUsers(implementadosQuery, implementadosParams);
+    const [implementados] = await conn.execute(implementadosQuery, implementadosParams);
     const implementadosSet = new Set(implementados.map(r => r.pdv_id));
 
     // Cálculo de puntos cobertura (más realista)
@@ -315,13 +315,16 @@ router.get('/cobertura', authenticateToken, requireOT, addUserRestrictions, logA
     });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error al obtener cobertura', error: err.message });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
 // ENDPOINT DE VOLUMEN GLOBAL PARA DASHBOARD OT
 router.get('/volumen', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
-  
+  let conn;
   try {
+    conn = await getConnection();
 
     // Consulta base para meta total de volumen con filtros de usuario
     const baseMetaQuery = `
@@ -331,7 +334,7 @@ router.get('/volumen', authenticateToken, requireOT, addUserRestrictions, logAcc
     `;
     // Filtrar por nombre de agente/empresa como se hacía antes en frontend
     const { query: metaQuery, params: metaParams } = await applyUserFilters(baseMetaQuery, req.user.id, '', null, 'name', 'ag.descripcion');
-    const metaResult = await executeQueryForMultipleUsers(metaQuery, metaParams);
+    const [metaResult] = await conn.execute(metaQuery, metaParams);
     const totalMeta = metaResult[0]?.totalMeta || 0;
 
     // Consulta base para volumen real con filtros de usuario
@@ -345,7 +348,7 @@ router.get('/volumen', authenticateToken, requireOT, addUserRestrictions, logAcc
     `;
     // Filtrar por nombre de agente/empresa como se hacía antes en frontend
     const { query: realQuery, params: realParams } = await applyUserFilters(baseRealQuery, req.user.id, '', null, 'name', 'ag.descripcion');
-    const realResult = await executeQueryForMultipleUsers(realQuery, realParams);
+    const [realResult] = await conn.execute(realQuery, realParams);
     const totalReal = realResult[0]?.totalReal || 0;
 
     // Calcular puntos de volumen de forma más realista
@@ -375,7 +378,7 @@ router.get('/volumen', authenticateToken, requireOT, addUserRestrictions, logAcc
     `;
     // Filtrar por nombre de agente/empresa como se hacía antes en frontend
     const { query: pdvsQuery, params: pdvsParams } = await applyUserFilters(basePdvsQuery, req.user.id, '', null, 'name', 'ag.descripcion');
-    const pdvs = await executeQueryForMultipleUsers(pdvsQuery, pdvsParams);
+    const [pdvs] = await conn.execute(pdvsQuery, pdvsParams);
 
     // Calcular puntos individuales por PDV basado en cumplimiento de meta
     const pdvsConPuntos = pdvs.map(pdv => {
@@ -407,7 +410,7 @@ router.get('/volumen', authenticateToken, requireOT, addUserRestrictions, logAcc
        GROUP BY pv.segmento
     `;
     const { query: segmentosQuery, params: segmentosParams } = await applyUserFilters(baseSegmentosQuery, req.user.id, 'pv');
-    const segmentos = await executeQueryForMultipleUsers(segmentosQuery, segmentosParams);
+    const [segmentos] = await conn.execute(segmentosQuery, segmentosParams);
 
     // Consulta base para detalle por producto con filtros de usuario
     const baseProductosQuery = `
@@ -423,7 +426,7 @@ router.get('/volumen', authenticateToken, requireOT, addUserRestrictions, logAcc
        ORDER BY galonaje DESC
     `;
     const { query: productosQuery, params: productosParams } = await applyUserFilters(baseProductosQuery, req.user.id, 'pv');
-    const productos = await executeQueryForMultipleUsers(productosQuery, productosParams);
+    const [productos] = await conn.execute(productosQuery, productosParams);
 
     // Calcular porcentajes para productos
     const totalGalonaje = productos.reduce((sum, p) => sum + p.galonaje, 0);
@@ -444,13 +447,16 @@ router.get('/volumen', authenticateToken, requireOT, addUserRestrictions, logAcc
     });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error al obtener datos de volumen', error: err.message });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
 // ENDPOINT DE VISITAS GLOBAL PARA DASHBOARD OT
 router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
-  
+  let conn;
   try {
+    conn = await getConnection();
 
     // Consulta base para todos los PDVs del sistema con filtros de usuario
     const basePdvsQuery = `
@@ -471,7 +477,7 @@ router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAcc
 
     // Aplicar filtros de usuario según permisos
     const { query: pdvsQuery, params: pdvsParams } = await applyUserFilters(basePdvsQuery, req.user.id, 'pv');
-    const pdvsResult = await executeQueryForMultipleUsers(pdvsQuery, pdvsParams);
+    const [pdvsResult] = await conn.execute(pdvsQuery, pdvsParams);
     const totalPdvs = pdvsResult.length;
     
     // Meta de visitas: 20 por cada PDV filtrado
@@ -488,7 +494,7 @@ router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAcc
     
     // Aplicar filtros de usuario a las visitas
     const { query: realQuery, params: realParams } = await applyUserFilters(baseRealQuery, req.user.id, 'pv');
-    const realResult = await executeQueryForMultipleUsers(realQuery, realParams);
+    const [realResult] = await conn.execute(realQuery, realParams);
     const totalVisitas = realResult[0]?.totalVisitas || 0;
     
     // Calcular puntos de visitas de forma más realista
@@ -516,7 +522,7 @@ router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAcc
     
     // Aplicar filtros de usuario al detalle
     const { query: pdvsDetalleQuery, params: pdvsDetalleParams } = await applyUserFilters(basePdvsDetalleQuery, req.user.id, 'pv');
-    const pdvs = await executeQueryForMultipleUsers(pdvsDetalleQuery, pdvsDetalleParams);
+    const [pdvs] = await conn.execute(pdvsDetalleQuery, pdvsDetalleParams);
     
     // Calcular porcentaje de cumplimiento y puntos para cada PDV
     const pdvsDetalle = pdvs.map(pdv => {
@@ -557,7 +563,7 @@ router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAcc
     
     // Aplicar filtros de usuario a los tipos de visita
     const { query: tiposQuery, params: tiposParams } = await applyUserFilters(baseTiposQuery, req.user.id, 'pv');
-    const tiposVisita = await executeQueryForMultipleUsers(tiposQuery, tiposParams);
+    const [tiposVisita] = await conn.execute(tiposQuery, tiposParams);
 
     res.json({
       success: true,
@@ -571,14 +577,17 @@ router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAcc
     });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error al obtener datos de visitas', error: err.message });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
 // Endpoint para consultar información de precios GLOBAL
 router.get('/precios', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
-  
+  let conn;
   try {
-
+    conn = await getConnection();
+    
     // 1. Obtener todos los PDVs del sistema filtrados por usuario
     const basePdvQuery = `SELECT 
         pv.id, 
@@ -595,7 +604,7 @@ router.get('/precios', authenticateToken, requireOT, addUserRestrictions, logAcc
        LEFT JOIN agente ag ON ag.id = pv.id_agente`;
     
     const { query: pdvsQuery, params: pdvsParams } = await applyUserFilters(basePdvQuery, req.user.id, 'pv');
-    const pdvs = await executeQueryForMultipleUsers(pdvsQuery, pdvsParams);
+    const [pdvs] = await conn.execute(pdvsQuery, pdvsParams);
     
     // 2. Obtener PDVs con al menos un reporte de precio (kpi_precio = 1) filtrados por usuario  
     const reportadosQuery = `SELECT DISTINCT rs.pdv_id
@@ -606,7 +615,7 @@ router.get('/precios', authenticateToken, requireOT, addUserRestrictions, logAcc
        WHERE rs.kpi_precio = 1 AND rms.id IS NOT NULL`;
     
     const { query: reportadosQueryFinal, params: reportadosParams } = await applyUserFilters(reportadosQuery, req.user.id, 'pv');
-    const reportados = await executeQueryForMultipleUsers(reportadosQueryFinal, reportadosParams);
+    const [reportados] = await conn.execute(reportadosQueryFinal, reportadosParams);
     const reportadosSet = new Set(reportados.map(r => r.pdv_id));
 
     // 3. Cálculo de puntos por precios (más realista)
@@ -637,14 +646,17 @@ router.get('/precios', authenticateToken, requireOT, addUserRestrictions, logAcc
       message: 'Error al consultar información de precios',
       error: error.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
 // Endpoint para consultar información de profundidad GLOBAL
 router.get('/profundidad', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
-  
+  let conn;
   try {
-
+    conn = await getConnection();
+    
     // 1. Obtener todos los PDVs del sistema filtrados por usuario
     const basePdvQuery = `SELECT 
         pv.id, 
@@ -661,7 +673,7 @@ router.get('/profundidad', authenticateToken, requireOT, addUserRestrictions, lo
        LEFT JOIN agente ag ON ag.id = pv.id_agente`;
     
     const { query: pdvsQuery2, params: pdvsParams2 } = await applyUserFilters(basePdvQuery, req.user.id, 'pv');
-    const pdvs = await executeQueryForMultipleUsers(pdvsQuery2, pdvsParams2);
+    const [pdvs] = await conn.execute(pdvsQuery2, pdvsParams2);
     
     // 2. Obtener PDVs con al menos una nueva referencia vendida filtrados por usuario
     const profundidadQuery = `SELECT 
@@ -678,7 +690,7 @@ router.get('/profundidad', authenticateToken, requireOT, addUserRestrictions, lo
        HAVING nuevas_referencias > 0`;
     
     const { query: profundidadQueryFinal, params: profundidadParams } = await applyUserFilters(profundidadQuery, req.user.id, 'pv');
-    const conProfundidadQuery = await executeQueryForMultipleUsers(profundidadQueryFinal, profundidadParams);
+    const [conProfundidadQuery] = await conn.execute(profundidadQueryFinal, profundidadParams);
     
     const pdvsConProfundidad = new Set(conProfundidadQuery.map(r => r.pdv_id));
     
@@ -710,13 +722,16 @@ router.get('/profundidad', authenticateToken, requireOT, addUserRestrictions, lo
       message: 'Error al consultar información de profundidad',
       error: error.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
 // Endpoint para obtener todos los asesores (users con rol = 1)
 router.get('/asesores', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
-  
+  let conn;
   try {
+    conn = await getConnection();
 
     // Consulta base para asesores con información de compañía
     const baseAsesoresQuery = `
@@ -737,7 +752,7 @@ router.get('/asesores', authenticateToken, requireOT, addUserRestrictions, logAc
 
     // Aplicar filtros de usuario según permisos
     const { query: asesoresQuery, params: asesoresParams } = await applyUserFilters(baseAsesoresQuery, req.user.id, 'pv');
-    const asesores = await executeQueryForMultipleUsers(asesoresQuery, asesoresParams);
+    const [asesores] = await conn.execute(asesoresQuery, asesoresParams);
 
     res.json({
       success: true,
@@ -753,13 +768,16 @@ router.get('/asesores', authenticateToken, requireOT, addUserRestrictions, logAc
       message: 'Error al obtener lista de asesores',
       error: error.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
 // Endpoint para obtener todos los agentes comerciales
 router.get('/agentes-comerciales', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
-  
+  let conn;
   try {
+    conn = await getConnection();
 
     // Consulta base para agentes comerciales
     const baseAgentesQuery = `
@@ -781,7 +799,7 @@ router.get('/agentes-comerciales', authenticateToken, requireOT, addUserRestrict
       params = restrictions.agenteIds;
     }
 
-    const agentes = await executeQueryForMultipleUsers(query, params);
+    const [agentes] = await conn.execute(query, params);
 
     res.json({
       success: true,
@@ -797,13 +815,16 @@ router.get('/agentes-comerciales', authenticateToken, requireOT, addUserRestrict
       message: 'Error al obtener lista de agentes comerciales',
       error: error.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
 // Endpoint para obtener todos los puntos de venta
 router.get('/puntos-venta', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
-  
+  let conn;
   try {
+    conn = await getConnection();
 
     // Consulta base para puntos de venta
     const basePdvsQuery = `
@@ -827,7 +848,7 @@ router.get('/puntos-venta', authenticateToken, requireOT, addUserRestrictions, l
 
     // Aplicar filtros de usuario según permisos
     const { query: pdvsQuery, params: pdvsParams } = await applyUserFilters(basePdvsQuery, req.user.id, 'pv');
-    const pdvs = await executeQueryForMultipleUsers(pdvsQuery, pdvsParams);
+    const [pdvs] = await conn.execute(pdvsQuery, pdvsParams);
 
     res.json({
       success: true,
@@ -843,6 +864,8 @@ router.get('/puntos-venta', authenticateToken, requireOT, addUserRestrictions, l
       message: 'Error al obtener lista de puntos de venta',
       error: error.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -904,7 +927,7 @@ router.get('/buscar-agentes', authenticateToken, requireOT, async (req, res) => 
 });
 
 router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
-  
+  let conn;
   let workbook = null;
   
   try {
@@ -919,7 +942,9 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
         message: 'Acceso denegado. Solo los usuarios con dominio @bullmarketing.com.co pueden descargar este reporte.'
       });
     }
-
+    
+    conn = await getConnection();
+    
     // Query SQL optimizada para implementaciones
     const baseQueryImplementaciones = `
       SELECT 
@@ -1104,7 +1129,7 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     }
     
     // Ejecutar query de implementaciones
-    const rawResultsImplementaciones = await executeQueryForMultipleUsers(finalQueryImplementaciones, queryParamsImplementaciones);
+    const [rawResultsImplementaciones] = await conn.execute(finalQueryImplementaciones, queryParamsImplementaciones);
     logger.metric(`Implementaciones: ${rawResultsImplementaciones.length} registros`);
 
     // ========== EJECUTAR CONSULTA DE VISITAS ==========
@@ -1122,7 +1147,7 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     }
     
     // Ejecutar query de visitas
-    const rawResultsVisitas = await executeQueryForMultipleUsers(finalQueryVisitas, queryParamsVisitas);
+    const [rawResultsVisitas] = await conn.execute(finalQueryVisitas, queryParamsVisitas);
     logger.metric(`Visitas: ${rawResultsVisitas.length} registros`);
 
     if (rawResultsImplementaciones.length === 0 && rawResultsVisitas.length === 0) {
@@ -1587,7 +1612,8 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   } finally {
-
+    if (conn) conn.release();
+    
     // Limpiar memoria final
     if (workbook) {
       workbook = null;
@@ -1613,11 +1639,12 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
 
 // Obtener PDVs asignados al Jefe de Zona según su empresa
 router.get('/jefe-zona/pdvs-asignados', authenticateToken, requireOT, requireJefeZona, logAccess, async (req, res) => {
-  
+  let conn;
   try {
+    conn = await getConnection();
 
     // Obtener las empresas asignadas al jefe de zona
-    const agentesQuery = await executeQueryForMultipleUsers(`
+    const [agentesQuery] = await conn.execute(`
       SELECT DISTINCT a.id as agente_id, a.descripcion as agente_nombre
       FROM users_agente ua
       INNER JOIN agente a ON a.id = ua.agente_id
@@ -1635,7 +1662,7 @@ router.get('/jefe-zona/pdvs-asignados', authenticateToken, requireOT, requireJef
     const placeholders = agenteIds.map(() => '?').join(',');
 
     // Obtener todos los PDVs de las empresas asignadas
-    const pdvs = await executeQueryForMultipleUsers(`
+    const [pdvs] = await conn.execute(`
       SELECT 
         pv.id,
         pv.codigo,
@@ -1667,17 +1694,21 @@ router.get('/jefe-zona/pdvs-asignados', authenticateToken, requireOT, requireJef
       message: 'Error al obtener los puntos de venta asignados',
       error: error.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
 // Obtener información específica de un PDV por código
 router.get('/jefe-zona/pdv-info/:codigo', authenticateToken, requireOT, requireJefeZona, logAccess, async (req, res) => {
   const { codigo } = req.params;
-
+  let conn;
+  
   try {
+    conn = await getConnection();
 
     // Primero verificar que el PDV pertenece a las empresas del jefe de zona
-    const agentesQuery = await executeQueryForMultipleUsers(`
+    const [agentesQuery] = await conn.execute(`
       SELECT agente_id FROM users_agente 
       WHERE user_id = ? AND rol_terpel LIKE '%Jefe%'
     `, [req.user.id]);
@@ -1693,7 +1724,7 @@ router.get('/jefe-zona/pdv-info/:codigo', authenticateToken, requireOT, requireJ
     const placeholders = agenteIds.map(() => '?').join(',');
 
     // Buscar el PDV por código dentro de las empresas permitidas
-    const pdvQuery = await executeQueryForMultipleUsers(`
+    const [pdvQuery] = await conn.execute(`
       SELECT 
         pv.id,
         pv.codigo,
@@ -1726,6 +1757,8 @@ router.get('/jefe-zona/pdv-info/:codigo', authenticateToken, requireOT, requireJ
       message: 'Error al obtener información del PDV',
       error: error.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -1738,6 +1771,7 @@ router.post('/jefe-zona/registrar-visita',
   logAccess, 
   async (req, res) => {
     const { codigo_pdv, fecha } = req.body;
+    let conn;
 
     try {
       // Validaciones básicas
@@ -1755,8 +1789,10 @@ router.post('/jefe-zona/registrar-visita',
         });
       }
 
+      conn = await getConnection();
+
       // Verificar que el PDV pertenece a las empresas del jefe de zona
-      const agentesQuery = await executeQueryForMultipleUsers(`
+      const [agentesQuery] = await conn.execute(`
         SELECT agente_id FROM users_agente 
         WHERE user_id = ? AND rol_terpel LIKE '%Jefe%'
       `, [req.user.id]);
@@ -1772,7 +1808,7 @@ router.post('/jefe-zona/registrar-visita',
       const placeholders = agenteIds.map(() => '?').join(',');
 
       // Buscar el PDV
-      const pdvQuery = await executeQueryForMultipleUsers(`
+      const [pdvQuery] = await conn.execute(`
         SELECT id, codigo, descripcion 
         FROM puntos_venta 
         WHERE codigo = ? AND id_agente IN (${placeholders})
@@ -1792,7 +1828,7 @@ router.post('/jefe-zona/registrar-visita',
       const fotoUrl = fotoPath.replace('uploads/', '');
 
       // Insertar el registro de visita
-      const result = await executeQueryForMultipleUsers(`
+      const [result] = await conn.execute(`
         INSERT INTO registro_visitas_jefe_zona (
           user_id,
           pdv_id,
@@ -1839,7 +1875,9 @@ router.post('/jefe-zona/registrar-visita',
         message: 'Error al registrar la visita',
         error: error.message
       });
-  }
+    } finally {
+      if (conn) conn.release();
+    }
   }
 );
 
@@ -1847,9 +1885,11 @@ router.post('/jefe-zona/registrar-visita',
 router.get('/jefe-zona/historial-visitas', authenticateToken, requireOT, requireJefeZona, logAccess, async (req, res) => {
   const { fecha_inicio, fecha_fin, codigo_pdv } = req.query;
   const user_id = req.user.id; // Obtener el ID del usuario logueado
+  let conn;
 
   try {
-
+    conn = await getConnection();
+    
     // Construir query dinámico con filtro obligatorio por user_id
     let whereClause = 'WHERE rv.user_id = ?';
     let queryParams = [user_id];
@@ -1890,7 +1930,7 @@ router.get('/jefe-zona/historial-visitas', authenticateToken, requireOT, require
       ORDER BY rv.fecha_registro DESC
     `;
 
-    const visitas = await executeQueryForMultipleUsers(query, queryParams);
+    const [visitas] = await conn.execute(query, queryParams);
 
     res.json({
       success: true,
@@ -1906,15 +1946,18 @@ router.get('/jefe-zona/historial-visitas', authenticateToken, requireOT, require
       message: 'Error al obtener el historial de visitas',
       error: error.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
 // Verificar si el usuario es Jefe de Zona
 router.get('/jefe-zona/verificar-jefe-zona', authenticateToken, requireOT, logAccess, async (req, res) => {
-  
+  let conn;
   try {
+    conn = await getConnection();
 
-    const rows = await executeQueryForMultipleUsers(`
+    const [rows] = await conn.execute(`
       SELECT 
         ua.rol_terpel,
         ua.agente_id,
@@ -1943,6 +1986,8 @@ router.get('/jefe-zona/verificar-jefe-zona', authenticateToken, requireOT, logAc
       message: 'Error al verificar estado de Jefe de Zona',
       error: error.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 

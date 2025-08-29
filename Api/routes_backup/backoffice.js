@@ -1,11 +1,3 @@
-// ✅ ARCHIVO OPTIMIZADO PARA POOL COMPARTIDO
-// ============================================
-// - NO crea conexiones individuales por consulta
-// - USA executeQueryForMultipleUsers() para consultas normales
-// - USA executeQueryFast() para consultas rápidas
-// - El pool de 50 conexiones se comparte entre TODOS los usuarios
-// - NUNCA excede el límite de 500 conexiones/hora
-
 /**
  * @fileoverview API de BackOffice - Endpoints para administración del sistema
  * 
@@ -29,7 +21,7 @@
  */
 
 import express from 'express';
-import { getConnection, executeQueryForMultipleUsers, executeQueryFast } from '../db.js';
+import { getConnection } from '../db.js';
 import { authenticateToken, requireBackOffice, logAccess } from '../middleware/auth.js';
 import { enviarNotificacionCambioEstado } from '../config/email.js';
 
@@ -102,8 +94,9 @@ router.get('/verify-token', authenticateToken, async (req, res) => {
  * OPTIMIZACIÓN: Solo trae los datos que se ven en la tabla, sin fotos ni datos pesados
  */
 router.get('/registros-tabla', authenticateToken, requireBackOffice, logAccess, async (req, res) => {
-  
+  let conn;
   try {
+    conn = await getConnection();
 
     // Consulta OPTIMIZADA - Solo datos básicos para la tabla
     const query = `
@@ -123,7 +116,7 @@ router.get('/registros-tabla', authenticateToken, requireBackOffice, logAccess, 
           WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 AND IsImplementacion IS NULL THEN 'Visita'
           WHEN IsImplementacion = 1 THEN 'Implementación'
           ELSE 'Otro'
-        END AS tipo_accion,
+        END AS actividad,
         e1.descripcion AS estado_backoffice,
         e2.descripcion AS estado_agente
       FROM registro_servicios
@@ -135,7 +128,7 @@ router.get('/registros-tabla', authenticateToken, requireBackOffice, logAccess, 
       ORDER BY registro_servicios.id DESC
     `;
     
-    const rows = await executeQueryForMultipleUsers(query);
+    const [rows] = await conn.execute(query);
 
     res.json({
       success: true,
@@ -152,6 +145,8 @@ router.get('/registros-tabla', authenticateToken, requireBackOffice, logAccess, 
       message: 'Error al obtener registros para tabla',
       error: err.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -166,9 +161,9 @@ router.get('/registros-tabla', authenticateToken, requireBackOffice, logAccess, 
  * OPTIMIZACIÓN: Solo se ejecuta cuando hacen click en un registro específico
  */
 router.get('/registro-detalle/:id', authenticateToken, requireBackOffice, logAccess, async (req, res) => {
-  
+  let conn;
   try {
-    
+    conn = await getConnection();
     const registroId = req.params.id;
 
     // Consulta COMPLETA para UN registro específico
@@ -270,7 +265,7 @@ router.get('/registro-detalle/:id', authenticateToken, requireBackOffice, logAcc
       WHERE registro_servicios.id = ?
     `;
     
-    const rows = await executeQueryForMultipleUsers(query, [registroId, registroId, registroId, registroId]);
+    const [rows] = await conn.execute(query, [registroId, registroId, registroId, registroId]);
 
     if (rows.length === 0) {
       return res.status(404).json({
@@ -293,12 +288,15 @@ router.get('/registro-detalle/:id', authenticateToken, requireBackOffice, logAcc
       message: 'Error al obtener detalle del registro',
       error: err.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
 // ============================================
 // ENDPOINTS DE GESTIÓN DE REGISTROS - ANTERIOR (PARA COMPATIBILIDAD)
 // ============================================
+
 
 /**
  * @route GET /api/backoffice/registros
@@ -325,8 +323,9 @@ router.get('/registro-detalle/:id', authenticateToken, requireBackOffice, logAcc
  */
 router.get('/historial-registros-backoffice', authenticateToken, requireBackOffice, logAccess, async (req, res) => {
   // BackOffice puede ver todos los registros sin restricción de agente
-  
+  let conn;
   try {
+    conn = await getConnection();
 
     // Consulta para obtener TODOS los registros (sin filtro por agente)
     const query = `
@@ -423,7 +422,7 @@ LEFT JOIN fotos_agrupadas fa ON fa.id_registro = registro_servicios.id
 LEFT JOIN implementacion_agrupada ia ON ia.id_registro = registro_servicios.id
 ORDER BY registro_servicios.id DESC;
     `;
-    const rows = await executeQueryForMultipleUsers(query);
+    const [rows] = await conn.execute(query);
 
     res.json({
       success: true,
@@ -438,6 +437,8 @@ ORDER BY registro_servicios.id DESC;
       message: 'Error al obtener historial de registros de mercadeo',
       error: err.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -490,10 +491,12 @@ router.put('/registro/:registro_id/estado', authenticateToken, requireBackOffice
     });
   }
 
+  let connection;
   try {
-    // ✅ USA POOL COMPARTIDO - NO crea conexión individual
+    connection = await getConnection();
+
     // Actualizar el estado del registro
-    const updateResult = await executeQueryForMultipleUsers(`
+    const [updateResult] = await connection.execute(`
       UPDATE registro_servicios 
       SET 
         estado_id = ?,
@@ -571,8 +574,9 @@ router.put('/registro/:registro_id/estado', authenticateToken, requireBackOffice
       message: 'Error interno del servidor',
       error: error.message
     });
+  } finally {
+    if (connection) connection.release();
   }
-  // ✅ NO necesitamos finally - el pool se encarga automáticamente
 });
 
 // ============================================
@@ -587,9 +591,11 @@ router.put('/registro/:registro_id/estado', authenticateToken, requireBackOffice
  * @returns {Object} Lista completa de usuarios con información completa
  */
 router.get('/usuarios', authenticateToken, requireBackOffice, logAccess, async (req, res) => {
+  let connection;
   try {
-    // ✅ USA POOL COMPARTIDO - NO crea conexión individual
-    const usuarios = await executeQueryForMultipleUsers(`
+    connection = await getConnection();
+
+    const [usuarios] = await connection.execute(`
       SELECT agente.descripcion as agente_comercial, users.name, users.documento, users.email, rol.descripcion, depar_ciudades.descripcion as ciudad FROM users
       INNER JOIN agente ON agente.id = users.agente_id
       INNER JOIN rol ON rol.id = users.rol_id
@@ -611,9 +617,11 @@ router.get('/usuarios', authenticateToken, requireBackOffice, logAccess, async (
       message: 'Error interno del servidor',
       error: error.message
     });
+  } finally {
+    if (connection) connection.release();
   }
-  // ✅ NO necesitamos finally - el pool se encarga automáticamente
 });
+
 
 // ============================================
 // ENDPOINTS DE GESTIÓN DE PUNTOS DE VENTA
@@ -627,9 +635,11 @@ router.get('/usuarios', authenticateToken, requireBackOffice, logAccess, async (
  * @returns {Object} Lista completa de PDVs con información completa
  */
 router.get('/puntos-venta', authenticateToken, requireBackOffice, logAccess, async (req, res) => {
+  let connection;
   try {
-    // ✅ USA POOL COMPARTIDO - NO crea conexión individual
-    const puntosVenta = await executeQueryForMultipleUsers(`
+    connection = await getConnection();
+
+    const [puntosVenta] = await connection.execute(`
       SELECT agente.descripcion as agente_comercial,puntos_venta.codigo, puntos_venta.descripcion, puntos_venta.nit, puntos_venta.direccion, puntos_venta.ciudad, puntos_venta.segmento, puntos_venta.meta_volumen, users.documento, users.name FROM puntos_venta
       INNER JOIN users ON puntos_venta.user_id = users.id
       INNER JOIN agente ON agente.id = puntos_venta.id_agente
@@ -649,8 +659,9 @@ router.get('/puntos-venta', authenticateToken, requireBackOffice, logAccess, asy
       message: 'Error interno del servidor',
       error: error.message
     });
+  } finally {
+    if (connection) connection.release();
   }
-  // ✅ NO necesitamos finally - el pool se encarga automáticamente
 });
 
 export default router;

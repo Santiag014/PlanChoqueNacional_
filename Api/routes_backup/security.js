@@ -1,11 +1,3 @@
-// ✅ ARCHIVO OPTIMIZADO PARA POOL COMPARTIDO
-// ============================================
-// - NO crea conexiones individuales por consulta
-// - USA executeQueryForMultipleUsers() para consultas normales
-// - USA executeQueryFast() para consultas rápidas
-// - El pool de 50 conexiones se comparte entre TODOS los usuarios
-// - NUNCA excede el límite de 500 conexiones/hora
-
 /**
  * @fileoverview Rutas para logging de seguridad
  * 
@@ -19,7 +11,7 @@
  */
 
 import express from 'express';
-import { getConnection, executeQueryForMultipleUsers, executeQueryFast } from '../db.js';
+import { getConnection } from '../db.js';
 
 const router = express.Router();
 
@@ -27,7 +19,8 @@ const router = express.Router();
  * Endpoint para registrar intentos de acceso no autorizado
  */
 router.post('/log-unauthorized-access', async (req, res) => {
-
+  let conn;
+  
   try {
     const {
       route,
@@ -52,8 +45,9 @@ router.post('/log-unauthorized-access', async (req, res) => {
     
     // Guardar en base de datos (opcional)
     try {
-
-      await executeQueryForMultipleUsers(`
+      conn = await getConnection();
+      
+      await conn.execute(`
         INSERT INTO security_logs (
           event_type,
           route_attempted,
@@ -84,7 +78,7 @@ router.post('/log-unauthorized-access', async (req, res) => {
       
       // Log alternativo en tabla de eventos generales (si existe)
       try {
-        await executeQueryForMultipleUsers(`
+        await conn.execute(`
           INSERT INTO app_logs (
             level,
             message,
@@ -113,19 +107,24 @@ router.post('/log-unauthorized-access', async (req, res) => {
       success: false, 
       message: 'Error interno del servidor' 
     });
+  } finally {
+    if (conn) {
+      await conn.end();
+    }
   }
-  // ✅ NO necesitamos finally - el pool se encarga automáticamente
 });
 
 /**
  * Endpoint para obtener estadísticas de seguridad (solo para administradores)
  */
 router.get('/security-stats', async (req, res) => {
-
+  let conn;
+  
   try {
-
+    conn = await getConnection();
+    
     // Intentos de acceso no autorizado en las últimas 24 horas
-    const unauthorizedAttempts = await executeQueryForMultipleUsers(`
+    const [unauthorizedAttempts] = await conn.execute(`
       SELECT 
         COUNT(*) as total_attempts,
         COUNT(DISTINCT user_email) as unique_users,
@@ -155,8 +154,11 @@ router.get('/security-stats', async (req, res) => {
       message: 'Estadísticas no disponibles',
       data: { last24Hours: [], timestamp: new Date() }
     });
+  } finally {
+    if (conn) {
+      await conn.end();
+    }
   }
-  // ✅ NO necesitamos finally - el pool se encarga automáticamente
 });
 
 export default router;

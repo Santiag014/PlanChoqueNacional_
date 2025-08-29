@@ -1,15 +1,19 @@
-// ✅ ARCHIVO OPTIMIZADO PARA POOL COMPARTIDO
-// ============================================
-// - NO crea conexiones individuales por consulta
-// - USA executeQueryForMultipleUsers() para consultas normales
-// - USA executeQueryFast() para consultas rápidas
-// - El pool de 50 conexiones se comparte entre TODOS los usuarios
-// - NUNCA excede el límite de 500 conexiones/hora
-
 import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { executeQueryForMultipleUsers, executeQueryFast } from '../db.js';
+import { ge// REGISTRO DE NUEVOS USUARIOS
+router.post('/register', async (req, res) => {
+  const { name, email, documento, password, rol_id, zona_id, regional_id, agente_id } = req.body;
+  
+  // Validar que todos los campos obligatorios estén presentes
+  if (!name || !email || !documento || !password || !rol_id || !zona_id || !regional_id || !agente_id) {
+    return res.status(400).json({ success: false, message: 'Todos los campos son obligatorios' });
+  }
+  
+  try {
+    // ✅ USA POOL COMPARTIDO - NO crea conexión individual
+    // Verificar si el usuario ya existe
+    const existingUser = await executeQueryForMultipleUsers('SELECT id FROM users WHERE email = ? OR documento = ?', [email, documento]);ecuteQueryForMultipleUsers, executeQueryFast } from '../db.js';
 import logger from '../utils/logger.js';
 
 const router = express.Router();

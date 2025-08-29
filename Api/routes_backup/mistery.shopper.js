@@ -1,13 +1,5 @@
-// ✅ ARCHIVO OPTIMIZADO PARA POOL COMPARTIDO
-// ============================================
-// - NO crea conexiones individuales por consulta
-// - USA executeQueryForMultipleUsers() para consultas normales
-// - USA executeQueryFast() para consultas rápidas
-// - El pool de 50 conexiones se comparte entre TODOS los usuarios
-// - NUNCA excede el límite de 500 conexiones/hora
-
 import express from 'express';
-import { getConnection, executeQueryForMultipleUsers, executeQueryFast } from '../db.js';
+import { getConnection } from '../db.js';
 import { authenticateToken, requireMisteryShopper, logAccess } from '../middleware/auth.js';
 import multer from 'multer';
 import path from 'path';
@@ -41,10 +33,10 @@ const upload = multer({ storage });
 
 // Endpoint: Lista de PDVs - solo para Mystery Shoppers autenticados
 router.get('/pdvs', authenticateToken, requireMisteryShopper, logAccess, async (req, res) => {
-  
+  let conn;
   try {
-    
-    const rows = await executeQueryForMultipleUsers(`
+    conn = await getConnection();
+    const [rows] = await conn.execute(`
       SELECT 
         pv.codigo, 
         a.descripcion as agente,
@@ -61,6 +53,8 @@ router.get('/pdvs', authenticateToken, requireMisteryShopper, logAccess, async (
     res.json({ success: true, data: rows });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error al obtener PDVs', error: err.message });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -68,10 +62,11 @@ router.get('/pdvs', authenticateToken, requireMisteryShopper, logAccess, async (
 router.get('/pdv-detalle', authenticateToken, requireMisteryShopper, logAccess, async (req, res) => {
   const { id_registro_pdv } = req.query;
   if (!id_registro_pdv) return res.status(400).json({ success: false, message: 'Falta el parámetro id_registro_pdv' });
-
+  
+  let conn;
   try {
-    
-    const rows = await executeQueryForMultipleUsers(`
+    conn = await getConnection();
+    const [rows] = await conn.execute(`
       SELECT pv.id, pv.codigo, pv.descripcion as nombrePDV, pv.direccion, pv.coordenadas,
              u.name as asesor, a.descripcion as agente, rms.nro_visita,
              GROUP_CONCAT(re_prod.referencia_id) AS referencias,
@@ -149,12 +144,14 @@ router.get('/pdv-detalle', authenticateToken, requireMisteryShopper, logAccess, 
     }
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error al obtener detalle', error: err.message });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
 // Endpoint: Guardar hallazgo y fotos - solo para Mystery Shoppers autenticados
 router.post('/guardar-hallazgo', authenticateToken, requireMisteryShopper, logAccess, upload.array('fotos', 10), async (req, res) => {
-  
+  let conn;
   try {
     const { pdv_id, hallazgos, user_id, nro_visita, estado_productos } = req.body;
     
@@ -174,12 +171,14 @@ router.post('/guardar-hallazgo', authenticateToken, requireMisteryShopper, logAc
     const today = new Date();
     const folder = today.toISOString().slice(0, 10); // YYYY-MM-DD
 
+    conn = await getConnection();
+    
     // Iniciar transacción para asegurar consistencia
     await conn.beginTransaction();
 
     try {
       // 1. Insertar en registros_mistery_shopper
-      const resultHallazgo = await executeQueryForMultipleUsers(
+      const [resultHallazgo] = await conn.execute(
         `INSERT INTO registros_mistery_shopper 
           (id_registro_pdv, id_user, hallazgo, nro_visita, id_estado, created_at, update_at)
          VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
@@ -193,7 +192,7 @@ router.post('/guardar-hallazgo', authenticateToken, requireMisteryShopper, logAc
         for (const file of req.files) {
           const fotoUrl = `/uploads/${folder}/${file.filename}`;
           
-          await executeQueryForMultipleUsers(
+          await conn.execute(
             `INSERT INTO registro_fotografico_shopper 
               (id_registro, foto_seguimiento) 
              VALUES (?, ?)`,
@@ -228,6 +227,8 @@ router.post('/guardar-hallazgo', authenticateToken, requireMisteryShopper, logAc
       message: 'Error al guardar reporte', 
       error: err.message 
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -243,8 +244,10 @@ router.get('/historial-hallazgos/:user_id', authenticateToken, requireMisterySho
     });
   }
 
+  let conn;
   try {
-
+    conn = await getConnection();
+    
     const query = `
       SELECT 
         rms.id,
@@ -268,7 +271,7 @@ router.get('/historial-hallazgos/:user_id', authenticateToken, requireMisterySho
       ORDER BY rms.created_at DESC
     `;
     
-    const rows = await executeQueryForMultipleUsers(query, [user_id]);
+    const [rows] = await conn.execute(query, [user_id]);
     
     // Procesar datos para enviar respuesta limpia
     const hallazgosProcesados = rows.map(row => ({
@@ -296,17 +299,21 @@ router.get('/historial-hallazgos/:user_id', authenticateToken, requireMisterySho
       message: 'Error al obtener historial de hallazgos', 
       error: err.message 
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
 // Endpoint: Obtener detalles específicos de un hallazgo
 router.get('/hallazgo-detalles/:hallazgo_id', authenticateToken, requireMisteryShopper, logAccess, async (req, res) => {
   const { hallazgo_id } = req.params;
-
+  
+  let conn;
   try {
-
+    conn = await getConnection();
+    
     // Verificar que el hallazgo pertenece al usuario autenticado
-    const hallazgoCheck = await executeQueryForMultipleUsers(
+    const [hallazgoCheck] = await conn.execute(
       'SELECT id_user FROM registros_mistery_shopper WHERE id = ?', 
       [hallazgo_id]
     );
@@ -355,7 +362,7 @@ router.get('/hallazgo-detalles/:hallazgo_id', authenticateToken, requireMisteryS
       WHERE rms.id = ?
     `;
     
-    const detalles = await executeQueryForMultipleUsers(queryDetalles, [hallazgo_id]);
+    const [detalles] = await conn.execute(queryDetalles, [hallazgo_id]);
     
     if (detalles.length === 0) {
       return res.status(404).json({ 
@@ -407,6 +414,8 @@ router.get('/hallazgo-detalles/:hallazgo_id', authenticateToken, requireMisteryS
       message: 'Error al obtener detalles del hallazgo', 
       error: err.message 
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 

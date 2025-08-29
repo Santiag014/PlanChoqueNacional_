@@ -23,11 +23,14 @@ setInterval(() => {
   }
 }, 900000); // Cada 15 minutos
 
-// Rate limiting general optimizado para 600+ usuarios simultáneos
-export const generalRateLimit = (maxRequests = 500, windowMs = 900000) => {
+// Rate limiting general optimizado para alto tráfico real
+export const generalRateLimit = (maxRequests = 5000, windowMs = 900000) => {
   return (req, res, next) => {
     const key = req.ip || req.connection.remoteAddress || 'unknown';
     const now = Date.now();
+    
+    // Rate limiting más permisivo para alto tráfico
+    // 1500 peticiones por 15 minutos es más realista para producción
     
     if (!rateLimitStore.has(key)) {
       rateLimitStore.set(key, {

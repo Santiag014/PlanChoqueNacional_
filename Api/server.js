@@ -7,13 +7,13 @@ import authRouter from './routes/auth.js';
 import cargarVisitas from './routes_post/cargar_registros_pdv.js';
 import cargarVisitas_Frecuencia from './routes_post/cargar_registros_visita.js';
 import cargarImplementaciones from './routes_post/cargar_registros_implementacion.js';
+import cargarVisitasJFZ from './routes_post/cargar_registros_visitas_jfz.js';
 import mercadeoRouter from './routes/mercadeo.js';
 import asesorRouter from './routes/asesor.js';
 import publicRouter from './routes/public.js';
 import misteryShopperRouter from './routes/mistery.shopper.js';
 import otRouter from './routes/ot.js';
 import backofficeRouter from './routes/backoffice.js';
-import bulkUploadRouter from './routes/bulk-upload.js';
 import { getConnection } from './db.js';
 import { getCurrentStorageConfig, ensureStorageDirectories } from './config/storage.js';
 import { generalRateLimit, heavyOperationLimit, dbIntensiveLimit, getRateLimitStats, excelDownloadLimit, excelDownloadLimitByUser } from './middleware/rateLimiter.js';
@@ -86,7 +86,7 @@ app.use(express.urlencoded({
 }));
 
 // Aplicar rate limiting para ultra alta concurrencia (600+ usuarios)
-app.use('/api', generalRateLimit(500, 900000)); // 500 requests por 15 minutos por IP (aumentado)
+app.use('/api', generalRateLimit(5000, 900000)); // 5000 requests por 15 minutos por IP (AUMENTADO PARA PRUEBAS)
 
 // Rate limiting específico para operaciones pesadas (LÍMITE POR USUARIO - RECOMENDADO)
 app.use('/api/ot/implementaciones/excel', excelDownloadLimitByUser(30, 3600000)); // 30 descargas Excel por hora POR USUARIO
@@ -100,7 +100,7 @@ app.use('/api/backoffice/historial-registros-backoffice', generalRateLimit(100, 
 app.use('/api', cargarVisitas);
 app.use('/api', cargarVisitas_Frecuencia);
 app.use('/api', cargarImplementaciones);
-app.use('/api/bulk-upload', bulkUploadRouter);
+app.use('/api', cargarVisitasJFZ);
 
 // Luego, rutas que reciben JSON
 app.use('/api', authRouter);
@@ -127,6 +127,28 @@ app.get('/api/check-db', async (req, res) => {
   } catch (err) {
     if (conn) conn.release();
     res.status(500).json({ connected: false, message: 'Error de conexión', error: err.message });
+  }
+});
+
+// Endpoint simple para monitoreo del pool en tiempo real
+app.get('/api/pool-status', async (req, res) => {
+  try {
+    const { getPoolStatus } = await import('./db.js');
+    const poolStatus = getPoolStatus();
+    
+    res.json({
+      totalConnections: poolStatus.allConnections,
+      freeConnections: poolStatus.freeConnections,
+      acquiringConnections: poolStatus.acquiringConnections,
+      connectionLimit: 100,
+      activeConnections: poolStatus.allConnections - poolStatus.freeConnections,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Error obteniendo estado del pool',
+      message: error.message 
+    });
   }
 });
 

@@ -3,34 +3,28 @@ import logger from './utils/logger.js';
 
 const dbConfig = {
   host: '82.197.82.139',
-  user: 'u716541625_terpel_prod_2',
-  password: 'N5p@rBKOM1l@',
-  database: 'u716541625_terpel_prod_2',
+  user: 'u716541625_terpel_dev2',
+  password: '$2eW[J[1F;>?',
+  database: 'u716541625_terpel_dev2',
   port: 3306,
   waitForConnections: true,
   
-  // Configuración optimizada para 2000+ conexiones diarias
-  connectionLimit: 2500,       // Pool muy grande para 600+ usuarios simultáneos
-  queueLimit: 0,              // Sin límite en cola (permite procesar todas las solicitudes)
-  acquireTimeout: 20000,      // 20 segundos para adquirir conexión del pool (más rápido)
+  // Configuración ALTA CONCURRENCIA: 100 conexiones para 600+ requests simultáneos
+  connectionLimit: 75,        // Pool grande para alta concurrencia
+  queueLimit: 2000,            // Cola MUY grande para manejar muchos usuarios esperando
   
-  // Configuración de timeouts optimizada para ultra alta concurrencia
-  connectTimeout: 15000,      // 15 segundos para conexión inicial (muy rápido)
-  idleTimeout: 120000,        // 2 minutos para conexiones inactivas (liberar muy rápido)
-  maxIdle: 400,              // Muchas más conexiones inactivas para reutilización instantánea
+  // Configuración para alta concurrencia
+  connectTimeout: 60000,      // 60 segundos para conexión inicial
+  idleTimeout: 300000,        // 5 minutos para mantener conexiones activas más tiempo
+  maxIdle: 50,               // Mantener 50 conexiones listas (50% del pool)
   
-  // Configuración de keep-alive mejorada
+  // Configuración de keep-alive para múltiples usuarios
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
   
-  // Configuraciones adicionales para alta concurrencia
-  multipleStatements: false,  // Seguridad adicional
-  timezone: 'Z',             // UTC para consistencia
-  
-  // Configuraciones adicionales para rendimiento
-  reconnect: true,           // Reconectar automáticamente
-  reconnectDelay: 1000,      // 1 segundo de delay para reconexión
-  maxReconnects: 10          // Máximo 10 intentos de reconexión
+  // Configuraciones para rendimiento con múltiples usuarios
+  multipleStatements: false,  // Seguridad
+  timezone: 'Z'              // UTC
 };
 
 // Crea el pool de conexiones
@@ -43,21 +37,23 @@ export function getPoolStatus() {
     allConnections: pool._allConnections?.length || 0,
     freeConnections: pool._freeConnections?.length || 0,
     acquiringConnections: pool._acquiringConnections?.length || 0,
-    connectionLimit: 2500,
+    connectionLimit: 75,   // Pool de 75 conexiones (ACTUALIZADO)
     isPoolActive: (pool._allConnections?.length || 0) > 0
   };
   
-  // Si el pool no está activo, mostrar capacidad completa disponible
+  // Si el pool no está activo, mostrar capacidad disponible
   if (!status.isPoolActive) {
-    status.freeConnections = 2500; // Capacidad completa disponible
+    status.freeConnections = 75; // Capacidad de 75 disponible (ACTUALIZADO)
   }
   
   return status;
 }
 
-// Función para ejecutar consultas directamente con el pool (recomendada)
+// Función para ejecutar consultas directamente con el pool (recomendada para múltiples usuarios)
 export async function executeQuery(sql, params = []) {
+  let connection;
   try {
+    // Usar executeQuery del pool directamente (reutiliza conexiones automáticamente)
     const [rows] = await pool.execute(sql, params);
     return rows;
   } catch (error) {
@@ -66,6 +62,54 @@ export async function executeQuery(sql, params = []) {
     logger.debug('Parámetros:', params);
     throw error;
   }
+}
+
+// Nueva función para consultas rápidas sin obtener conexión dedicada
+export async function executeQueryFast(sql, params = []) {
+  try {
+    // Ejecuta directamente en el pool sin obtener conexión manual
+    // El pool maneja automáticamente la reutilización entre usuarios
+    const [rows] = await pool.execute(sql, params);
+    return rows;
+  } catch (error) {
+    logger.error('Error en consulta rápida:', error.message);
+    throw error;
+  }
+}
+
+// Función especial para múltiples usuarios simultáneos
+export async function executeQueryForMultipleUsers(sql, params = []) {
+  const maxRetries = 2; // Menos reintentos para mejor throughput
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // Timeout más largo para queries complejas bajo alta carga
+      const queryPromise = pool.execute(sql, params);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Query timeout - 45 segundos')), 45000)
+      );
+      
+      const [rows] = await Promise.race([queryPromise, timeoutPromise]);
+      return rows;
+    } catch (error) {
+      lastError = error;
+      
+      // Solo log warnings en el último intento para no llenar logs
+      if (attempt === maxRetries) {
+        logger.warn(`Query falló después de ${maxRetries} intentos: ${error.message}`);
+      }
+      
+      if (attempt < maxRetries) {
+        // Espera muy corta para alta concurrencia (50ms máximo)
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    }
+  }
+  
+  // Si falla completamente, lanzar error específico
+  logger.error('Error crítico en consulta para múltiples usuarios:', lastError.message);
+  throw new Error(`Database query failed after ${maxRetries} attempts: ${lastError.message}`);
 }
 
 // Función para transacciones
@@ -92,27 +136,29 @@ export async function executeTransaction(queries) {
   }
 }
 
-// Función mejorada para obtener conexión con reintentos y timeout automático
+// Función mejorada para obtener conexión con reintentos y liberación automática para múltiples usuarios
 export async function getConnection(maxRetries = 3) {
   let retries = 0;
   let lastError;
 
   while (retries < maxRetries) {
     try {
-      logger.debug(`Intentando obtener conexión a MySQL (intento ${retries + 1}/${maxRetries})`);
+      logger.debug(`Intentando obtener conexión para usuario (intento ${retries + 1}/${maxRetries})`);
       
-      // Mostrar estado del pool antes de intentar conexión
+      // Mostrar estado del pool para múltiples usuarios
       if (retries > 0) {
-        logger.debug('Estado del pool:', getPoolStatus());
+        const status = getPoolStatus();
+        logger.debug(`Estado del pool: ${status.freeConnections} libres de ${status.connectionLimit}`);
       }
       
+      // Obtener conexión del pool (reutilizable entre usuarios)
       const connection = await pool.getConnection();
-      logger.debug('Conexión a MySQL establecida exitosamente');
+      logger.debug('Conexión reutilizable obtenida para usuario');
       
-      // Verificar que la conexión esté activa con una consulta simple
+      // Verificar que la conexión esté activa
       await connection.execute('SELECT 1');
       
-      // Configurar timeout automático para liberar la conexión si no se libera manualmente
+      // Configurar liberación automática inteligente para múltiples usuarios
       const originalRelease = connection.release.bind(connection);
       let isReleased = false;
       
@@ -120,35 +166,36 @@ export async function getConnection(maxRetries = 3) {
         if (!isReleased) {
           isReleased = true;
           originalRelease();
-          logger.debug('Conexión liberada correctamente');
+          logger.debug('Conexión liberada y disponible para otros usuarios');
         }
       };
       
-      // Auto-release después de 2 minutos para ultra alta concurrencia (muy rápido)
+      // Auto-liberación más rápida para permitir más usuarios (2 minutos)
       setTimeout(() => {
         if (!isReleased) {
-          logger.warn('Auto-liberando conexión después de 2 minutos para ultra alta concurrencia');
+          logger.warn('Auto-liberando conexión para permitir otros usuarios (2 min)');
           connection.release();
         }
-      }, 120000); // 2 minutos (reducido para liberar conexiones súper rápido)
+      }, 120000); // 2 minutos para liberar rápido y permitir más usuarios
       
       return connection;
     } catch (err) {
       lastError = err;
       retries++;
-      logger.error(`Error al conectar a MySQL (intento ${retries}/${maxRetries}):`, err.message);
+      logger.error(`Error de conexión para usuario (intento ${retries}/${maxRetries}):`, err.message);
       
       if (retries < maxRetries) {
-        // Esperar antes de reintentar (backoff exponencial)
-        const waitTime = Math.min(1000 * Math.pow(2, retries), 10000);
-        logger.debug(`Esperando ${waitTime}ms antes de reintentar conexión...`);
+        // Esperar menos tiempo para no bloquear otros usuarios
+        const waitTime = Math.min(500 * Math.pow(2, retries), 3000); // Máximo 3 segundos
+        logger.debug(`Esperando ${waitTime}ms antes de reintentar (para no bloquear otros usuarios)...`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
     }
   }
 
-  logger.error(`Error fatal: No se pudo conectar a MySQL después de ${maxRetries} intentos`);
-  logger.debug('Estado final del pool:', getPoolStatus());
+  logger.error(`Error: No se pudo obtener conexión para usuario después de ${maxRetries} intentos`);
+  const status = getPoolStatus();
+  logger.debug(`Estado final: ${status.freeConnections} libres de ${status.connectionLimit}`);
   throw lastError;
 }
 
@@ -163,8 +210,8 @@ export async function closePool() {
   }
 }
 
-// Monitoreo automático del pool optimizado para 2000+ conexiones diarias
-const ENABLE_MONITORING = true; // Siempre habilitado para monitorear 600+ usuarios
+// Monitoreo automático del pool optimizado para 500 conexiones/hora
+const ENABLE_MONITORING = true; // Monitorear para no exceder límites del hosting
 
 if (ENABLE_MONITORING) {
   setInterval(() => {
@@ -172,32 +219,32 @@ if (ENABLE_MONITORING) {
     
     // Solo monitorear si el pool está activo
     if (status.isPoolActive) {
-      // Alertas críticas para ultra alta concurrencia
-      if (status.freeConnections < 300 && status.acquiringConnections > 100) {
-        console.warn('⚠️ CRÍTICO: Pool bajo presión extrema - Conexiones libres:', status.freeConnections);
+      // Alertas críticas para pool de 50
+      if (status.freeConnections < 5 && status.acquiringConnections > 10) {
+        console.warn('⚠️ CRÍTICO: Pool bajo presión - Conexiones libres:', status.freeConnections);
       }
       
-      // Alerta cuando se acerque al límite de 2500
-      if (status.allConnections > 2000) {
-        console.warn('⚠️ ULTRA ALTO USO: Conexiones activas cerca del límite máximo:', status.allConnections);
+      // Alerta cuando se acerque al límite de 50
+      if (status.allConnections > 40) {
+        console.warn('⚠️ ALTO USO: Conexiones activas cerca del límite:', status.allConnections);
       }
       
       // Alerta temprana para prevenir saturación
-      if (status.allConnections > 1800) {
-        console.warn('⚡ ALTO USO: Se acerca a capacidad máxima:', status.allConnections, '/ 2500');
+      if (status.allConnections > 35) {
+        console.warn('⚡ ADVERTENCIA: Se acerca a capacidad máxima:', status.allConnections, '/ 50');
       }
       
-      // Log cada 3 minutos del estado general (más frecuente)
+      // Log cada 3 minutos del estado general
       if (Date.now() % 180000 < 10000) { // Aproximadamente cada 3 minutos
-        console.log(`📊 Pool Status (2500 max): ${status.allConnections} total, ${status.freeConnections} libres, ${status.acquiringConnections} adquiriendo`);
+        console.log(`📊 Pool Status (50 max): ${status.allConnections} total, ${status.freeConnections} libres, ${status.acquiringConnections} adquiriendo`);
       }
     } else {
       // Log ocasional cuando el pool está inactivo
       if (Date.now() % 300000 < 10000) { // Cada 5 minutos
-        console.log(`🟢 Pool INACTIVO: 2500 conexiones disponibles para uso`);
+        console.log(`🟢 Pool INACTIVO: 50 conexiones disponibles para uso`);
       }
     }
-  }, 10000); // Cada 10 segundos (muy frecuente para ultra alta concurrencia)
+  }, 15000); // Cada 15 segundos (menos frecuente para no sobrecargar)
 }
 
 // Manejo de eventos del pool

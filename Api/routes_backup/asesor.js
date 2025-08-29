@@ -1,11 +1,3 @@
-// ✅ ARCHIVO OPTIMIZADO PARA POOL COMPARTIDO
-// ============================================
-// - NO crea conexiones individuales por consulta
-// - USA executeQueryForMultipleUsers() para consultas normales
-// - USA executeQueryFast() para consultas rápidas
-// - El pool de 50 conexiones se comparte entre TODOS los usuarios
-// - NUNCA excede el límite de 500 conexiones/hora
-
 import express from 'express';
 import { getConnection, executeQueryForMultipleUsers, executeQueryFast } from '../db.js';
 import { authenticateToken, requireAsesor, logAccess } from '../middleware/auth.js';
@@ -93,8 +85,9 @@ router.get('/cobertura/:user_id', authenticateToken, requireAsesor, logAccess, a
 router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
   const { user_id } = req.params;
   const { pdv_id } = req.query; // AGREGADO: Soporte para filtro por PDV
-  
+  let conn;
   try {
+    conn = await getConnection();
 
     // CORREGIDO: Aplicar filtro por PDV si se proporciona
     let whereClausePDV = 'WHERE pv.user_id = ?'; // CORREGIDO: Especificar tabla
@@ -106,40 +99,47 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
     }
 
     // Obtener la meta total de volumen (suma de meta_volumen de los PDVs del usuario filtrados)
-    const metaResult = await executeQueryForMultipleUsers(
+    const [metaResult] = await conn.execute(
       `SELECT SUM(meta_volumen) as totalMeta 
        FROM puntos_venta pv
        ${whereClausePDV}`, queryParamsPDV
     );
     const totalMeta = metaResult[0]?.totalMeta || 0;
 
-    // Obtener el volumen real total usando la misma lógica que la consulta de PDVs
-    const realResult = await executeQueryForMultipleUsers(
-      `SELECT COALESCE(SUM(vol.total_volumen), 0) as totalReal
-       FROM puntos_venta pv
-       LEFT JOIN (
-         SELECT rs.pdv_id, SUM(rp.conversion_galonaje) as total_volumen
-         FROM registro_servicios rs
-         INNER JOIN registro_productos rp ON rp.registro_id = rs.id
-         WHERE rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
-         GROUP BY rs.pdv_id
-       ) vol ON vol.pdv_id = pv.id
-       ${whereClausePDV}`, [user_id, ...queryParamsPDV]
+    // CORREGIDO: Aplicar filtro por PDV en consulta de volumen real
+    let whereClauseRegistros = 'registro_servicios.user_id = ? AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2';
+    let queryParamsRegistros = [user_id];
+    
+    if (pdv_id) {
+      whereClauseRegistros += ' AND registro_servicios.pdv_id = ?';
+      queryParamsRegistros.push(pdv_id);
+    }
+
+    // Obtener el volumen real total (suma de conversion_galonaje filtrado)
+    const [realResult] = await conn.execute(
+      `SELECT SUM(registro_productos.conversion_galonaje) as totalReal
+       FROM registro_servicios
+       INNER JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
+       WHERE ${whereClauseRegistros}`, queryParamsRegistros
     );
     const totalReal = realResult[0]?.totalReal || 0;
 
-    // Obtener los puntos de volumen usando la misma lógica que la consulta de PDVs
-    const puntosResult = await executeQueryForMultipleUsers(
-      `SELECT COALESCE(SUM(pts.total_puntos), 0) as totalPuntos
+    // CORREGIDO: Aplicar filtro por PDV en consulta de puntos
+    let whereClausePuntos = 'pv.user_id = ?';
+    let queryParamsPuntos = [user_id, user_id];
+    
+    if (pdv_id) {
+      whereClausePuntos += ' AND pv.id = ?';
+      queryParamsPuntos.push(pdv_id);
+    }
+
+    // Obtener los puntos de volumen (id_kpi = 1 para volumen filtrado)
+    const [puntosResult] = await conn.execute(
+      `SELECT COALESCE(SUM(rpt.puntos), 0) as totalPuntos
        FROM puntos_venta pv
-       LEFT JOIN (
-         SELECT rs.pdv_id, SUM(rpt.puntos) as total_puntos
-         FROM registro_servicios rs
-         INNER JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 1
-         WHERE rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
-         GROUP BY rs.pdv_id
-       ) pts ON pts.pdv_id = pv.id
-       ${whereClausePDV}`, [user_id, ...queryParamsPDV]
+       LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
+       LEFT JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 1
+       WHERE ${whereClausePuntos}`, queryParamsPuntos
     );
     const puntosVolumen = puntosResult[0]?.totalPuntos || 0;
 
@@ -151,7 +151,7 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
     console.log('=============================');
 
     // Obtener detalle por PDV (aplicar filtro si existe)
-    const pdvsResult = await executeQueryForMultipleUsers(
+    const [pdvs] = await conn.execute(
       `SELECT 
          pv.id,
          pv.codigo,
@@ -179,11 +179,8 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
       [user_id, user_id, ...queryParamsPDV] // CORREGIDO: user_id primero para los JOINs
     );
 
-    // Verificar que pdvs sea un array válido
-    const pdvs = Array.isArray(pdvsResult) ? pdvsResult : [];
-
     // Obtener resumen por segmento
-    const segmentosResult = await executeQueryForMultipleUsers(
+    const [segmentos] = await conn.execute(
       `SELECT 
          pv.segmento,
          COUNT(DISTINCT pv.id) AS cantidadPdvs,
@@ -201,11 +198,8 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
       [user_id, user_id]
     );
 
-    // Verificar que segmentos sea un array válido
-    const segmentos = Array.isArray(segmentosResult) ? segmentosResult : [];
-
     // Obtener detalle por producto (usando referencia_id)
-    const productosResult = await executeQueryForMultipleUsers(
+    const [productos] = await conn.execute(
       `SELECT 
          rp.referencia_id AS nombre,
          COUNT(rp.id) AS numeroCajas,
@@ -219,32 +213,26 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
       [user_id]
     );
 
-    // Verificar que productos sea un array válido
-    const productos = Array.isArray(productosResult) ? productosResult : [];
-
     // Calcular porcentajes para productos
-    const totalGalonaje = productos.reduce((sum, p) => sum + (p.galonaje || 0), 0);
+    const totalGalonaje = productos.reduce((sum, p) => sum + p.galonaje, 0);
     productos.forEach(p => {
       p.porcentaje = totalGalonaje > 0 ? 
         Number(((p.galonaje / totalGalonaje) * 100).toFixed(1)) : 0;
     });
-
-    // Calcular porcentaje de cumplimiento
-    const porcentajeCumplimiento = totalMeta > 0 ? 
-      Number(((totalReal / totalMeta) * 100).toFixed(1)) : 0;
 
     res.json({
       success: true,
       pdvs,
       meta_volumen: totalMeta,
       real_volumen: totalReal,
-      porcentaje_cumplimiento: porcentajeCumplimiento,
       puntos: puntosVolumen,
       segmentos,
       productos
     });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error al obtener datos de volumen', error: err.message });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -252,8 +240,9 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
 router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
   const { user_id } = req.params;
   const { pdv_id } = req.query; // AGREGADO: Soporte para filtro por PDV
-  
+  let conn;
   try {
+    conn = await getConnection();
 
     // CORREGIDO: Aplicar filtro por PDV si se proporciona
     let whereClausePDV = 'WHERE puntos_venta.user_id = ?'; // Para consulta sin alias
@@ -265,7 +254,7 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
     }
 
     // Obtener todos los PDVs asignados al asesor (filtrados si aplica)
-    const pdvsResult = await executeQueryForMultipleUsers(
+    const [pdvsResult] = await conn.execute(
       `SELECT id, codigo, descripcion AS nombre, direccion
        FROM puntos_venta
        ${whereClausePDV}`, queryParamsPDV
@@ -285,7 +274,7 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
     }
     
     // Obtener el número real de visitas (registro_servicios filtrado)
-    const realResult = await executeQueryForMultipleUsers(
+    const [realResult] = await conn.execute(
       `SELECT COUNT(id) as totalVisitas
        FROM registro_servicios
        ${whereClauseVisitas}`, queryParamsVisitas
@@ -314,7 +303,7 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
     }
     
     // Obtener detalle de visitas por PDV (aplicar filtro si existe)
-    const pdvsVisitasResult = await executeQueryForMultipleUsers(
+    const [pdvs] = await conn.execute(
       `SELECT 
          pv.id,
          pv.codigo,
@@ -329,9 +318,6 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
        GROUP BY pv.id, pv.codigo, pv.descripcion`,
       [user_id, ...queryParamsPVAlias] // CORREGIDO: user_id primero para el JOIN
     );
-    
-    // Verificar que pdvs sea un array válido
-    const pdvs = Array.isArray(pdvsVisitasResult) ? pdvsVisitasResult : [];
     
     // Calcular porcentaje y puntos de cumplimiento para cada PDV
     const puntosBasePorVisita = metaVisitas > 0 ? (150 / metaVisitas) : 0; // Puntos por cada visita (sin redondear)
@@ -373,7 +359,7 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
     console.log('=====================================');
     
     // Obtener tipos de visita
-    const tiposVisitaResult = await executeQueryForMultipleUsers(
+    const [tiposVisita] = await conn.execute(
       `SELECT 
          CASE
             WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Volumen/Precio'
@@ -389,9 +375,6 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
       [user_id]
     );
 
-    // Verificar que tiposVisita sea un array válido
-    const tiposVisita = Array.isArray(tiposVisitaResult) ? tiposVisitaResult : [];
-
     res.json({
       success: true,
       pdvs: pdvsDetalle,
@@ -403,6 +386,8 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
     });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error al obtener datos de visitas', error: err.message });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -418,17 +403,19 @@ router.get('/precios/:user_id', authenticateToken, requireAsesor, logAccess, asy
     });
   }
 
+  let conn;
   try {
-
+    conn = await getConnection();
+    
     // 1. Obtener todos los PDVs asignados al asesor (igual que en cobertura)
-    const pdvs = await executeQueryForMultipleUsers(
+    const [pdvs] = await conn.execute(
       `SELECT id, codigo, descripcion AS nombre, direccion
        FROM puntos_venta
        WHERE user_id = ?`, [user_id]
     );
     
     // 2. Obtener PDVs con al menos un reporte de precio (kpi_precio = 1)
-    const reportados = await executeQueryForMultipleUsers(
+    const [reportados] = await conn.execute(
       `SELECT DISTINCT pdv_id
        FROM registro_servicios
         LEFT JOIN registros_mistery_shopper 
@@ -466,6 +453,8 @@ router.get('/precios/:user_id', authenticateToken, requireAsesor, logAccess, asy
       message: 'Error al consultar información de precios',
       error: error.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -485,7 +474,9 @@ router.get('/historial-registros-asesor/:user_id', authenticateToken, requireAse
     });
   }
 
+  let conn;
   try {
+    conn = await getConnection();
 
     // Consulta básica solicitada
     const query = `
@@ -580,7 +571,7 @@ router.get('/historial-registros-asesor/:user_id', authenticateToken, requireAse
 
     WHERE registro_servicios.user_id = ?;
     `;
-    const rows = await executeQueryForMultipleUsers(query, [user_id]);
+    const [rows] = await conn.execute(query, [user_id]);
 
     res.json({
       success: true,
@@ -595,6 +586,8 @@ router.get('/historial-registros-asesor/:user_id', authenticateToken, requireAse
       message: 'Error al obtener historial de registros',
       error: err.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -610,7 +603,9 @@ router.get('/resultados-auditorias/:user_id', authenticateToken, requireAsesor, 
     });
   }
 
+  let conn;
   try {
+    conn = await getConnection();
 
     // Consulta específica para auditorias (registros con kpi_precio = 1)
     const query = `
@@ -693,7 +688,7 @@ router.get('/resultados-auditorias/:user_id', authenticateToken, requireAsesor, 
           registro_servicios.created_at DESC
     `;
 
-    const rows = await executeQueryForMultipleUsers(query, [user_id]);
+    const [rows] = await conn.execute(query, [user_id]);
 
     // Procesar datos para incluir información adicional de auditorias
     const datosProcessados = rows.map(row => {
@@ -753,6 +748,8 @@ router.get('/resultados-auditorias/:user_id', authenticateToken, requireAsesor, 
       message: 'Error al obtener resultados de auditorias',
       error: err.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -772,7 +769,9 @@ router.get('/historial-visitas/:user_id', authenticateToken, requireAsesor, logA
     });
   }
 
+  let conn;
   try {
+    conn = await getConnection();
 
     // Consulta completa combinando historial de visitas con detalles completos (basada en registro-detalles)
     const query = `
@@ -864,7 +863,7 @@ router.get('/historial-visitas/:user_id', authenticateToken, requireAsesor, logA
       ORDER BY rs.fecha_registro DESC, rs.created_at DESC;
     `;
 
-    const rows = await executeQueryForMultipleUsers(query, [user_id]);
+    const [rows] = await conn.execute(query, [user_id]);
 
     // Procesar datos para coordenadas
     const datosProcessados = rows.map(row => {
@@ -941,6 +940,8 @@ router.get('/historial-visitas/:user_id', authenticateToken, requireAsesor, logA
       message: 'Error al generar Excel de historial de visitas',
       error: err.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -959,7 +960,9 @@ router.get('/precio-sugerido/:referencia/:presentacion', authenticateToken, requ
     });
   }
 
+  let conn;
   try {
+    conn = await getConnection();
 
     // Consulta para obtener el precio sugerido según referencia y presentación
     const query = `
@@ -973,7 +976,7 @@ router.get('/precio-sugerido/:referencia/:presentacion', authenticateToken, requ
       LIMIT 1
     `;
     
-    const resultado = await executeQueryForMultipleUsers(query, [referencia, presentacion]);
+    const [resultado] = await conn.execute(query, [referencia, presentacion]);
 
     if (resultado.length === 0) {
       return res.status(404).json({
@@ -1000,6 +1003,8 @@ router.get('/precio-sugerido/:referencia/:presentacion', authenticateToken, requ
       message: 'Error al consultar precio sugerido',
       error: err.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -1011,10 +1016,12 @@ router.get('/precio-sugerido/:referencia/:presentacion', authenticateToken, requ
 router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, async (req, res) => {
   const userId = req.user.id; // Obtenido del token
 
+  let conn;
   try {
+    conn = await getConnection();
 
     // Primero obtener el agente_id del usuario logueado
-    const miInfo = await executeQueryForMultipleUsers(
+    const [miInfo] = await conn.execute(
       `SELECT agente_id FROM users WHERE id = ?`, [userId]
     );
 
@@ -1028,7 +1035,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
     const miAgenteId = miInfo[0].agente_id;
 
     // Obtener todos los asesores de la empresa (role_id = 1 y mismo agente_id) con información geográfica
-    const asesores = await executeQueryForMultipleUsers(
+    const [asesores] = await conn.execute(
       `SELECT users.id, users.name, users.email, users.agente_id, 
               departamento.descripcion AS departamento, 
               depar_ciudades.descripcion AS ciudad,
@@ -1046,29 +1053,24 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
 
     for (const asesor of asesores) {
       // 1. PUNTOS COBERTURA - Misma lógica que endpoint /cobertura
-      const pdvsAsesor = await executeQueryForMultipleUsers(
+      const [pdvsAsesor] = await conn.execute(
         `SELECT id FROM puntos_venta WHERE user_id = ?`, [asesor.id]
       );
       const totalAsignados = pdvsAsesor.length;
 
-      const implementados = await executeQueryForMultipleUsers(
+      const [implementados] = await conn.execute(
         `SELECT DISTINCT pdv_id FROM registro_servicios
          WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [asesor.id]
       );
       const totalImplementados = implementados.length;
       const puntosCobertura = totalAsignados > 0 ? Math.round((totalImplementados / totalAsignados) * 150) : 0;
 
-      // 2. PUNTOS VOLUMEN - MISMA LÓGICA EXACTA que endpoint /volumen
-      const puntosVolumenResult = await executeQueryForMultipleUsers(
-        `SELECT COALESCE(SUM(pts.total_puntos), 0) as totalPuntos
+      // 2. PUNTOS VOLUMEN - Misma lógica que endpoint /volumen
+      const [puntosVolumenResult] = await conn.execute(
+        `SELECT COALESCE(SUM(rpt.puntos), 0) as totalPuntos
          FROM puntos_venta pv
-         LEFT JOIN (
-           SELECT rs.pdv_id, SUM(rpt.puntos) as total_puntos
-           FROM registro_servicios rs
-           INNER JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 1
-           WHERE rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
-           GROUP BY rs.pdv_id
-         ) pts ON pts.pdv_id = pv.id
+         LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
+         LEFT JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 1
          WHERE pv.user_id = ?`, [asesor.id, asesor.id]
       );
       const puntosVolumen = Number(puntosVolumenResult[0]?.totalPuntos) || 0;
@@ -1077,17 +1079,17 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
       const totalPdvs = pdvsAsesor.length;
       const metaVisitas = totalPdvs * 20; // 20 visitas por cada PDV
       
-      const realVisitasResult = await executeQueryForMultipleUsers(
+      const [realVisitas] = await conn.execute(
         `SELECT COUNT(id) as totalVisitas FROM registro_servicios
          WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [asesor.id]
       );
-      const totalVisitas = realVisitasResult[0]?.totalVisitas || 0;
+      const totalVisitas = realVisitas[0]?.totalVisitas || 0;
 
       // Calcular puntos como porcentaje de cumplimiento * 150 puntos (igual que cobertura)
       const puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 150) : 0;
 
       // 4. PUNTOS PRECIOS - Misma lógica que endpoint /precios
-      const reportadosPrecios = await executeQueryForMultipleUsers(
+      const [reportadosPrecios] = await conn.execute(
         `SELECT DISTINCT pdv_id FROM registro_servicios
          LEFT JOIN registros_mistery_shopper ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
          WHERE user_id = ? AND kpi_precio = 1 AND registros_mistery_shopper.id IS NOT NULL`, [asesor.id]
@@ -1097,19 +1099,6 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
 
       // Calcular total general usando la misma lógica que los endpoints individuales
       const totalGeneral = puntosCobertura + puntosVolumen + puntosVisitas + puntosPrecios;
-
-      // DEBUG: Log para comparar con ranking de mercadeo
-      console.log(`=== RANKING ASESOR - ASESOR ${asesor.name} (ID: ${asesor.id}) ===`);
-      console.log(`PDVs asignados: ${totalAsignados}`);
-      console.log(`PDVs implementados: ${totalImplementados}`);
-      console.log(`Puntos cobertura: ${puntosCobertura}`);
-      console.log(`Puntos volumen: ${puntosVolumen}`);
-      console.log(`Meta visitas: ${metaVisitas}, Real visitas: ${totalVisitas}`);
-      console.log(`Puntos visitas: ${puntosVisitas}`);
-      console.log(`PDVs con precios: ${totalReportados}`);
-      console.log(`Puntos precios: ${puntosPrecios}`);
-      console.log(`TOTAL PUNTOS: ${totalGeneral}`);
-      console.log('===============================================');
 
       rankingDetallado.push({
         id: asesor.id,
@@ -1147,7 +1136,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
     const posicionUsuario = rankingDetallado.find(a => a.id == userId);
 
     // Obtener información del agente/empresa
-    const agenteInfo = await executeQueryForMultipleUsers(
+    const [agenteInfo] = await conn.execute(
       `SELECT name as nombre_agente FROM users WHERE id = ?`, [miAgenteId]
     );
 
@@ -1170,6 +1159,8 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
       message: 'Error al obtener ranking de mi empresa',
       error: err.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -1177,10 +1168,12 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
 router.get('/ranking-filtros', authenticateToken, requireAsesor, logAccess, async (req, res) => {
   const userId = req.user.id;
 
+  let conn;
   try {
+    conn = await getConnection();
 
     // Obtener el agente_id del usuario logueado
-    const miInfo = await executeQueryForMultipleUsers(
+    const [miInfo] = await conn.execute(
       `SELECT agente_id FROM users WHERE id = ?`, [userId]
     );
 
@@ -1194,7 +1187,7 @@ router.get('/ranking-filtros', authenticateToken, requireAsesor, logAccess, asyn
     const miAgenteId = miInfo[0].agente_id;
 
     // Obtener todos los departamentos únicos de asesores de la empresa
-    const departamentos = await executeQueryForMultipleUsers(
+    const [departamentos] = await conn.execute(
       `SELECT DISTINCT departamento.id, departamento.descripcion
        FROM users 
        INNER JOIN depar_ciudades ON depar_ciudades.id = users.ciudad_id
@@ -1204,7 +1197,7 @@ router.get('/ranking-filtros', authenticateToken, requireAsesor, logAccess, asyn
     );
 
     // Obtener todas las ciudades únicas de asesores de la empresa
-    const ciudades = await executeQueryForMultipleUsers(
+    const [ciudades] = await conn.execute(
       `SELECT DISTINCT depar_ciudades.id, depar_ciudades.descripcion, 
               depar_ciudades.id_departamento
        FROM users 
@@ -1235,6 +1228,8 @@ router.get('/ranking-filtros', authenticateToken, requireAsesor, logAccess, asyn
       message: 'Error al obtener filtros de ranking',
       error: err.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -1243,11 +1238,13 @@ router.get('/ranking-filtros', authenticateToken, requireAsesor, logAccess, asyn
 // ========================================================================
 
 router.get('/presentaciones-referencia/:referenciaDescripcion', async (req, res) => {
-  
+  let conn;
   try {
     const { referenciaDescripcion } = req.params;
     
     console.log('🔍 Consultando presentaciones para referencia:', referenciaDescripcion);
+
+    conn = await getConnection();
 
     const query = `
       SELECT 
@@ -1260,7 +1257,7 @@ router.get('/presentaciones-referencia/:referenciaDescripcion', async (req, res)
       ORDER BY referencias_productos.presentacion
     `;
 
-    const results = await executeQueryForMultipleUsers(query, [referenciaDescripcion]);
+    const [results] = await conn.execute(query, [referenciaDescripcion]);
 
     console.log('📋 Resultados encontrados:', results);
 
@@ -1286,6 +1283,8 @@ router.get('/presentaciones-referencia/:referenciaDescripcion', async (req, res)
       error: 'Error interno del servidor',
       details: error.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -1296,11 +1295,13 @@ router.get('/presentaciones-referencia/:referenciaDescripcion', async (req, res)
 // ENDPOINT DE GALONAJE POR PDV PARA IMPLEMENTACIONES
 router.get('/galonaje-implementacion/:codigo_pdv', async (req, res) => {
   const { codigo_pdv } = req.params;
+  let conn;
 
   try {
+    conn = await getConnection();
 
     // 1. Obtener el pdv_id y segmento a partir del codigo_pdv
-    const pdvResult = await executeQueryForMultipleUsers(
+    const [pdvResult] = await conn.execute(
       `SELECT id, segmento, descripcion
        FROM puntos_venta 
        WHERE codigo = ?`,
@@ -1319,7 +1320,7 @@ router.get('/galonaje-implementacion/:codigo_pdv', async (req, res) => {
     const descripcion = pdvResult[0].descripcion;
 
     // 2. Obtener el galonaje real total
-    const realResult = await executeQueryForMultipleUsers(
+    const [realResult] = await conn.execute(
       `SELECT TRUNCATE(SUM(registro_productos.conversion_galonaje),2) AS totalReal
        FROM registro_servicios
        INNER JOIN registro_productos 
@@ -1333,24 +1334,24 @@ router.get('/galonaje-implementacion/:codigo_pdv', async (req, res) => {
     const totalReal = realResult[0]?.totalReal || 0;
 
     // 3. Obtener las metas de compras
-    const comprasResult = await executeQueryForMultipleUsers(
+    const [comprasResult] = await conn.execute(
       `SELECT compra_1, compra_2, compra_3, compra_4, compra_5
        FROM puntos_venta__implementacion
        WHERE pdv_id = ?`,
       [pdv_id]
     );
 
+    
     // 4. Verificar qué implementaciones están realizadas y validadas 
-    const implementacionResult = await executeQueryForMultipleUsers(
+    const [implementacionResult] = await conn.execute(
       `SELECT DISTINCT(registros_implementacion.nro_implementacion) FROM registro_servicios
        INNER JOIN registros_implementacion ON registros_implementacion.id_registro = registro_servicios.id
        WHERE registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2 AND registro_servicios.pdv_id = ?`,
       [pdv_id]
     );
 
-    // Verificar que implementacionResult sea un array válido y obtener array de implementaciones completadas
-    const implementacionesCompletadas = Array.isArray(implementacionResult) ? 
-      implementacionResult.map(row => row.nro_implementacion) : [];
+    // Obtener array de implementaciones completadas
+    const implementacionesCompletadas = implementacionResult.map(row => row.nro_implementacion);
 
     const compras = comprasResult[0] || {
       compra_1: 0,
@@ -1387,19 +1388,23 @@ router.get('/galonaje-implementacion/:codigo_pdv', async (req, res) => {
       message: 'Error al obtener datos de galonaje por PDV',
       error: err.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
 // ENDPOINT PARA OBTENER PRODUCTOS DE IMPLEMENTACIÓN SEGÚN SEGMENTO Y NÚMERO
 router.get('/productos-implementacion/:segmento/:nro_implementacion', async (req, res) => {
   const { segmento, nro_implementacion } = req.params;
+  let conn;
 
   try {
+    conn = await getConnection();
 
     console.log(`🔍 Consultando productos para segmento: ${segmento}, implementación: ${nro_implementacion}`);
 
     // Buscar productos específicos para el segmento e implementación
-    const productos = await executeQueryForMultipleUsers(
+    const [productos] = await conn.execute(
       `SELECT id, nombre_producto
        FROM puntos_venta_productos_imp 
        WHERE segmento = ? AND nro_implementacion = ?
@@ -1409,7 +1414,7 @@ router.get('/productos-implementacion/:segmento/:nro_implementacion', async (req
 
     // Si no hay productos específicos, buscar productos MULTISEGMENTO para esa implementación
     if (productos.length === 0) {
-      const productosMulti = await executeQueryForMultipleUsers(
+      const [productosMulti] = await conn.execute(
         `SELECT id, nombre_producto
          FROM puntos_venta_productos_imp 
          WHERE segmento = 'MULTISEGMENTO' AND nro_implementacion = ?
@@ -1452,7 +1457,10 @@ router.get('/productos-implementacion/:segmento/:nro_implementacion', async (req
       message: 'Error al obtener productos de implementación',
       error: err.message
     });
+  } finally {
+    if (conn) conn.release();
   }
 });
+
 
 export default router;
