@@ -4,6 +4,7 @@ import fs from 'fs';
 import { getConnection } from '../db.js';
 import { upload } from '../config/multer.js';
 import { buildFileUrl, getCurrentStorageConfig } from '../config/storage.js';
+import { enviarNotificacionComentarios } from '../config/email.js';
 
 const router = express.Router();
 
@@ -152,9 +153,20 @@ router.post('/cargar-registro-pdv', upload.any(), async (req, res) => {
 
     // 3. Insertar productos en registro_productos
     for (const prod of productos) {
+      const comentarioFinal = (prod.comentarioVenta && typeof prod.comentarioVenta === 'string' && prod.comentarioVenta.trim().length > 0) 
+        ? prod.comentarioVenta.trim() 
+        : null;
+      
+      console.log(`🔍 Producto debug:`, {
+        referencia: prod.referencia,
+        tieneComentarios: prod.tieneComentarios,
+        comentarioVenta: prod.comentarioVenta,
+        comentarioFinal: comentarioFinal
+      });
+      
       await conn.execute(
-        `INSERT INTO registro_productos (registro_id, referencia_id, presentacion, cantidad_cajas, conversion_galonaje, precio_sugerido, precio_real)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO registro_productos (registro_id, referencia_id, presentacion, cantidad_cajas, conversion_galonaje, precio_sugerido, precio_real, comentario)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           registro_id,
           prod.referencia ?? null,
@@ -162,7 +174,8 @@ router.post('/cargar-registro-pdv', upload.any(), async (req, res) => {
           prod.numeroCajas ?? null,
           prod.volumenGalones ?? null,
           prod.pvpSugerido ?? null,
-          prod.pvpReal ?? null
+          prod.pvpReal ?? null,
+          comentarioFinal
         ]
       );
     }
@@ -227,12 +240,29 @@ router.post('/cargar-registro-pdv', upload.any(), async (req, res) => {
       );
     }
 
+    // 6. OPTIMIZADO: Detectar comentarios Y enviar email en paralelo si los hay
+    const productosConComentarios = productos.filter(prod => 
+      prod.comentarioVenta && typeof prod.comentarioVenta === 'string' && prod.comentarioVenta.trim().length > 0
+    );
+
+    // Solo si HAY comentarios reales, enviar email en background (sin esperar)
+    if (productosConComentarios.length > 0) {
+      // Ejecutar email en background (sin await) para no ralentizar la respuesta
+      enviarEmailComentariosBackground(registro_id, pdv_id_real, user_id, fecha, productosConComentarios, productos.length)
+        .catch(error => {
+          console.error(`❌ Error enviando email comentarios background:`, error.message);
+        });
+      
+      console.log(`📧 Email de comentarios programado en background para registro ${registro_id} con ${productosConComentarios.length} productos`);
+    }
+
     res.json({
       success: true,
       message: 'Registro guardado correctamente',
       registro_id,
       facturaUrls,
-      implementacionUrls
+      implementacionUrls,
+      comentarios_detectados: productosConComentarios.length > 0 ? productosConComentarios.length : 0
     });
   } catch (err) {
     console.error('Error en cargar-registro-pdv:', err);
@@ -241,5 +271,62 @@ router.post('/cargar-registro-pdv', upload.any(), async (req, res) => {
     if (conn) conn.release();
   }
 });
+
+// 🚀 FUNCIÓN OPTIMIZADA: Enviar email en background sin bloquear la respuesta
+async function enviarEmailComentariosBackground(registro_id, pdv_id_real, user_id, fecha, productosConComentarios, totalProductos) {
+  let conn;
+  try {
+    // Obtener nueva conexión específica para esta operación background
+    conn = await getConnection();
+    
+    // Consulta optimizada - solo los campos necesarios
+    const [registroInfo] = await conn.execute(`
+      SELECT 
+        pv.codigo as codigo_pdv,
+        pv.descripcion as nombre_pdv,
+        pv.direccion,
+        u.name as asesor_nombre,
+        u.documento as asesor_cedula,
+        ag.descripcion as agente_comercial
+      FROM puntos_venta pv
+      INNER JOIN users u ON u.id = ?
+      LEFT JOIN agente ag ON ag.id = pv.id_agente
+      WHERE pv.id = ?
+    `, [user_id, pdv_id_real]);
+
+    const info = registroInfo[0];
+    
+    // Crear detalles optimizados
+    const detallesComentarios = productosConComentarios.map(prod => ({
+      referencia: prod.referencia || 'Sin referencia',
+      presentacion: prod.presentacion || 'Sin presentación', 
+      comentario: prod.comentarioVenta
+    }));
+
+    // Enviar email
+    await enviarNotificacionComentarios({
+      registroId: registro_id,
+      codigoPdv: info?.codigo_pdv || 'No asignado',
+      nombrePdv: info?.nombre_pdv || 'Punto de venta no definido',
+      direccionPdv: info?.direccion || 'Dirección no disponible',
+      asesorNombre: info?.asesor_nombre || 'Asesor no identificado',
+      asesorCedula: info?.asesor_cedula || 'Sin cédula',
+      agenteComercial: info?.agente_comercial || 'Sin agente',
+      fechaRegistro: fecha,
+      detallesComentarios: detallesComentarios,
+      totalProductos: totalProductos,
+      productosConComentarios: productosConComentarios.length
+    });
+    
+    console.log(`✅ Email comentarios enviado en background para registro ${registro_id}`);
+    
+  } catch (error) {
+    console.error(`❌ Error en email background para registro ${registro_id}:`, error.message);
+  } finally {
+    if (conn) {
+      conn.release();
+    }
+  }
+}
 
 export default router;

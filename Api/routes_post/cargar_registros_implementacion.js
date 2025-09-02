@@ -130,7 +130,7 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
         registro_id, 
         nro_implementacion, 
         acepto_implementacion || 'No', 
-        observacion_implementacion || NULL,
+        observacion_implementacion || null,
         fotoRemisionUrl
       ]
     );

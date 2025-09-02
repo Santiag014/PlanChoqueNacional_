@@ -333,7 +333,7 @@ Este es un mensaje automático del sistema. No responda a este correo.
         address: 'consultas@plandelamejorenergia.com'
       },
       to: emailAsesor,
-      cc: ['Santiago.Parraga@bulmarketing.com.co','Juan.Adarme@bullmarketing.com.co'], 
+      cc: ['Santiago.Parraga@bullmarketing.com.co','Juan.Adarme@bullmarketing.com.co'], 
       subject: asunto,
       text: textoPlano,
       html: htmlTemplate,
@@ -421,7 +421,7 @@ export async function enviarNotificacionAdministrativa(datos) {
         name: 'Terpel Plan Choque - Sistema',
         address: 'consultas@plandelamejorenergia.com'
       },
-      to: 'Santiago.Parraga@bulmarketing.com.co',
+      to: 'Santiago.Parraga@bullmarketing.com.co',
       subject: `🔔 [ADMIN] ${asunto}`,
       html: htmlTemplate,
       priority: 'high'
@@ -447,8 +447,146 @@ export async function enviarNotificacionAdministrativa(datos) {
   }
 }
 
+/**
+ * Envía notificación interna cuando se registran productos con comentarios adicionales
+ * @param {Object} datos - Datos del registro con comentarios
+ * @returns {Promise<Object>} Resultado del envío
+ */
+export async function enviarNotificacionComentarios(datos) {
+  const {
+    registroId,
+    codigoPdv,
+    nombrePdv,
+    direccionPdv,
+    asesorNombre,
+    asesorCedula,
+    agenteComercial,
+    fechaRegistro,
+    detallesComentarios,
+    totalProductos,
+    productosConComentarios
+  } = datos;
+
+  try {
+    // Lista de destinatarios internos (hardcoded)
+    const destinatariosInternos = [
+      'Santiago.Parraga@bullmarketing.com.co',
+      'Juan.Adarme@bullmarketing.com.co'
+    ];
+
+    // Crear tabla HTML con los comentarios
+    const tablaComentarios = detallesComentarios.map(item => `
+      <tr>
+        <td style="border: 1px solid #ddd; padding: 8px;">${item.referencia}</td>
+        <td style="border: 1px solid #ddd; padding: 8px;">${item.presentacion}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; max-width: 300px; word-wrap: break-word;">${item.comentario}</td>
+      </tr>
+    `).join('');
+
+    const mailOptions = {
+      from: 'consultas@plandelamejorenergia.com',
+      to: destinatariosInternos.join(', '),
+      subject: `🔔 COMENTARIOS ADICIONALES - Registro ${registroId} - PDV ${codigoPdv}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f9f9f9; padding: 20px;">
+          <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            
+            <div style="text-align: center; margin-bottom: 20px;">
+              <h2 style="color: #e30613; margin: 0;">🔔 COMENTARIOS ADICIONALES</h2>
+              <p style="color: #666; margin: 5px 0 0 0;">Registro de Galonaje/Ventas con Observaciones</p>
+            </div>
+
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 15px; margin-bottom: 20px;">
+              <h3 style="color: #d68910; margin: 0 0 10px 0;">📋 Información del Registro</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 5px 0; font-weight: bold; color: #333;">Registro ID:</td>
+                  <td style="padding: 5px 0; color: #555;">${registroId}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 5px 0; font-weight: bold; color: #333;">Fecha:</td>
+                  <td style="padding: 5px 0; color: #555;">${fechaRegistro}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 5px 0; font-weight: bold; color: #333;">Código PDV:</td>
+                  <td style="padding: 5px 0; color: #555;">${codigoPdv}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 5px 0; font-weight: bold; color: #333;">Nombre PDV:</td>
+                  <td style="padding: 5px 0; color: #555;">${nombrePdv}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 5px 0; font-weight: bold; color: #333;">Dirección:</td>
+                  <td style="padding: 5px 0; color: #555;">${direccionPdv}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 5px 0; font-weight: bold; color: #333;">Asesor:</td>
+                  <td style="padding: 5px 0; color: #555;">${asesorNombre} (${asesorCedula})</td>
+                </tr>
+                <tr>
+                  <td style="padding: 5px 0; font-weight: bold; color: #333;">Agente Comercial:</td>
+                  <td style="padding: 5px 0; color: #555;">${agenteComercial}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; padding: 15px; margin-bottom: 20px;">
+              <h3 style="color: #155724; margin: 0 0 10px 0;">💬 Resumen de Comentarios</h3>
+              <p style="margin: 0; color: #155724;">
+                <strong>Total de productos:</strong> ${totalProductos}<br>
+                <strong>Productos con comentarios:</strong> ${productosConComentarios}
+              </p>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+              <h3 style="color: #333; margin: 0 0 15px 0;">📝 Detalles de Comentarios por Producto</h3>
+              <table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd;">
+                <thead>
+                  <tr style="background: #f8f9fa;">
+                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Referencia</th>
+                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Presentación</th>
+                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Comentario</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${tablaComentarios}
+                </tbody>
+              </table>
+            </div>
+
+            <div style="background: #f8f9fa; border-left: 4px solid #e30613; padding: 15px; margin-top: 20px;">
+              <p style="margin: 0; color: #666; font-size: 12px;">
+                <strong>Nota:</strong> Esta es una notificación automática del sistema Plan de la Mejor Energía.<br>
+                Los comentarios adicionales fueron agregados por el asesor durante el registro de galonaje/ventas.
+              </p>
+            </div>
+
+          </div>
+        </div>
+      `
+    };
+
+    console.log(`📧 Enviando notificación de comentarios a: ${destinatariosInternos.join(', ')}`);
+    const info = await transporter.sendMail(mailOptions);
+    
+    return {
+      success: true,
+      messageId: info.messageId,
+      destinatarios: destinatariosInternos,
+      detalles: `Notificación enviada por ${productosConComentarios} productos con comentarios`
+    };
+  } catch (error) {
+    console.error('❌ Error enviando notificación de comentarios:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
 export default {
   enviarNotificacionCambioEstado,
   verificarConfiguracionEmail,
-  enviarNotificacionAdministrativa
+  enviarNotificacionAdministrativa,
+  enviarNotificacionComentarios
 };

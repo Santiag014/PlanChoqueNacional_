@@ -2,10 +2,18 @@ import mysql from 'mysql2/promise';
 import logger from './utils/logger.js';
 
 const dbConfig = {
-  host: '82.197.82.139',
-  user: 'u716541625_terpel_dev2',
-  password: '$2eW[J[1F;>?',
-  database: 'u716541625_terpel_dev2',
+  // Ambiente de Pruebas
+  // host: '82.197.82.139',
+  // user: 'u716541625_terpel_dev2',
+  // password: '$2eW[J[1F;>?',
+  // database: 'u716541625_terpel_dev2',
+  // port: 3306,
+  // waitForConnections: true,
+  
+  host: '82.197.82.76',
+  user: 'u315067549_terpel_dev',
+  password: '?G2yD|f@Q[Bt',
+  database: 'u315067549_terpel_dev',
   port: 3306,
   waitForConnections: true,
   
