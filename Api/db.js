@@ -10,10 +10,10 @@ const dbConfig = {
   // port: 3306,
   // waitForConnections: true,
   
-  host: '82.197.82.76',
-  user: 'u315067549_terpel_dev',
-  password: '?G2yD|f@Q[Bt',
-  database: 'u315067549_terpel_dev',
+  host: '82.197.82.139',
+  user: 'u716541625_terpel_prod_2',
+  password: 'N5p@rBKOM1l@',
+  database: 'u716541625_terpel_prod_2',
   port: 3306,
   waitForConnections: true,
   

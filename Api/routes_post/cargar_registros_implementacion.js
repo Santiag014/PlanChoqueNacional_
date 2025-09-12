@@ -136,48 +136,46 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
     );
     const implementacion_id = implementacionResult.insertId;
 
-    // 5. Procesar productos con sus fotos
+    // 5. Procesar productos con sus fotos - FIX: Evitar duplicación de imágenes
     if (productos && productos.length > 0) {
-      for (const producto of productos) {
-        // Buscar la foto correspondiente a este producto
-        let fotoProductoUrl = null;
-        if (req.files && req.files.length > 0) {
-          // Buscar foto de implementación usando diferentes estrategias
-          const nombreProducto = producto.nombre;
-          const fotoProductoFile = req.files.find(f => {
-            console.log(`🔍 Buscando foto para producto "${nombreProducto}", checking fieldname: "${f.fieldname}"`);
-            return (
-              // Buscar por fieldname específico de implementación
-              f.fieldname === `foto_implementacion_${nro_implementacion}` ||
-              // Buscar por nombre exacto del producto
-              f.fieldname === nombreProducto ||
-              // Buscar por variaciones del nombre
-              f.fieldname === `foto_${nombreProducto}` || 
-              f.fieldname === `producto_${nombreProducto}` ||
-              f.fieldname.includes(nombreProducto.replace(/[^a-zA-Z0-9]/g, '')) ||
-              // Buscar por coincidencia parcial
-              f.fieldname.includes('implementacion') ||
-              f.fieldname.includes('Implementacion') ||
-              // NUEVO: Buscar por patrón con codificación mal formada
-              f.fieldname.includes('ImplementaciÃ³n') ||
-              f.fieldname.includes(`ImplementaciÃ³n ${nro_implementacion}`) ||
-              // Buscar cualquier archivo que no sea fotoRemision (como fallback)
-              (f.fieldname !== 'fotoRemision' && f.fieldname.includes(nro_implementacion))
-            );
-          });
+      // PASO 1: Buscar la foto de implementación UNA SOLA VEZ
+      let fotoImplementacionUrl = null;
+      if (req.files && req.files.length > 0) {
+        // Buscar foto de implementación con patrón principal
+        const fotoImplementacionFile = req.files.find(f => {
+          console.log(`🔍 Buscando foto de implementación, checking fieldname: "${f.fieldname}"`);
+          return (
+            // Patrón principal del frontend
+            f.fieldname === `foto_implementacion_${nro_implementacion}` ||
+            // Patrones alternativos seguros
+            f.fieldname === `implementacion_${nro_implementacion}` ||
+            // Solo si no es fotoRemision y contiene implementacion + numero
+            (f.fieldname !== 'fotoRemision' && 
+             f.fieldname.includes('implementacion') && 
+             f.fieldname.includes(nro_implementacion))
+          );
+        });
+        
+        if (fotoImplementacionFile) {
+          const folder = new Date().toISOString().slice(0, 10);
+          fotoImplementacionUrl = `/uploads/${folder}/${fotoImplementacionFile.filename}`;
+          console.log(`📸 Foto de implementación encontrada: ${fotoImplementacionFile.path}`);
+          console.log(`🗃️ Ruta en BD: ${fotoImplementacionUrl}`);
           
-          if (fotoProductoFile) {
-            const folder = new Date().toISOString().slice(0, 10);
-            fotoProductoUrl = `/uploads/${folder}/${fotoProductoFile.filename}`;
-            console.log(`📸 Foto de producto "${nombreProducto}" encontrada y guardada: ${fotoProductoFile.path}`);
-            console.log(`🗃️ Ruta en BD: ${fotoProductoUrl}`);
-          } else {
-            console.log(`⚠️ No se encontró foto para producto "${nombreProducto}"`);
-            console.log(`📋 Archivos disponibles:`, req.files.map(f => f.fieldname));
+          // 🚨 VALIDACIÓN BACKEND: Verificar si es la misma foto que la remisión
+          if (fotoRemisionUrl && fotoImplementacionUrl === fotoRemisionUrl) {
+            console.warn('⚠️⚠️⚠️ BACKEND DETECTÓ DUPLICACIÓN: La misma foto se está usando para implementación y remisión!');
+            console.warn(`Archivo duplicado: ${fotoImplementacionUrl}`);
+            console.warn('Archivos recibidos:', req.files.map(f => ({ fieldname: f.fieldname, filename: f.filename })));
           }
+        } else {
+          console.log(`⚠️ No se encontró foto de implementación para número: ${nro_implementacion}`);
+          console.log(`📋 Archivos disponibles:`, req.files.map(f => f.fieldname));
         }
+      }
 
-        // Insertar producto en registros_implementacion_productos
+      // PASO 2: Insertar cada producto con la MISMA foto (evita duplicación)
+      for (const producto of productos) {
         await conn.execute(
           `INSERT INTO registros_implementacion_productos (
             id_registro_implementacion, 
@@ -189,9 +187,11 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
             implementacion_id,
             producto.nombre,
             producto.cantidad || 0,
-            fotoProductoUrl
+            fotoImplementacionUrl  // Misma foto para todos los productos
           ]
         );
+        
+        console.log(`✅ Producto "${producto.nombre}" insertado con foto: ${fotoImplementacionUrl ? 'SI' : 'NO'}`);
       }
     }
 

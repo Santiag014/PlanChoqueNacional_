@@ -36,6 +36,14 @@ import express from 'express';
 import { getConnection, executeQueryForMultipleUsers, executeQueryFast } from '../db.js';
 import { authenticateToken, requireMercadeo, logAccess } from '../middleware/auth.js';
 import { enviarNotificacionCambioEstado, verificarConfiguracionEmail } from '../config/email.js';
+import ExcelJS from 'exceljs';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const router = express.Router();
 
@@ -1602,6 +1610,9 @@ router.get('/historial-registros-mercadeo', authenticateToken, requireMercadeo, 
   const { 
     busquedaCodigo, 
     busquedaCedula, 
+    busquedaId,
+    fechaActividad,
+    fechaCreacion,
     filtroKPI, 
     filtroActividad, 
     filtroEstadoBackoffice, 
@@ -1624,6 +1635,24 @@ router.get('/historial-registros-mercadeo', authenticateToken, requireMercadeo, 
     if (busquedaCedula && busquedaCedula.trim()) {
       whereConditions.push('users.documento LIKE ?');
       queryParams.push(`%${busquedaCedula.trim()}%`);
+    }
+
+    // Filtro por ID del registro
+    if (busquedaId && busquedaId.trim()) {
+      whereConditions.push('registro_servicios.id = ?');
+      queryParams.push(busquedaId.trim());
+    }
+
+    // Filtro por fecha de actividad (fecha_registro que se muestra como FECHA FACTURA)
+    if (fechaActividad && fechaActividad.trim()) {
+      whereConditions.push('DATE(registro_servicios.fecha_registro) = ?');
+      queryParams.push(fechaActividad.trim());
+    }
+
+    // Filtro por fecha de creación (created_at)
+    if (fechaCreacion && fechaCreacion.trim()) {
+      whereConditions.push('DATE(registro_servicios.created_at) = ?');
+      queryParams.push(fechaCreacion.trim());
     }
 
     // Filtro por KPI
@@ -2407,6 +2436,704 @@ router.post('/probar-email', async (req, res) => {
       message: 'Error al enviar email de prueba',
       error: error.message
     });
+  }
+});
+
+// ========================================================================
+// 📊 ENDPOINT PARA GENERAR REPORTE EXCEL DE IMPLEMENTACIONES Y VISITAS
+// ========================================================================
+
+/**
+ * @route GET /api/mercadeo/implementaciones/excel
+ * @description Genera reporte Excel completo de implementaciones y visitas para el territorio del mercadeo
+ * @param {string} req.user.agente_id - ID del agente para filtrar territorio
+ * @returns {File} Archivo Excel con dos hojas: Implementaciones y Visitas
+ * 
+ * Filtrado territorial:
+ * - Solo datos de PDVs asignados al agente_id del usuario de mercadeo
+ * - Todas las consultas están filtradas por territorio
+ * 
+ * Estructura del archivo:
+ * - Hoja 1: Implementaciones (datos consolidados por PDV)
+ * - Hoja 2: Visitas (historial detallado de registros)
+ */
+router.get('/implementaciones/excel', authenticateToken, requireMercadeo, logAccess, async (req, res) => {
+  
+  let workbook = null;
+  
+  try {
+    // Logging para debug
+    console.log('📊 Iniciando descarga de reporte de implementaciones...');
+    console.log('👤 Usuario:', req.user?.email);
+    console.log('🏢 Agente ID:', req.user?.agente_id);
+  
+    
+
+    // Obtener agente_id del token para filtrado territorial
+    const { agente_id } = req.user;
+    
+    if (!agente_id) {
+      console.log('❌ Usuario sin agente_id asignado');
+      return res.status(400).json({
+        success: false,
+        message: 'Usuario sin agente_id asignado. No se puede generar el reporte territorial.'
+      });
+    }
+
+    // Query SQL optimizada para implementaciones - FILTRADO POR TERRITORIO
+    const queryImplementaciones = `
+      SELECT 
+          a.descripcion AS agente,
+          pv.codigo,
+          pv.nit,
+          pv.descripcion AS nombre_PDV,
+          pv.direccion,
+          pv.segmento,
+          pv.ciudad,
+          TRUNCATE(pv.meta_volumen,2) AS meta_volumen,
+          d.descripcion AS departamento,
+          u.name as Asesor,
+
+          -- Total de compras redondeado a 2 decimales
+          ROUND(
+              COALESCE(pvi.compra_1,0) +
+              COALESCE(pvi.compra_2,0) +
+              COALESCE(pvi.compra_3,0) +
+              COALESCE(pvi.compra_4,0) +
+              COALESCE(pvi.compra_5,0)
+          ,2) AS "Meta Volumen (TOTAL)",
+
+          -- Galonaje vendido redondeado a 2 decimales
+          ROUND(COALESCE(g.GalonajeVendido, 0),2) AS GalonajeVendido,
+
+          -- Compras individuales
+          COALESCE(pvi.compra_1, 0) AS compra_1,
+          COALESCE(pvi.compra_2, 0) AS compra_2,
+          COALESCE(pvi.compra_3, 0) AS compra_3,
+          COALESCE(pvi.compra_4, 0) AS compra_4,
+          COALESCE(pvi.compra_5, 0) AS compra_5,
+
+          -- Implementaciones realizadas (autorizadas)
+          COALESCE(impl.impl_1, 0) AS impl_1_realizada,
+          COALESCE(impl.impl_2, 0) AS impl_2_realizada,
+          COALESCE(impl.impl_3, 0) AS impl_3_realizada,
+          COALESCE(impl.impl_4, 0) AS impl_4_realizada,
+          COALESCE(impl.impl_5, 0) AS impl_5_realizada,
+
+          -- Implementaciones no autorizadas
+          COALESCE(impl.impl_1_no_autorizado, 0) AS impl_1_no_autorizado,
+          COALESCE(impl.impl_2_no_autorizado, 0) AS impl_2_no_autorizado,
+          COALESCE(impl.impl_3_no_autorizado, 0) AS impl_3_no_autorizado,
+          COALESCE(impl.impl_4_no_autorizado, 0) AS impl_4_no_autorizado,
+          COALESCE(impl.impl_5_no_autorizado, 0) AS impl_5_no_autorizado
+
+      FROM puntos_venta pv
+      LEFT JOIN depar_ciudades dc 
+            ON dc.descripcion = pv.ciudad
+      LEFT JOIN departamento d 
+            ON d.id = dc.id_departamento
+      LEFT JOIN puntos_venta__implementacion pvi 
+            ON pvi.pdv_id = pv.id
+      INNER JOIN agente a 
+            ON a.id = pv.id_agente
+      INNER JOIN users u 
+            ON u.id = pv.user_id
+
+      -- Galonaje vendido
+      LEFT JOIN (
+          SELECT 
+              rs.pdv_id, 
+              SUM(rp.conversion_galonaje) AS GalonajeVendido
+          FROM registro_servicios rs
+          INNER JOIN registro_productos rp 
+                  ON rp.registro_id = rs.id
+          WHERE rs.estado_id = 2 
+            AND rs.estado_agente_id = 2   -- ✅ condición global
+          GROUP BY rs.pdv_id
+      ) g ON g.pdv_id = pv.id
+
+      -- Implementaciones
+      LEFT JOIN (
+          SELECT 
+              rs.pdv_id,
+              -- Autorizadas (Si)
+              SUM(CASE WHEN ri.nro_implementacion = 1 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_1,
+              SUM(CASE WHEN ri.nro_implementacion = 2 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_2,
+              SUM(CASE WHEN ri.nro_implementacion = 3 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_3,
+              SUM(CASE WHEN ri.nro_implementacion = 4 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_4,
+              SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_5,
+
+              -- No autorizadas (No)
+              SUM(CASE WHEN ri.nro_implementacion = 1 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_1_no_autorizado,
+              SUM(CASE WHEN ri.nro_implementacion = 2 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_2_no_autorizado,
+              SUM(CASE WHEN ri.nro_implementacion = 3 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_3_no_autorizado,
+              SUM(CASE WHEN ri.nro_implementacion = 4 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_4_no_autorizado,
+              SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_5_no_autorizado
+          FROM registro_servicios rs
+          INNER JOIN registros_implementacion ri 
+              ON ri.id_registro = rs.id
+          WHERE rs.estado_id = 2 
+            AND rs.estado_agente_id = 2   -- ✅ condición global
+          GROUP BY rs.pdv_id
+      ) impl ON impl.pdv_id = pv.id
+
+      WHERE pv.id_agente = ?  -- ✅ FILTRO TERRITORIAL POR AGENTE_ID
+      GROUP BY pv.codigo
+      ORDER BY MAX(a.descripcion), MAX(pv.descripcion);
+      `;
+
+    // Query SQL para visitas con subconsultas para productos y fotos - FILTRADO POR TERRITORIO
+    const queryVisitas = `
+        WITH productos_agrupados AS (
+            SELECT 
+                registro_id,
+                GROUP_CONCAT(referencia_id) AS referencias,
+                GROUP_CONCAT(presentacion) AS presentaciones,
+                GROUP_CONCAT(cantidad_cajas) AS cantidades_cajas,
+                GROUP_CONCAT(ROUND(conversion_galonaje, 2)) AS galonajes,
+                GROUP_CONCAT(ROUND(precio_sugerido, 0)) AS precios_sugeridos,
+                GROUP_CONCAT(ROUND(precio_real, 0)) AS precios_reales
+            FROM registro_productos
+            GROUP BY registro_id
+        ),
+        fotos_agrupadas AS (
+            SELECT 
+                id_registro,
+                GROUP_CONCAT(CONCAT("https://api.plandelamejorenergia.com", foto_factura)) AS fotos_factura,
+                GROUP_CONCAT(CONCAT("https://api.plandelamejorenergia.com", foto_seguimiento)) AS fotos_seguimiento
+            FROM registro_fotografico_servicios
+            GROUP BY id_registro
+        )
+        SELECT 
+            registro_servicios.id AS ID_Registro,
+            agente.descripcion AS agente_comercial,
+            puntos_venta.codigo,
+            puntos_venta.nit,
+            puntos_venta.descripcion AS nombre_pdv,
+            puntos_venta.direccion,
+            users.name,
+            users.documento AS cedula,
+            registro_servicios.fecha_registro,
+            registro_servicios.created_at AS FechaCreacion,
+            CASE
+                WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Galonaje/Precios'
+                WHEN kpi_volumen = 1 THEN 'Galonaje'
+                WHEN kpi_precio = 1 THEN 'Precios'
+                WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Visita'
+                ELSE 'Otro'
+            END AS tipo_accion,
+            e1.descripcion AS estado_backoffice,
+            e2.descripcion AS estado_agente,
+            registro_servicios.observacion AS observacion_asesor,
+            registro_servicios.observacion_agente AS observacion_agente,
+            
+            -- Datos de subconsultas
+            pa.referencias,
+            pa.presentaciones,
+            pa.cantidades_cajas,
+            pa.galonajes,
+            pa.precios_sugeridos,
+            pa.precios_reales,
+            fa.fotos_factura,
+            fa.fotos_seguimiento
+            
+        FROM registro_servicios
+        INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
+        INNER JOIN users ON users.id = registro_servicios.user_id
+        INNER JOIN estados e1 ON e1.id = registro_servicios.estado_id
+        INNER JOIN estados e2 ON e2.id = registro_servicios.estado_agente_id
+        INNER JOIN agente ON agente.id = puntos_venta.id_agente
+        LEFT JOIN productos_agrupados pa ON pa.registro_id = registro_servicios.id
+        LEFT JOIN fotos_agrupadas fa ON fa.id_registro = registro_servicios.id
+        WHERE puntos_venta.id_agente = ?  -- ✅ FILTRO TERRITORIAL POR AGENTE_ID
+        ORDER BY registro_servicios.id DESC;
+    `;
+    
+    // Ejecutar consultas con filtro territorial
+    const rawResultsImplementaciones = await executeQueryForMultipleUsers(queryImplementaciones, [agente_id]);
+    console.log(`Implementaciones (Territorio ${agente_id}): ${rawResultsImplementaciones.length} registros`);
+
+    const rawResultsVisitas = await executeQueryForMultipleUsers(queryVisitas, [agente_id]);
+    console.log(`Visitas (Territorio ${agente_id}): ${rawResultsVisitas.length} registros`);
+
+    if (rawResultsImplementaciones.length === 0 && rawResultsVisitas.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'No se encontraron registros para generar el reporte de este territorio' 
+      });
+    }
+
+    // Procesar datos para calcular estados de implementación
+    const resultsImplementaciones = rawResultsImplementaciones.map((row, index) => {
+      // Función auxiliar para determinar estado de implementación
+      const getImplementacionStatus = (numeroImpl, galonaje, compraRequerida, implementacionRealizada, implementacionNoAutorizada) => {
+        if (implementacionRealizada > 0) {
+          return 'Realizada';
+        } else if (implementacionNoAutorizada > 0) {
+          return 'No Autorizo';
+        } else if (galonaje >= compraRequerida) {
+          return 'Pendiente';
+        } else {
+          return 'No Habilitado';
+        }
+      };
+
+      // Calcular estados de cada implementación
+      const impl1Status = getImplementacionStatus(1, row.GalonajeVendido, row.compra_1, row.impl_1_realizada, row.impl_1_no_autorizado);
+      const impl2Status = getImplementacionStatus(2, row.GalonajeVendido, row.compra_2, row.impl_2_realizada, row.impl_2_no_autorizado);
+      const impl3Status = getImplementacionStatus(3, row.GalonajeVendido, row.compra_3, row.impl_3_realizada, row.impl_3_no_autorizado);
+      const impl4Status = getImplementacionStatus(4, row.GalonajeVendido, row.compra_4, row.impl_4_realizada, row.impl_4_no_autorizado);
+      const impl5Status = getImplementacionStatus(5, row.GalonajeVendido, row.compra_5, row.impl_5_realizada, row.impl_5_no_autorizado);
+
+      // Calcular total de implementaciones habilitadas (incluye Realizada, Pendiente y No Autorizo)
+      const totalHabilitadas = [impl1Status, impl2Status, impl3Status, impl4Status, impl5Status]
+        .filter(status => status === 'Realizada' || status === 'Pendiente' || status === 'No Autorizo').length;
+
+      return {
+        ...row,
+        Total_Habilitadas: totalHabilitadas,
+        Implementacion_1: impl1Status,
+        Implementacion_2: impl2Status,
+        Implementacion_3: impl3Status,
+        Implementacion_4: impl4Status,
+        Implementacion_5: impl5Status
+      };
+    });
+
+    // Crear nuevo workbook con ExcelJS
+    workbook = new ExcelJS.Workbook();
+    
+    // ========== HOJA 1: IMPLEMENTACIONES ==========
+    let worksheetImplementaciones;
+    
+    // Intentar cargar plantilla si existe
+    const templatePath = path.join(process.cwd(), 'config', 'Plantilla_Implementaciones.xlsx');
+    
+    try {
+      if (fs.existsSync(templatePath)) {
+        await workbook.xlsx.readFile(templatePath);
+        worksheetImplementaciones = workbook.worksheets[0]; // Primera hoja
+        worksheetImplementaciones.name = 'Implementaciones'; // Asegurar el nombre
+        
+        // Limpiar datos existentes (desde fila 5 en adelante)
+        const maxRows = worksheetImplementaciones.rowCount;
+        for (let i = 5; i <= maxRows; i++) {
+          const row = worksheetImplementaciones.getRow(i);
+          for (let j = 2; j <= 18; j++) { // Columnas B a R (expandido para más columnas)
+            row.getCell(j).value = null;
+          }
+        }
+      } else {
+        worksheetImplementaciones = workbook.addWorksheet('Implementaciones');
+      }
+    } catch (templateError) {
+      worksheetImplementaciones = workbook.addWorksheet('Implementaciones');
+    }
+
+    // ========== HOJA 2: VISITAS ==========
+    let worksheetVisitas;
+    
+    // Buscar la hoja de Visitas existente en la plantilla
+    worksheetVisitas = workbook.getWorksheet('Visitas');
+    
+    if (!worksheetVisitas) {
+      // Si no existe la hoja Visitas, crearla
+      worksheetVisitas = workbook.addWorksheet('Visitas');
+    } else {
+      // Limpiar datos existentes en la hoja de Visitas (desde fila 5 en adelante)
+      const maxRowsVisitas = worksheetVisitas.rowCount;
+      for (let i = 5; i <= maxRowsVisitas; i++) {
+        const row = worksheetVisitas.getRow(i);
+        for (let j = 2; j <= 25; j++) { // Columnas B a Y (expandido para visitas)
+          row.getCell(j).value = null;
+        }
+      }
+    }
+
+    // ========== CONFIGURAR HOJA DE IMPLEMENTACIONES ==========
+    
+    // Definir headers para implementaciones
+    const headersImplementaciones = [
+      'Empresa', 'Código', 'nit', 'Nombre P.D.V', 'Dirección', 'Segmento', 'Ciudad', 'Departamento', 'Asesor', 'Meta Volumen (TOTAL)',
+      'Galones Comprado','Cuantas implementaciones puede tener',
+      'Primera implementación', 'Segunda implementación', 'Tercera implementación', 
+      'Cuarta implementación', 'Quinta implementación'
+    ];
+
+    // Configurar la fila de headers (fila 4) para implementaciones
+    const headerRowImplementaciones = worksheetImplementaciones.getRow(4);
+    
+    headersImplementaciones.forEach((header, index) => {
+      const cell = headerRowImplementaciones.getCell(index + 2); // Empezar en columna B (índice 2)
+      cell.value = header;
+      
+      // Aplicar estilo naranja al header
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'E97132' } // Naranja
+      };
+      cell.font = {
+        name: 'Calibri Light',
+        size: 11,
+        bold: true,
+        color: { argb: 'FFFFFFFF' } // Blanco
+      };
+      cell.alignment = {
+        horizontal: 'center',
+        vertical: 'middle'
+      };
+      cell.border = {
+        top: { style: 'thin', color: { argb: '#E97132' } },
+        left: { style: 'thin', color: { argb: '#E97132' } },
+        bottom: { style: 'thin', color: { argb: '#E97132' } },
+        right: { style: 'thin', color: { argb: '#E97132' } }
+      };
+    });
+
+    // ========== CONFIGURAR HOJA DE VISITAS ==========
+    
+    // Verificar si la fila 4 ya tiene headers configurados
+    const headerRowVisitas = worksheetVisitas.getRow(4);
+    const primeracelda = headerRowVisitas.getCell(2).value;
+    
+    // Solo configurar headers si no existen ya en la plantilla
+    if (!primeracelda || primeracelda === '') {
+      
+      // Definir headers para visitas
+      const headersVisitas = [
+        'Agente Comercial', 'Código', 'NIT', 'Nombre PDV', 'Dirección', 'Asesor', 'Cédula', 'ID_Registro',
+        'Fecha Registro', 'Fecha Creación', 'Tipo Acción', 'Estado Backoffice', 'Estado Agente',
+        'Observación Asesor', 'Observación Agente', 'Referencias', 'Presentaciones', 
+        'Cantidad Cajas', 'Galonajes', 'Precios Sugeridos', 'Precios Reales', 
+        'Fotos Factura', 'Fotos Seguimiento'
+      ];
+
+      // Configurar la fila de headers (fila 4) para visitas
+      headersVisitas.forEach((header, index) => {
+        const cell = headerRowVisitas.getCell(index + 2); // Empezar en columna B (índice 2)
+        cell.value = header;
+        
+        // Aplicar estilo naranja al header
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'E97132' } // Naranja
+        };
+        cell.font = {
+          name: 'Calibri Light',
+          size: 11,
+          bold: true,
+          color: { argb: 'FFFFFFFF' } // Blanco
+        };
+        cell.alignment = {
+          horizontal: 'center',
+          vertical: 'middle'
+        };
+        cell.border = {
+          top: { style: 'thin', color: { argb: '#E97132' } },
+          left: { style: 'thin', color: { argb: '#E97132' } },
+          bottom: { style: 'thin', color: { argb: '#E97132' } },
+          right: { style: 'thin', color: { argb: '#E97132' } }
+        };
+      });
+    }
+
+    // ========== FUNCIONES DE COLORES ==========
+    
+    // Función para obtener el color según el estado de implementación
+    const getImplementacionColorFill = (estado) => {
+      switch (estado) {
+        case 'Realizada':
+          return { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF95DF8A' } }; // Verde #95DF8A
+        case 'Pendiente':
+          return { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFDF84' } }; // Amarillo #EFDF84
+        case 'No Habilitado':
+        default:
+          return { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDA7683' } }; // Rosa #DA7683
+      }
+    };
+
+    // Función para obtener el color según el estado de backoffice/agente
+    const getEstadoColorFill = (estado) => {
+      if (!estado) return null;
+      
+      const estadoLower = estado.toLowerCase();
+      
+      if (estadoLower.includes('revision') || estadoLower.includes('revisión')) {
+        return { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFDF84' } }; // Amarillo #EFDF84
+      } else if (estadoLower.includes('aceptado') || estadoLower.includes('aprobado')) {
+        return { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF95DF8A' } }; // Verde #95DF8A
+      } else if (estadoLower.includes('rechazado') || estadoLower.includes('rechazada')) {
+        return { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDA7683' } }; // Rosa/Rojo #DA7683
+      }
+      
+      return null; // Sin color para otros estados
+    };
+    
+    // ========== ESCRIBIR DATOS DE IMPLEMENTACIONES ==========
+    let currentRowImplementaciones = 5;
+
+    // Procesar en lotes para evitar problemas de memoria
+    const batchSize = 100;
+    for (let i = 0; i < resultsImplementaciones.length; i += batchSize) {
+      const batch = resultsImplementaciones.slice(i, i + batchSize);
+      
+      batch.forEach((row, batchIndex) => {
+        const dataRow = worksheetImplementaciones.getRow(currentRowImplementaciones + i + batchIndex);
+        
+        // Datos básicos de implementaciones
+        const rowData = [
+          row.agente || '',
+          row.codigo || '',
+          row.nit || '',
+          row.nombre_PDV || '',
+          row.direccion || '',
+          row.segmento || '',
+          row.ciudad || '',
+          row.departamento || '',
+          row.Asesor || '',
+          row['meta_volumen'] || 0,
+          row.GalonajeVendido || 0,
+          row.Total_Habilitadas || 0,
+          row.Implementacion_1 || 'No Habilitado',
+          row.Implementacion_2 || 'No Habilitado',
+          row.Implementacion_3 || 'No Habilitado',
+          row.Implementacion_4 || 'No Habilitado',
+          row.Implementacion_5 || 'No Habilitado'
+        ];
+
+        // Escribir cada celda con formato
+        rowData.forEach((value, colIndex) => {
+          const cell = dataRow.getCell(colIndex + 2); // Empezar en columna B
+          cell.value = value;
+          
+          // Aplicar color de fondo si es columna de implementación (índices 12-16, que corresponden a las 5 implementaciones)
+          if (colIndex >= 12 && colIndex <= 16) {
+            cell.fill = getImplementacionColorFill(value);
+          }
+          
+          // Fuente Calibri Light 10pt para todas las celdas
+          cell.font = {
+            name: 'Calibri Light',
+            size: 10
+          };
+          
+          // Bordes para todas las celdas con color #E97132
+          cell.border = {
+            top: { style: 'thin', color: { argb: '#E97132' } },
+            left: { style: 'thin', color: { argb: '#E97132' } },
+            bottom: { style: 'thin', color: { argb: '#E97132' } },
+            right: { style: 'thin', color: { argb: '#E97132' } }
+          };
+          
+          // Alineación
+          if (typeof value === 'number') {
+            cell.alignment = { horizontal: 'center' };
+          } else {
+            cell.alignment = { horizontal: 'left' };
+          }
+        });
+      });
+      
+      // Forzar garbage collection después de cada lote si está disponible
+      if (global.gc) {
+        global.gc();
+      }
+    }
+
+    // ========== ESCRIBIR DATOS DE VISITAS ==========
+    let currentRowVisitas = 5;
+
+    // Procesar visitas en lotes para evitar problemas de memoria
+    for (let i = 0; i < rawResultsVisitas.length; i += batchSize) {
+      const batch = rawResultsVisitas.slice(i, i + batchSize);
+      
+      batch.forEach((row, batchIndex) => {
+        const dataRow = worksheetVisitas.getRow(currentRowVisitas + i + batchIndex);
+        
+        // Datos básicos de visitas
+        const rowData = [
+          row.agente_comercial || '',
+          row.codigo || '',
+          row.nit || '',
+          row.nombre_pdv || '',
+          row.direccion || '',
+          row.name || '', // Asesor
+          row.cedula || '',
+          row.ID_Registro || '',
+          row.fecha_registro || '',
+          row.FechaCreacion ? new Date(row.FechaCreacion).toLocaleDateString() : '',
+          row.tipo_accion || '',
+          row.estado_backoffice || '',
+          row.estado_agente || '',
+          row.observacion_asesor || '',
+          row.observacion_agente || '',
+          row.referencias || '',
+          row.presentaciones || '',
+          row.cantidades_cajas || '',
+          row.galonajes || '',
+          row.precios_sugeridos || '',
+          row.precios_reales || '',
+          row.fotos_factura || '',
+          row.fotos_seguimiento || ''
+        ];
+
+        // Escribir cada celda con formato
+        rowData.forEach((value, colIndex) => {
+          const cell = dataRow.getCell(colIndex + 2); // Empezar en columna B
+          cell.value = value;
+          
+          // Aplicar color de fondo para estados (columnas 10 y 11: Estado Backoffice y Estado Agente)
+          if (colIndex === 11 || colIndex === 12) { // Estado Backoffice y Estado Agente
+            const colorFill = getEstadoColorFill(value);
+            if (colorFill) {
+              cell.fill = colorFill;
+            }
+          }
+          
+          // Fuente Calibri Light 10pt para todas las celdas
+          cell.font = {
+            name: 'Calibri Light',
+            size: 10
+          };
+          
+          // Bordes para todas las celdas con color #E97132
+          cell.border = {
+            top: { style: 'thin', color: { argb: '#E97132' } },
+            left: { style: 'thin', color: { argb: '#E97132' } },
+            bottom: { style: 'thin', color: { argb: '#E97132' } },
+            right: { style: 'thin', color: { argb: '#E97132' } }
+          };
+          
+          // Alineación
+          if (typeof value === 'number') {
+            cell.alignment = { horizontal: 'center' };
+          } else {
+            cell.alignment = { horizontal: 'left' };
+          }
+        });
+      });
+      
+      // Forzar garbage collection después de cada lote si está disponible
+      if (global.gc) {
+        global.gc();
+      }
+    }
+    
+    // ========== AUTO-AJUSTAR COLUMNAS ==========
+    
+    // Auto-ajustar anchos SOLO de las columnas con datos en la hoja de Implementaciones (B a R)
+    
+    // Definir explícitamente las columnas que contienen datos para implementaciones
+    const columnasImplementaciones = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'];
+    
+    // Función optimizada para calcular el ancho óptimo basado en el contenido
+    const calculateColumnWidth = (worksheet, columnLetter, maxRow) => {
+      const column = worksheet.getColumn(columnLetter);
+      let maxWidth = 8; // Ancho mínimo
+      
+      // Solo revisar las filas que contienen datos (header + datos)
+      const maxRowToCheck = Math.min(maxRow, worksheet.rowCount);
+      
+      for (let rowNumber = 4; rowNumber <= maxRowToCheck; rowNumber++) {
+        const cell = worksheet.getCell(`${columnLetter}${rowNumber}`);
+        if (cell.value) {
+          const length = String(cell.value).length;
+          maxWidth = Math.max(maxWidth, length);
+        }
+      }
+      
+      // Agregar padding y limitar el ancho máximo
+      return Math.min(Math.max(maxWidth + 2, 8), 50);
+    };
+
+    // Aplicar auto-ajuste SOLO a las columnas que contienen datos de implementaciones
+    columnasImplementaciones.forEach(columnLetter => {
+      const autoWidth = calculateColumnWidth(worksheetImplementaciones, columnLetter, currentRowImplementaciones + resultsImplementaciones.length);
+      const column = worksheetImplementaciones.getColumn(columnLetter);
+      column.width = autoWidth;
+    });
+    
+    // Auto-ajustar anchos SOLO de las columnas con datos en la hoja de Visitas (B a W)
+    
+    // Definir explícitamente las columnas que contienen datos para visitas
+    const columnasVisitas = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X'];
+    
+    // Aplicar auto-ajuste SOLO a las columnas que contienen datos de visitas
+    columnasVisitas.forEach(columnLetter => {
+      const autoWidth = calculateColumnWidth(worksheetVisitas, columnLetter, currentRowVisitas + rawResultsVisitas.length);
+      const column = worksheetVisitas.getColumn(columnLetter);
+      column.width = autoWidth;
+    });
+    
+    // Generar archivo Excel
+    const buffer = await workbook.xlsx.writeBuffer();
+    
+    // Limpiar workbook de memoria
+    workbook = null;
+    
+    // Forzar garbage collection si está disponible
+    if (global.gc) {
+      global.gc();
+    }
+
+    // Configurar headers para descarga
+    const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
+    const filename = `Reporte_Territorio_${agente_id}_${timestamp}.xlsx`;
+
+    // Configurar headers de respuesta
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Length', buffer.length);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('ETag', '');
+    res.setHeader('Last-Modified', new Date().toUTCString());
+
+    // Enviar archivo
+    res.end(buffer, 'binary');
+
+  } catch (error) {
+    console.error('❌ Error generando Excel de implementaciones (Mercadeo):', error);
+    console.error('👤 Usuario afectado:', req.user?.email);
+    console.error('🏢 Agente ID:', req.user?.agente_id);
+    
+    // Limpiar workbook en caso de error
+    if (workbook) {
+      workbook = null;
+    }
+    
+    // Forzar garbage collection en caso de error
+    if (global.gc) {
+      global.gc();
+    }
+    
+    if (res.headersSent) {
+      return;
+    }
+    
+    // Manejo específico de errores de token/autenticación
+    if (error.name === 'JsonWebTokenError' || error.message.includes('token')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token inválido o expirado',
+        error: 'INVALID_TOKEN'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error al generar el reporte de implementaciones para este territorio',
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  } finally {
+    // Limpiar memoria final
+    if (workbook) {
+      workbook = null;
+    }
   }
 });
 

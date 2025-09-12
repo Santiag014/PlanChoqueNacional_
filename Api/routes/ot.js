@@ -1039,11 +1039,12 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
             SELECT 
                 id_registro,
                 GROUP_CONCAT(CONCAT("https://api.plandelamejorenergia.com", foto_factura)) AS fotos_factura,
-                GROUP_CONCAT(CONCAT("https://api.plandelamejorenergia.com/uploads/", foto_seguimiento)) AS fotos_seguimiento
+                GROUP_CONCAT(CONCAT("https://api.plandelamejorenergia.com", foto_seguimiento)) AS fotos_seguimiento
             FROM registro_fotografico_servicios
             GROUP BY id_registro
         )
         SELECT 
+            registro_servicios.id AS ID_Registro,
             agente.descripcion AS agente_comercial,
             puntos_venta.codigo,
             puntos_venta.nit,
@@ -1272,12 +1273,13 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       
       // Definir headers para visitas
       const headersVisitas = [
-        'Agente Comercial', 'Código', 'NIT', 'Nombre PDV', 'Dirección', 'Asesor', 'Cédula', 
+        'Agente Comercial', 'Código', 'NIT', 'Nombre PDV', 'Dirección', 'Asesor', 'Cédula', 'ID_Registro',
         'Fecha Registro', 'Fecha Creación', 'Tipo Acción', 'Estado Backoffice', 'Estado Agente',
         'Observación Asesor', 'Observación Agente', 'Referencias', 'Presentaciones', 
         'Cantidad Cajas', 'Galonajes', 'Precios Sugeridos', 'Precios Reales', 
         'Fotos Factura', 'Fotos Seguimiento'
       ];
+
 
       // Configurar la fila de headers (fila 4) para visitas
       headersVisitas.forEach((header, index) => {
@@ -1430,7 +1432,8 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
           row.direccion || '',
           row.name || '', // Asesor
           row.cedula || '',
-          row.fecha_registro ? new Date(row.fecha_registro).toLocaleDateString() : '',
+          row.ID_Registro || '',
+          row.fecha_registro || '',
           row.FechaCreacion ? new Date(row.FechaCreacion).toLocaleDateString() : '',
           row.tipo_accion || '',
           row.estado_backoffice || '',
@@ -1446,14 +1449,13 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
           row.fotos_factura || '',
           row.fotos_seguimiento || ''
         ];
-
         // Escribir cada celda con formato
         rowData.forEach((value, colIndex) => {
           const cell = dataRow.getCell(colIndex + 2); // Empezar en columna B
           cell.value = value;
           
           // Aplicar color de fondo para estados (columnas 10 y 11: Estado Backoffice y Estado Agente)
-          if (colIndex === 10 || colIndex === 11) { // Estado Backoffice y Estado Agente
+          if (colIndex === 11 || colIndex === 12) { // Estado Backoffice y Estado Agente
             const colorFill = getEstadoColorFill(value);
             if (colorFill) {
               cell.fill = colorFill;
@@ -1525,8 +1527,8 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     // Auto-ajustar anchos SOLO de las columnas con datos en la hoja de Visitas (B a W)
     
     // Definir explícitamente las columnas que contienen datos para visitas
-    const columnasVisitas = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W'];
-    
+    const columnasVisitas = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X'];
+
     // Aplicar auto-ajuste SOLO a las columnas que contienen datos de visitas
     columnasVisitas.forEach(columnLetter => {
       const autoWidth = calculateColumnWidth(worksheetVisitas, columnLetter, currentRowVisitas + rawResultsVisitas.length);
