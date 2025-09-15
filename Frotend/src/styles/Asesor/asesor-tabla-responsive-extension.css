@@ -1,0 +1,285 @@
+/* ===================================== */
+/* EXTENSIÓN RESPONSIVE AUTOMÁTICA      */
+/* Tabla que se adapta automáticamente  */
+/* sin alturas fijas                    */
+/* ===================================== */
+
+/* Variables CSS para facilitar el mantenimiento */
+:root {
+  --table-border-color: #e1e8ed;
+  --table-hover-color: #f8f9fa;
+  --terpel-primary: #e30613;
+  --terpel-secondary: #a1000b;
+}
+
+/* Contenedor principal automático */
+.registros-table-container-responsive {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  width: 100%;
+  margin: 15px 0;
+}
+
+.table-wrapper-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-scroll-container {
+  width: 100%;
+  height: auto;
+  max-height: 70vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.registros-table-responsive {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 100%;
+}
+
+/* Headers fijos para mejor UX */
+.table-header-fixed th {
+  background: linear-gradient(150deg, #eb2734, #c1050f);
+  color: white;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 12px 8px;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Filas automáticas */
+.registro-row-responsive {
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+}
+
+.registro-row-responsive:hover {
+  background: #fff5f5;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(227, 6, 19, 0.15);
+}
+
+.registro-row-responsive td {
+  padding: 12px 8px;
+  vertical-align: middle;
+  text-align: center;
+  font-size: 12px;
+  color: #333;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* Estilos específicos para las celdas */
+.codigo-highlight-responsive {
+  background: #e30615b7;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 11px;
+  display: inline-block;
+  min-width: 40px;
+}
+
+.actividad-badge-responsive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: white;
+  font-weight: 600;
+  font-size: 11px;
+  min-width: 60px;
+  text-transform: uppercase;
+}
+
+.actividad-implementacion {
+  background-color: #2196F3;
+}
+
+.actividad-visita {
+  background-color: #FF9800;
+}
+
+.fecha-principal-responsive {
+  font-weight: 500;
+  color: #333;
+  font-size: 12px;
+}
+
+.estado-badge-responsive {
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.pdv-info-responsive {
+  text-align: left;
+}
+
+.pdv-nombre-responsive {
+  display: block;
+  font-weight: 600;
+  color: #333;
+  font-size: 11px;
+}
+
+.pdv-direccion-responsive {
+  display: block;
+  color: #666;
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+/* Responsive para tablets */
+@media (max-width: 768px) {
+  .registros-table-container-responsive {
+    margin: 10px 0;
+    border-radius: 8px;
+  }
+  
+  .table-scroll-container {
+    max-height: 60vh;
+  }
+  
+  .table-header-fixed th {
+    padding: 8px 4px;
+    font-size: 10px;
+  }
+  
+  .registro-row-responsive td {
+    padding: 8px 4px;
+    font-size: 11px;
+  }
+  
+  .codigo-highlight-responsive {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+  
+  .actividad-badge-responsive {
+    padding: 3px 6px;
+    font-size: 9px;
+    min-width: 50px;
+  }
+  
+  .fecha-principal-responsive {
+    font-size: 10px;
+  }
+}
+
+/* Responsive para móviles */
+@media (max-width: 576px) {
+  .registros-table-container-responsive {
+    margin: 5px 0;
+  }
+  
+  .table-scroll-container {
+    max-height: 50vh;
+  }
+  
+  .registros-table-responsive {
+    font-size: 11px;
+    min-width: 600px; /* Permite scroll horizontal */
+  }
+  
+  .table-header-fixed th {
+    padding: 6px 3px;
+    font-size: 9px;
+  }
+  
+  .registro-row-responsive td {
+    padding: 6px 3px;
+    font-size: 10px;
+  }
+  
+  .codigo-highlight-responsive {
+    font-size: 9px;
+    padding: 2px 4px;
+  }
+  
+  .actividad-badge-responsive {
+    padding: 2px 4px;
+    font-size: 8px;
+    min-width: 40px;
+  }
+  
+  .pdv-nombre-responsive {
+    font-size: 10px;
+  }
+  
+  .pdv-direccion-responsive {
+    font-size: 9px;
+  }
+}
+
+/* Scroll personalizado */
+.table-scroll-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.table-scroll-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb {
+  background: var(--terpel-primary);
+  border-radius: 3px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: var(--terpel-secondary);
+}
+
+/* Estados especiales */
+.no-registros {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.no-registros-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.7;
+}
+
+.no-registros h3 {
+  color: #333;
+  margin-bottom: 8px;
+  font-size: 18px;
+}
+
+.no-registros p {
+  color: #666;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Animaciones suaves */
+.registro-row-responsive {
+  will-change: transform, background-color;
+}
+
+/* Orientación landscape en móviles */
+@media (max-width: 768px) and (orientation: landscape) {
+  .table-scroll-container {
+    max-height: 40vh;
+  }
+}

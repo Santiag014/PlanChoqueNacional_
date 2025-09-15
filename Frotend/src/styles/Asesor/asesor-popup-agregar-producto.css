@@ -1,0 +1,380 @@
+/* Estilos para el modal de agregar productos */
+
+.agregar-producto-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.agregar-producto-modal {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.agregar-producto-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #f8f9fa;
+  border-radius: 16px 16px 0 0;
+}
+
+.agregar-producto-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.agregar-producto-close {
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: background-color 0.2s;
+}
+
+.agregar-producto-close:hover {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.agregar-producto-content {
+  padding: 24px;
+}
+
+.agregar-producto-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #f5c6cb;
+}
+
+.agregar-producto-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.agregar-producto-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agregar-producto-field label {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.agregar-producto-field select,
+.agregar-producto-field input {
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+}
+
+.agregar-producto-field select:focus,
+.agregar-producto-field input:focus {
+  outline: none;
+  border-color: #ff6600;
+  box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1);
+}
+
+.agregar-producto-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.btn-cancel {
+  padding: 12px 24px;
+  border: 2px solid #ddd;
+  background: white;
+  color: #666;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-cancel:hover {
+  border-color: #999;
+  color: #333;
+}
+
+.btn-add {
+  padding: 12px 24px;
+  background: #ff6600;
+  color: white;
+  border: 2px solid #ff6600;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-add:hover {
+  background: #e55a00;
+  border-color: #e55a00;
+}
+
+.btn-add:disabled,
+.btn-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .agregar-producto-overlay {
+    padding: 10px;
+  }
+  
+  .agregar-producto-modal {
+    max-width: 95%;
+  }
+  
+  .agregar-producto-header {
+    padding: 16px 20px;
+  }
+  
+  .agregar-producto-content {
+    padding: 20px;
+  }
+  
+  .agregar-producto-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .btn-cancel,
+  .btn-add {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.asesor-popup-close-btn:hover {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+.asesor-popup-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto; /* Permite scroll horizontal en el contenido */
+  padding: 24px;
+}
+
+/* Si tienes una tabla, asegúrate de que ocupe el ancho mínimo necesario y permita scroll */
+.asesor-popup-content table {
+  min-width: 600px;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Sección del carrusel */
+.asesor-popup-carousel-section {
+  margin-bottom: 32px;
+}
+
+.asesor-popup-carousel-section h3 {
+  margin: 0 0 16px 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Formulario */
+.asesor-popup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.asesor-popup-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.asesor-popup-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.asesor-popup-form-group label {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.asesor-popup-form-group input,
+.asesor-popup-form-group select {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.asesor-popup-form-group input:focus,
+.asesor-popup-form-group select:focus {
+  outline: none;
+  border-color: #e53e3e;
+  box-shadow: 0 0 0 2px rgba(229, 62, 62, 0.1);
+}
+
+.asesor-popup-readonly-input {
+  background-color: #f8f9fa;
+  color: #666;
+  cursor: not-allowed;
+}
+
+/* Acciones del formulario */
+.asesor-popup-form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 16px;
+  border-top: 1px solid #e0e0e0;
+  margin-top: 8px;
+}
+
+.asesor-popup-cancel-btn {
+  background: white;
+  color: #666;
+  border: 1px solid #d1d5db;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.asesor-popup-cancel-btn:hover {
+  background-color: #f8f9fa;
+  border-color: #a0aec0;
+}
+
+.asesor-popup-add-btn {
+  background-color: #e53e3e;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.asesor-popup-add-btn:hover {
+  background-color: #c53030;
+}
+
+.asesor-popup-add-btn:disabled {
+  background-color: #cbd5e0;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .asesor-popup-overlay {
+    padding: 10px;
+  }
+  
+  .asesor-popup-container {
+    max-height: 95vh;
+  }
+  
+  .asesor-popup-header {
+    padding: 16px 20px;
+  }
+  
+  .asesor-popup-header h2 {
+    font-size: 18px;
+  }
+  
+  .asesor-popup-content {
+    padding: 20px;
+  }
+  
+  .asesor-popup-form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .asesor-popup-form-actions {
+    flex-direction: column-reverse;
+  }
+  
+  .asesor-popup-cancel-btn,
+  .asesor-popup-add-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .asesor-popup-overlay {
+    padding: 5px;
+  }
+  
+  .asesor-popup-header {
+    padding: 12px 16px;
+  }
+  
+  .asesor-popup-content {
+    padding: 16px;
+  }
+  
+  .asesor-popup-carousel-section {
+    margin-bottom: 24px;
+  }
+  
+  .asesor-popup-form-group input,
+  .asesor-popup-form-group select {
+    padding: 8px 10px;
+  }
+}

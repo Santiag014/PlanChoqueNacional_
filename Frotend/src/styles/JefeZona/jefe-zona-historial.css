@@ -1,0 +1,349 @@
+/**
+ * Estilos para la página de historial de visitas del Jefe de Zona
+ */
+
+.jefe-zona-historial-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Filtros */
+.jefe-zona-filtros {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.jefe-zona-filtros h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.filtros-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.filtro-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.filtro-item label {
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.filtro-item input {
+  padding: 10px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+}
+
+.filtro-item input:focus {
+  outline: none;
+  border-color: #e60012;
+}
+
+.filtros-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-aplicar,
+.btn-limpiar {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+
+.btn-aplicar {
+  background-color: #e60012;
+  color: white;
+}
+
+.btn-aplicar:hover {
+  background-color: #cc0010;
+}
+
+.btn-limpiar {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-limpiar:hover {
+  background-color: #5a6268;
+}
+
+/* Mensajes de estado */
+.jefe-zona-error-message {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  padding: 15px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.jefe-zona-loading {
+  text-align: center;
+  padding: 40px;
+}
+
+.jefe-zona-loading .spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #e60012;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 15px;
+}
+
+/* Estadísticas */
+.jefe-zona-stats {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-number {
+  display: block;
+  font-size: 2rem;
+  font-weight: bold;
+  color: #e60012;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.9rem;
+  color: #6c757d;
+  margin-top: 5px;
+}
+
+/* Tabla */
+.jefe-zona-tabla-container {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.jefe-zona-tabla {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.jefe-zona-tabla thead {
+  background-color: #e60012;
+  color: white;
+}
+
+.jefe-zona-tabla th,
+.jefe-zona-tabla td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.jefe-zona-tabla th {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.jefe-zona-tabla td {
+  font-size: 13px;
+}
+
+.jefe-zona-tabla tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.codigo-pdv {
+  font-weight: bold;
+  color: #e60012;
+}
+
+.nombre-pdv {
+  color: #333;
+}
+
+.empresa {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.fecha-visita,
+.fecha-registro {
+  color: #495057;
+}
+
+.foto-cell {
+  text-align: center;
+}
+
+.foto-link {
+  color: #e60012;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.foto-link:hover {
+  text-decoration: underline;
+}
+
+/* Sin datos */
+.jefe-zona-no-data {
+  background-color: #ffffff;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.jefe-zona-no-data h3 {
+  color: #6c757d;
+  margin-bottom: 10px;
+}
+
+.jefe-zona-no-data p {
+  color: #868e96;
+  margin-bottom: 20px;
+}
+
+/* Botones de acción */
+.jefe-zona-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.btn-nueva-visita,
+.btn-dashboard {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-block;
+  transition: all 0.3s ease;
+}
+
+.btn-nueva-visita {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-nueva-visita:hover {
+  background-color: #218838;
+  transform: translateY(-2px);
+}
+
+.btn-dashboard {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-dashboard:hover {
+  background-color: #0056b3;
+  transform: translateY(-2px);
+}
+
+/* Acceso denegado */
+.jefe-zona-access-denied {
+  text-align: center;
+  padding: 40px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.jefe-zona-access-denied h2 {
+  color: #e60012;
+  margin-bottom: 15px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .jefe-zona-historial-container {
+    padding: 15px;
+  }
+
+  .filtros-row {
+    grid-template-columns: 1fr;
+  }
+
+  .filtros-buttons {
+    flex-direction: column;
+  }
+
+  .btn-aplicar,
+  .btn-limpiar {
+    width: 100%;
+  }
+
+  .jefe-zona-tabla-container {
+    overflow-x: auto;
+  }
+
+  .jefe-zona-tabla {
+    min-width: 600px;
+  }
+
+  .jefe-zona-tabla th,
+  .jefe-zona-tabla td {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  .jefe-zona-actions {
+    flex-direction: column;
+  }
+
+  .btn-nueva-visita,
+  .btn-dashboard {
+    width: 100%;
+  }
+
+  .jefe-zona-stats {
+    padding: 15px;
+  }
+
+  .stat-number {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .jefe-zona-tabla th,
+  .jefe-zona-tabla td {
+    padding: 6px;
+    font-size: 11px;
+  }
+}

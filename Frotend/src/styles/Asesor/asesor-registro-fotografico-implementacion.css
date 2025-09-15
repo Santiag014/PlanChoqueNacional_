@@ -1,0 +1,1180 @@
+/* Estilos modernos para el registro fotográfico de productos */
+
+.registro-fotografico-implementacion {
+  border-radius: 16px;
+  padding: 28px;
+  margin: 24px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.titulo-registro-fotografico {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #2c3e50;
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid rgba(255, 102, 0, 0.2);
+}
+
+.icono-camara {
+  font-size: 2rem;
+  background: linear-gradient(135deg, #ff6600, #ff8533);
+  padding: 12px;
+  border-radius: 12px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(255, 102, 0, 0.3);
+}
+
+.descripcion-fotos {
+  color: #6c757d;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  text-align: center;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+/* =============================================================================
+   📷 ESTILOS PARA VISITAS - FOTO DE SEGUIMIENTO
+============================================================================= */
+
+.pdv-row-visitas {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 16px;
+  /* background: rgba(255, 255, 255, 0.7); */
+  /* border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.05); */
+}
+
+.pdv-label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pdv-foto-section {
+  flex: 1;
+}
+
+.pdv-foto-adjuntar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 2px dashed #e30613;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 60px;
+}
+
+.pdv-foto-adjuntar:hover {
+  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+  border-color: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(227, 6, 19, 0.15);
+}
+
+.adjuntar-foto-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.adjuntar-foto-icon svg {
+  filter: drop-shadow(0 2px 4px rgba(227, 6, 19, 0.3));
+}
+
+.adjuntar-foto-placeholder {
+  color: #495057;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.clickable-area {
+  cursor: pointer;
+  user-select: none;
+}
+
+.pdv-input-date-visitas {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.pdv-input-date-visitas:focus {
+  outline: none;
+  border-color: #e30613;
+  box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.1);
+}
+
+.ta-center {
+  text-align: center;
+}
+
+/* =============================================================================
+   � ESTILOS RESPONSIVOS PARA VISITAS - MÓVIL 
+============================================================================= */
+
+@media (max-width: 768px) {
+  .pdv-row-visitas {
+    padding: 12px;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .pdv-label {
+    font-size: 0.8rem;
+    text-align: right;
+  }
+  
+  .pdv-foto-adjuntar {
+    padding: 12px 16px;
+    gap: 8px;
+    min-height: 50px;
+  }
+  
+  .adjuntar-foto-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .adjuntar-foto-placeholder {
+    font-size: 0.85rem;
+  }
+  
+  .pdv-input-date-visitas {
+    padding: 10px 12px;
+    font-size: 16px; /* Evita zoom en móviles */
+  }
+}
+
+@media (max-width: 480px) {
+  .pdv-row-visitas {
+    padding: 10px;
+    gap: 8px;
+  }
+  
+  .pdv-label {
+    font-size: 0.75rem;
+  }
+  
+  .pdv-foto-adjuntar {
+    padding: 10px 12px;
+    min-height: 45px;
+  }
+  
+  .adjuntar-foto-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+  
+  .adjuntar-foto-placeholder {
+    font-size: 0.8rem;
+  }
+}
+
+/* =============================================================================
+   �📷 CAMPO DE FOTO DE IMPLEMENTACIÓN (NUEVO ESTILO)
+============================================================================= */
+
+.foto-implementacion-container {
+  margin: 32px 0;
+  padding: 24px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 16px;
+  border: 2px solid #e30613;
+}
+
+.foto-implementacion-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #e30613;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.implementacion-numero {
+  background: linear-gradient(135deg, #e30613, #e30613);
+  color: white;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(227, 6, 19, 0.3);
+}
+
+.implementacion-text {
+  flex: 1;
+}
+
+.implementacion-subtitle {
+  display: block;
+  color: #6c757d;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-left: 44px;
+  margin-bottom: 16px;
+  color: #28a745;
+}
+
+.foto-implementacion-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(227, 6, 19, 0.1);
+}
+
+.info-validacion {
+  display: flex;
+  align-items: flex-start;
+}
+
+.mensaje-sin-productos {
+  text-align: center;
+  padding: 40px 20px;
+  background: rgba(255, 193, 7, 0.1);
+  border-radius: 12px;
+  border: 2px dashed #ffc107;
+}
+
+.mensaje-sin-productos p {
+  color: #856404;
+  font-size: 1.1rem;
+  margin: 0;
+  font-weight: 500;
+}
+
+.productos-fotos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.producto-foto-card {
+  background: #ffffff82;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.producto-foto-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border-color: rgba(255, 102, 0, 0.3);
+}
+
+.producto-info {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.producto-numero {
+  background: linear-gradient(135deg, #b11d1d, #cd0f0f);
+  color: white;
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(255, 102, 0, 0.3);
+  flex-shrink: 0;
+}
+
+.producto-detalles {
+  flex: 1;
+  min-width: 0;
+}
+
+.producto-nombre {
+  color: #2c3e50;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.producto-cantidad {
+  color: #6c757d;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: rgba(255, 102, 0, 0.1);
+  padding: 2px 8px;
+  border-radius: 12px;
+  display: inline-block;
+}
+
+.foto-upload-area {
+  width: 100%;
+}
+
+.foto-input-hidden {
+  display: none;
+}
+
+.foto-upload-box {
+  border: 2px dashed #dee2e6;
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #f8f9fa;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.foto-upload-box:hover {
+  border-color: #ff6600;
+  background: rgba(255, 102, 0, 0.05);
+  transform: scale(1.01);
+}
+
+.foto-upload-box.has-photo {
+  border-color: #28a745;
+  background: rgba(40, 167, 69, 0.05);
+  border-style: solid;
+  padding: 12px;
+  min-height: 60px;
+}
+
+.foto-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.upload-icon {
+  font-size: 1.8rem;
+  color: #6c757d;
+}
+
+.upload-text {
+  color: #495057;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.upload-hint {
+  color: #6c757d;
+  font-size: 0.75rem;
+}
+
+.foto-uploaded {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.foto-preview {
+  width: 50px;
+  height: 50px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.foto-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.foto-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.foto-name {
+  color: #28a745;
+  font-weight: 600;
+  font-size: 0.8rem;
+  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.foto-remove {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+  align-self: flex-start;
+}
+
+.foto-remove:hover {
+  background: #c82333;
+}
+
+.fotos-resumen {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid rgba(255, 102, 0, 0.1);
+  position: relative;
+}
+
+.resumen-stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ff6600;
+  line-height: 1;
+}
+
+.stat-label {
+  color: #6c757d;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-divider {
+  color: #adb5bd;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.progreso-bar {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.progreso-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #28a745, #20c997);
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+.status-message {
+  text-align: center;
+  font-weight: 600;
+  font-size: 1rem;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+
+.status-message.success {
+  background: rgba(40, 167, 69, 0.1);
+  color: #155724;
+  border: 1px solid rgba(40, 167, 69, 0.2);
+}
+
+.status-message.pending {
+  background: rgba(255, 193, 7, 0.1);
+  color: #856404;
+  border: 1px solid rgba(255, 193, 7, 0.2);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .registro-fotografico-implementacion {
+    padding: 20px;
+    margin: 16px 0;
+  }
+  
+  .titulo-registro-fotografico {
+    font-size: 1.5rem;
+    gap: 12px;
+  }
+  
+  .icono-camara {
+    font-size: 1.5rem;
+    padding: 10px;
+  }
+  
+  .productos-fotos-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .producto-foto-card {
+    padding: 16px;
+  }
+  
+  .foto-upload-box {
+    padding: 20px;
+    min-height: 100px;
+  }
+  
+  .foto-uploaded {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .foto-preview {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .resumen-stats {
+    gap: 12px;
+  }
+  
+  .stat-number {
+    font-size: 1.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .registro-fotografico-implementacion {
+    padding: 16px;
+  }
+  
+  .titulo-registro-fotografico {
+    font-size: 1.3rem;
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
+  }
+  
+  .producto-info {
+    gap: 10px;
+  }
+  
+  .producto-numero {
+    align-self: center;
+  }
+}
+
+.titulo-registro-fotografico {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgb(227, 6, 19);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid rgb(227, 6, 19);
+}
+
+.icono-camara {
+  font-size: 1.8rem;
+}
+
+
+.fotos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.foto-item-implementacion {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #e9ecef;
+  transition: border-color 0.3s ease;
+}
+
+.foto-item-implementacion:hover {
+  border-color: #ff6600;
+}
+
+.foto-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.foto-numero {
+  background: rgb(227, 6, 19);
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.foto-nombre {
+  font-size: 1rem;
+}
+
+.obligatorio {
+  color: #dc3545;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.foto-input-container {
+  width: 100%;
+}
+
+.foto-input-hidden {
+  display: none;
+}
+
+.foto-input-visual {
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.foto-input-visual:hover {
+  border-color: #ff6600;
+  background: #fff8f0;
+}
+
+.foto-input-visual.has-file {
+  border-color: #28a745;
+  background: #f8fff8;
+  border-style: solid;
+}
+
+.foto-input-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  position: relative;
+}
+
+.foto-icon {
+  font-size: 2rem;
+}
+
+.foto-placeholder {
+  color: #666;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.foto-filename {
+  color: #28a745;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: center;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.foto-remove-btn {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  transition: background-color 0.3s ease;
+}
+
+.foto-remove-btn:hover {
+  background: #c82333;
+}
+
+.fotos-resumen {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  border-left: 4px solid #ff6600;
+}
+
+.fotos-contador {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 1rem;
+}
+
+.fotos-faltantes {
+  margin: 0;
+  color: #dc3545;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.fotos-completas {
+  margin: 0;
+  color: #28a745;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .registro-fotografico-implementacion {
+    padding: 16px;
+    margin: 16px 0;
+  }
+  
+  .titulo-registro-fotografico {
+    font-size: 1.3rem;
+  }
+  
+  .fotos-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .foto-input-visual {
+    padding: 16px;
+    min-height: 70px;
+  }
+  
+  .foto-icon {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .registro-fotografico-implementacion {
+    padding: 12px;
+  }
+  
+  .titulo-registro-fotografico {
+    font-size: 1.2rem;
+    gap: 8px;
+  }
+  
+  .icono-camara {
+    font-size: 1.5rem;
+  }
+  
+  .foto-item {
+    padding: 12px;
+  }
+  
+  .foto-input-visual {
+    padding: 12px;
+    min-height: 60px;
+  }
+}
+
+/* =============================================================================
+   📝 CAMPOS ADICIONALES DESPUÉS DEL REGISTRO FOTOGRÁFICO
+============================================================================= */
+
+/* Contenedor para campos post-fotográfico */
+.campos-post-fotografico {
+  margin-top: 32px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 102, 0, 0.1);
+}
+
+/* Campo de fecha para implementación */
+.fecha-implementacion-field {
+  margin-bottom: 24px;
+}
+
+.fecha-implementacion-label {
+  display: block;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+}
+
+.fecha-implementacion-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.fecha-implementacion-input:focus {
+  outline: none;
+  border-color: #ff6600;
+  box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1);
+}
+
+/* Campo de observaciones para implementación */
+.observaciones-implementacion-field {
+  margin-bottom: 16px;
+}
+
+.observaciones-implementacion-label {
+  display: block;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+}
+
+.observaciones-implementacion-textarea {
+  width: 100%;
+  padding: 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: white;
+  transition: all 0.3s ease;
+  resize: vertical;
+  min-height: 100px;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.observaciones-implementacion-textarea:focus {
+  outline: none;
+  border-color: #ff6600;
+  box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1);
+}
+
+.observaciones-implementacion-textarea::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Contador de caracteres */
+.observaciones-implementacion-counter {
+  text-align: right;
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-top: 4px;
+}
+
+.observaciones-implementacion-counter.warning {
+  color: #f39c12;
+}
+
+.observaciones-implementacion-counter.danger {
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+/* =============================================================================
+   � CAMPO DE FOTO DE IMPLEMENTACIÓN (NUEVO ESTILO)
+============================================================================= */
+
+.foto-implementacion-container {
+  margin: 32px 0;
+  padding: 24px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 16px;
+  border: 2px solid #e30613;
+}
+
+.foto-implementacion-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #e30613;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.implementacion-numero {
+  background: linear-gradient(135deg, #e30613, #e30613);
+  color: white;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(227, 6, 19, 0.3);
+}
+
+.implementacion-text {
+  flex: 1;
+}
+
+.implementacion-subtitle {
+  display: block;
+  color: #6c757d;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-left: 44px;
+  margin-bottom: 16px;
+  color: #28a745;
+}
+
+.foto-implementacion-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(227, 6, 19, 0.1);
+}
+
+/* =============================================================================
+   �📄 CAMPO DE FOTO DE REMISIÓN
+============================================================================= */
+
+.foto-remision-container {
+  margin: 32px 0;
+  padding: 24px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 16px;
+  border: 2px dashed #ff6600;
+}
+
+.foto-remision-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #17a2b8;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid rgba(23, 162, 184, 0.2);
+}
+
+.remision-icon {
+  font-size: 1.5rem;
+  background: linear-gradient(135deg, #ff6600, #ff6600);
+  padding: 8px;
+  border-radius: 8px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
+}
+
+.foto-remision-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(23, 162, 184, 0.1);
+}
+
+/* Responsive para campos adicionales */
+@media (max-width: 768px) {
+  .campos-post-fotografico {
+    margin-top: 24px;
+    padding: 16px;
+  }
+  
+  .fecha-implementacion-input,
+  .observaciones-implementacion-textarea {
+    font-size: 16px; /* Evita zoom en móviles */
+  }
+  
+  .foto-implementacion-container {
+    margin: 24px 0;
+    padding: 16px;
+  }
+  
+  .foto-implementacion-title {
+    font-size: 1.1rem;
+    gap: 8px;
+  }
+  
+  .implementacion-numero {
+    width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
+  }
+  
+  .implementacion-subtitle {
+    font-size: 0.85rem;
+    margin-left: 36px;
+  }
+  
+  .foto-implementacion-card {
+    padding: 16px;
+  }
+
+  .foto-remision-container {
+    margin: 24px 0;
+    padding: 16px;
+  }
+  
+  .foto-remision-title {
+    font-size: 1.1rem;
+    gap: 8px;
+  }
+  
+  .remision-icon {
+    font-size: 1.25rem;
+    padding: 6px;
+  }
+  
+  .foto-remision-card {
+    padding: 16px;
+  }
+}
+
+/* =============================================================================
+   🔍 BOTONES DE DEBUG PARA DESARROLLO
+============================================================================= */
+
+.btn-debug-visitas,
+.btn-debug-implementacion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-debug-visitas:hover {
+  background: #218838 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.btn-debug-implementacion:hover {
+  background: #e55a00 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 102, 0, 0.3);
+}
+
+.btn-debug-visitas:active,
+.btn-debug-implementacion:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive para botones debug */
+@media (max-width: 768px) {
+  .btn-debug-visitas,
+  .btn-debug-implementacion {
+    padding: 10px 14px !important;
+    font-size: 13px !important;
+  }
+}
+
+/* =============================================================================
+   🗑️ BOTONES DE RESET PARA LIMPIAR CAMPOS
+============================================================================= */
+
+.btn-reset-visitas,
+.btn-reset-implementacion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
+}
+
+.btn-reset-visitas:hover,
+.btn-reset-implementacion:hover {
+  background: #c82333 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+}
+
+.btn-reset-visitas:active,
+.btn-reset-implementacion:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3);
+}
+
+/* Responsive para botones reset */
+@media (max-width: 768px) {
+  .btn-reset-visitas,
+  .btn-reset-implementacion {
+    padding: 10px 14px !important;
+    font-size: 13px !important;
+  }
+}

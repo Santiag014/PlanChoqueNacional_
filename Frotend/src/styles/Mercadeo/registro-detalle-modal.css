@@ -1,0 +1,1433 @@
+/* Modal de Detalles del Registro - Terpel Corporate Style */
+.mercadeo_modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(6px);
+}
+
+.mercadeo_modal-content {
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(227, 6, 19, 0.1);
+  max-width: 800px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.mercadeo_modal-content-large {
+  max-width: 900px;
+  width: 95%;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30px;
+  border-bottom: 3px solid #e30613;
+  background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+  color: white;
+  border-radius: 20px 20px 0 0;
+  position: relative;
+}
+
+.modal-header::before {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #e30613 0%, #c1051c 50%, #e30613 100%);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.5px;
+}
+
+.btn-close {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  font-size: 24px;
+  color: white;
+  cursor: pointer;
+  padding: 8px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  font-weight: bold;
+}
+
+.btn-close:hover {
+  background: rgba(227, 6, 19, 0.8);
+  border-color: rgba(227, 6, 19, 1);
+  transform: scale(1.1);
+}
+
+.modal-body {
+  padding: 30px;
+  background: #f8fafc;
+}
+
+.registro-info {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+/* Secciones de Información Mejoradas */
+.info-section {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.info-section:hover {
+  box-shadow: 0 8px 25px rgba(227, 6, 19, 0.1);
+  transform: translateY(-2px);
+}
+
+.info-section h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, #e30613 0%, #c1051c 100%);
+  padding: 20px 25px;
+  position: relative;
+}
+
+.info-section h3::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.3) 100%);
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  padding: 25px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-item label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #4a5568;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.info-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #2d3748;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  min-height: 20px;
+  transition: all 0.2s ease;
+}
+
+.info-value:hover {
+  background: linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%);
+  border-color: #e30613;
+  color: #c1051c;
+}
+
+.codigo-destaque {
+  background: linear-gradient(135deg, #e30613 0%, #c1051c 100%);
+  color: #ffffff;
+  font-weight: 700;
+  border: 2px solid #e30613;
+  text-align: center;
+  font-size: 16px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.codigo-destaque:hover {
+  background: linear-gradient(135deg, #c1051c 0%, #a0040f 100%);
+  transform: scale(1.02);
+}
+
+/* Estados y Badges Mejorados */
+.mercadeo_estado-badge, .estado-badge {
+  padding: 8px 16px;
+  border-radius: 25px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: inline-flex;
+  align-items: center;
+  border: 2px solid;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.mercadeo_estado-badge::before, .estado-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.mercadeo_estado-badge:hover::before, .estado-badge:hover::before {
+  left: 100%;
+}
+
+.estado-badge.pendiente, .mercadeo_estado-badge.pendiente {
+  background: linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%);
+  color: #742a2a;
+  border-color: #e53e3e;
+}
+
+.estado-badge.aprobado, .mercadeo_estado-badge.aprobado,
+.estado-badge.aceptado, .mercadeo_estado-badge.aceptado {
+  background: linear-gradient(135deg, #c6f6d5 0%, #9ae6b4 100%);
+  color: #22543d;
+  border-color: #38a169;
+}
+
+.estado-badge.rechazado, .mercadeo_estado-badge.rechazado {
+  background: linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%);
+  color: #742a2a;
+  border-color: #e53e3e;
+}
+
+.estado-badge.revision, .mercadeo_estado-badge.revision,
+.estado-badge.en_revision, .mercadeo_estado-badge.en_revision {
+  background: linear-gradient(135deg, #fef5e7 0%, #fbd38d 100%);
+  color: #744210;
+  border-color: #ed8936;
+}
+
+/* Formulario de Acción */
+.accion-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group_mercadeo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group_mercadeogroup label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.radio-group {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.radio-label:hover {
+  transform: translateY(-1px);
+}
+
+.radio-label input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #e30613;
+}
+
+.radio-text {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.radio-text.aprobar {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+}
+
+.radio-text.rechazar {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+}
+
+.radio-label input[type="radio"]:checked + .radio-text {
+  border-color: currentColor;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.comentario-textarea {
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 100px;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.comentario-textarea:focus {
+  outline: none;
+  border-color: #e30613;
+  box-shadow: 0 0 0 4px rgba(227, 6, 19, 0.1);
+}
+
+.comentario-textarea::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background: #6b7280;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #4b5563;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.btn-success:hover {
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+}
+
+.btn-danger:hover {
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* No productos state */
+.no-productos {
+  text-align: center;
+  padding: 40px 20px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 2px dashed #e2e8f0;
+  margin: 16px 0;
+}
+
+.no-productos-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.no-productos p {
+  color: #64748b;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Tabla de Productos */
+.productos-tabla-container {
+  overflow-x: auto;
+  margin: 16px 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.productos-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  min-width: 600px;
+}
+
+.productos-tabla th {
+  background: linear-gradient(135deg, #e30613 0%, #c1051c 100%);
+  color: white;
+  padding: 12px 8px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #b91c1c;
+}
+
+.productos-tabla td {
+  padding: 12px 8px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+.productos-tabla tbody tr:hover {
+  background: #f9fafb;
+}
+
+.producto-referencia {
+  font-weight: 600;
+  color: #e30613;
+}
+
+.producto-cantidad, .producto-galonaje {
+  text-align: center;
+  font-weight: 600;
+  color: #059669;
+}
+
+.producto-precio {
+  text-align: right;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* KPI Badges Corporativos Terpel */
+.kpi-badges-container {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.mercadeo_kpi-badge {
+  padding: 5px 5px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 12px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 1px 3px 10px rgba(0, 0, 0, 0.1);
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.mercadeo_kpi-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.5s;
+}
+
+.mercadeo_kpi-badge:hover::before {
+  left: 100%;
+}
+
+.mercadeo_kpi-badge:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 20px rgba(227, 6, 19, 0.2);
+}
+
+.mercadeo_kpi-badge.kpi-precio {
+  background: linear-gradient(135deg, #e30613 0%, #c1051c 100%);
+  color: #ffffff;
+  border-color: #e30613;
+  box-shadow: 0 4px 15px rgba(227, 6, 19, 0.3);
+}
+
+.mercadeo_kpi-badge.kpi-volumen {
+  background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+  color: #ffffff;
+  border-color: #2d3748;
+  box-shadow: 0 4px 15px rgba(45, 55, 72, 0.3);
+}
+
+.mercadeo_kpi-badge.kpi-frecuencia {
+  background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+  color: #ffffff;
+  border-color: #38a169;
+  box-shadow: 0 4px 15px rgba(56, 161, 105, 0.3);
+}
+
+.mercadeo_kpi-badge.kpi-otros {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  color: #ffffff;
+  border-color: #6b7280;
+  box-shadow: 0 4px 15px rgba(107, 114, 128, 0.3);
+}
+
+.mercadeo_kpi-badge.kpi-na {
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+  color: #ffffff;
+  border-color: #9ca3af;
+  box-shadow: 0 4px 15px rgba(156, 163, 175, 0.3);
+}
+
+/* Efectos especiales para múltiples badges */
+.kpi-badges-container .mercadeo_kpi-badge + .mercadeo_kpi-badge {
+  position: relative;
+}
+
+.kpi-badges-container .mercadeo_kpi-badge + .mercadeo_kpi-badge::before {
+  content: '&';
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 8px;
+  color: #64748b;
+  font-weight: 400;
+}
+
+/* Animación para badges múltiples */
+@keyframes kpiBadgeEntry {
+  0% {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.kpi-badges-container .mercadeo_kpi-badge:nth-child(1) {
+  animation: kpiBadgeEntry 0.3s ease-out;
+}
+
+.kpi-badges-container .mercadeo_kpi-badge:nth-child(2) {
+  animation: kpiBadgeEntry 0.3s ease-out 0.1s both;
+}
+
+/* Estilos específicos para KPI en modal */
+.info-item .kpi-badges-container {
+  background: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.info-item .mercadeo_kpi-badge {
+  margin: 0;
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+/* Registro Fotográfico Mejorado */
+.fotos-container {
+  margin: 16px 0;
+  padding: 10px 40px;
+}
+
+.foto-categoria {
+  margin-bottom: 24px;
+}
+
+.foto-categoria h4 {
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #e30613;
+  padding-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.fotos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.foto-item_mercadeo {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  background: #f8fafc;
+  aspect-ratio: 4/3;
+  min-height: 200px;
+}
+
+.foto-item_mercadeo:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.foto-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: block;
+  border-radius: 12px;
+}
+
+.foto-preview:hover {
+  filter: brightness(1.1);
+  transform: scale(1.02);
+}
+
+.foto-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+.foto-item_mercadeo:hover .foto-overlay {
+  opacity: 1;
+}
+
+.foto-btn {
+  background: linear-gradient(135deg, #e30613 0%, #c1051c 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.foto-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(227, 6, 19, 0.4);
+}
+
+.foto-error {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #fee2e2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #991b1b;
+  font-size: 12px;
+  text-align: center;
+  padding: 8px;
+  gap: 4px;
+}
+
+.foto-error span {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.foto-error small {
+  word-break: break-all;
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+.no-fotos {
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+  padding: 48px 24px;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border-radius: 12px;
+  border: 2px dashed #d1d5db;
+}
+
+.no-fotos-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.no-fotos p {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* Estilos para la descripción de fotos */
+.fotos-descripcion {
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #0c4a6e;
+}
+
+.fotos-descripcion p {
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Observaciones */
+.observacion-contenido {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 12px 0;
+}
+
+.observacion-contenido p {
+  margin: 0;
+  color: #374151;
+  line-height: 1.6;
+}
+
+/* Acciones Principales - Diseño Corporativo */
+.acciones-principales {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin: 30px 0;
+  padding: 20px;
+}
+
+.btn-accion-principal {
+  padding: 18px 36px;
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-radius: 12px;
+  border: 2px solid;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-accion-principal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-accion-principal:hover::before {
+  left: 100%;
+}
+
+.btn-accion-principal:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(227, 6, 19, 0.3);
+}
+
+.btn-accion-principal:active {
+  transform: translateY(-1px);
+}
+
+.btn-accion-principal.btn-success {
+  background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+  color: white;
+  border-color: #38a169;
+}
+
+.btn-accion-principal.btn-danger {
+  background: linear-gradient(135deg, #e30613 0%, #c1051c 100%);
+  color: white;
+  border-color: #e30613;
+}
+
+.accion-seleccionada {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 25px;
+}
+
+.accion-badge {
+  padding: 15px 30px;
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border: 2px solid;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.accion-badge.aprobar {
+  background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+  color: white;
+  border-color: #38a169;
+}
+
+.accion-badge.rechazar {
+  background: linear-gradient(135deg, #e30613 0%, #c1051c 100%);
+  color: white;
+  border-color: #e30613;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .mercadeo_modal-content-large {
+    width: 95%;
+    max-width: none;
+  }
+  
+  .productos-tabla {
+    min-width: 600px;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .acciones-principales {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .btn-accion-principal {
+    min-width: 250px;
+  }
+  
+  .fotos-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+  
+  .acciones-principales {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .btn-accion-principal {
+    width: 100%;
+    max-width: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .mercadeo_modal-content_large {
+    width: 95%;
+    max-height: 95vh;
+  }
+  
+  .productos-tabla {
+    min-width: 400px;
+  }
+  
+  .productos-tabla th,
+  .productos-tabla td {
+    padding: 8px 4px;
+    font-size: 12px;
+  }
+  
+  .fotos-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+  }
+
+  .foto-item_mercadeo {
+    min-height: 150px;
+    aspect-ratio: 4/3;
+  }
+
+  .foto-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+  
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Estilos específicos para estados en el modal */
+.mercadeo_estado-badge.aprobado,
+.mercadeo_estado-badge.approved {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.mercadeo_estado-badge.rechazado,
+.mercadeo_estado-badge.rejected {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+}
+
+.mercadeo_estado-badge.pendiente,
+.mercadeo_estado-badge.pending {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.mercadeo_estado-badge.revision {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+}
+
+/* Estilos para la sección de acciones */
+.acciones-info {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.acciones-description {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.acciones-principales {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Estilos para las observaciones diferenciadas */
+.observacion-contenido {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.observacion-agente {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-left: 4px solid #0ea5e9;
+}
+
+.observacion-backoffice {
+  background: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%);
+  border-left: 4px solid #f59e0b;
+}
+
+.observacion-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.observacion-tipo {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.observacion-agente .observacion-tipo {
+  color: #0369a1;
+}
+
+.observacion-backoffice .observacion-tipo {
+  color: #d97706;
+}
+
+.observacion-contenido p {
+  margin: 0;
+  line-height: 1.6;
+  color: #374151;
+  font-size: 14px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Estilos para las sub-observaciones */
+.sub-observaciones {
+  padding: 10px 40px;
+}
+
+.sub-observaciones:last-child {
+  margin-bottom: 0;
+}
+
+.sub-titulo {
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 12px 0;
+  padding: 8px 0;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Estado cuando no hay observaciones */
+.no-observaciones {
+  text-align: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+}
+
+.no-observaciones-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 16px;
+  opacity: 0.7;
+}
+
+.no-observaciones p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* Sección de Implementación Corporativa */
+.implementacion-section {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 2px solid #e30613;
+  border-radius: 16px;
+  margin: 25px 0;
+  overflow: hidden;
+  box-shadow: 0 8px 25px rgba(227, 6, 19, 0.1);
+}
+
+.implementacion-section h3 {
+  background: linear-gradient(135deg, #e30613 0%, #c1051c 100%);
+  color: white;
+  margin: 0;
+  padding: 20px 25px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: relative;
+}
+
+.implementacion-section h3::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.3) 100%);
+}
+
+.implementacion-badge {
+  padding: 10px 18px;
+  border-radius: 25px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border: 2px solid;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.implementacion-badge.si {
+  background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+  color: white;
+  border-color: #38a169;
+  box-shadow: 0 4px 15px rgba(56, 161, 105, 0.3);
+}
+
+.implementacion-badge.no {
+  background: linear-gradient(135deg, #e30613 0%, #c1051c 100%);
+  color: white;
+  border-color: #e30613;
+  box-shadow: 0 4px 15px rgba(227, 6, 19, 0.3);
+}
+
+.implementacion-badge.pendiente {
+  background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+  color: white;
+  border-color: #ed8936;
+  box-shadow: 0 4px 15px rgba(237, 137, 54, 0.3);
+}
+
+.observacion-implementacion {
+  margin: 20px 25px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+  border-radius: 12px;
+  border-left: 4px solid #e30613;
+  border-top: 1px solid #e2e8f0;
+}
+
+.observacion-implementacion h4 {
+  margin: 0 0 15px 0;
+  color: #2d3748;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.productos-implementacion {
+  margin: 20px 25px;
+  padding: 0;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.productos-implementacion h4 {
+  margin: 0;
+  color: white;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);  padding: 16px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.productos-impl-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.producto-impl-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.producto-impl-nombre {
+  font-weight: 500;
+  color: #1f2937;
+  flex: 1;
+  margin-right: 12px;
+}
+
+.producto-impl-cantidad {
+  font-size: 12px;
+  color: #6b7280;
+  background: #e5e7eb;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+/* Tabla de productos implementados */
+.productos-impl-tabla-container {
+  margin-top: 12px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+}
+
+.productos-impl-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.productos-impl-tabla thead {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+}
+
+.productos-impl-tabla thead th {
+  color: white;
+  font-weight: 600;
+  text-align: center;
+  padding: 12px 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.productos-impl-tabla tbody tr {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.productos-impl-tabla tbody tr:last-child {
+  border-bottom: none;
+}
+
+.productos-impl-tabla tbody tr:hover {
+  background: #f8fafc;
+}
+
+.productos-impl-tabla tbody td {
+  padding: 12px 8px;
+  vertical-align: middle;
+  border-right: 1px solid #f3f4f6;
+}
+
+.productos-impl-tabla tbody td:last-child {
+  border-right: none;
+}
+
+.productos-impl-tabla .producto-impl-nombre {
+  font-weight: 500;
+  color: #1f2937;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.productos-impl-tabla .producto-impl-cantidad {
+  text-align: center;
+}
+
+.productos-impl-tabla .cantidad-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: white;
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.productos-impl-tabla .producto-impl-foto {
+  text-align: center;
+  width: 80px;
+}
+
+.foto-evidencia-mini {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.foto-evidencia-preview {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 2px solid #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.foto-evidencia-preview:hover {
+  border-color: #dc2626;
+  transform: scale(1.05);
+}
+
+.foto-error-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  background: #f3f4f6;
+  border-radius: 6px;
+  border: 2px dashed #d1d5db;
+}
+
+.foto-error-mini span {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.no-foto-evidencia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  background: #f9fafb;
+  border-radius: 6px;
+  border: 2px dashed #d1d5db;
+  color: #9ca3af;
+}
+
+.no-foto-evidencia span {
+  font-size: 16px;
+  margin-bottom: 2px;
+}
+
+.no-foto-evidencia small {
+  font-size: 8px;
+  text-align: center;
+}
+
+/* Sección específica de foto de remisión */
+.foto-remision-section {
+  margin: 20px 0;
+  padding: 16px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+}
+
+.foto-remision-section h4 {
+  margin: 0 0 12px 0;
+  color: #92400e;
+  font-weight: 600;
+  font-size: 14px;
+  text-align: left;
+}
+
+.fotos-grid-remision {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.foto-remision-item {
+  max-width: 200px;
+}
+
+.foto-remision-preview {
+  border: 3px solid #f59e0b;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(245, 158, 11, 0.2);
+}

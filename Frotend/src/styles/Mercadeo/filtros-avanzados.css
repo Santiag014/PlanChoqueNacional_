@@ -1,0 +1,537 @@
+/* Filtro de búsqueda y compañía para el panel de asesores */
+.filtro-busqueda {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filtro-input,
+.filtro-compania-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23374151' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 8px center;
+  background-repeat: no-repeat;
+  background-size: 16px;
+  padding-right: 40px;
+  color: #e30613;
+}
+
+.filtro-input:focus,
+.filtro-compania-select:focus {
+  outline: none;
+  border-color: #e30613;
+  box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.1);
+  color: #e30613;
+}
+
+.filtro-input:hover,
+.filtro-compania-select:hover {
+  border-color: #9ca3af;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  color: #e30613;
+}
+
+.filtro-input:not([value=""]),
+.filtro-compania-select:not([value=""]) {
+  border-color: #e30613;
+  background-color: #fef2f2;
+  font-weight: 600;
+}
+/* Estilos para Filtros Avanzados Responsive con Colapso Mejorado */
+
+.filtros-avanzados {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 1px solid #e5e7eb;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.filtros-avanzados:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+/* Header de filtros */
+.filtros-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  cursor: pointer;
+  padding: 8px;
+  margin: -8px -8px 8px -8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.filtros-header:hover {
+  background: #f9fafb;
+}
+
+.filtros-titulo {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Badge de filtros activos */
+.filtros-activos-badge {
+  background: #e30613;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1.2;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Acciones del header */
+.filtros-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Botón limpiar en header */
+.filtros-limpiar-header {
+  background: transparent;
+  border: 1px solid #e30613;
+  border-radius: 6px;
+  color: #e30613;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.filtros-limpiar-header:hover {
+  background: #e30613;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* Botón toggle mejorado */
+.filtros-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d03111;
+}
+
+.filtros-toggle:hover {
+  background: #f3f4f6;
+  transform: scale(1.1);
+}
+
+.filtros-toggle-icon {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.filtros-toggle-icon.expanded {
+  transform: rotate(180deg);
+}
+
+/* Contenido de filtros con animación mejorada */
+.filtros-content {
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 1;
+  max-height: 1000px; /* Valor alto para permitir contenido expandido */
+}
+
+.filtros-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.filtros-content.expanded {
+  max-height: 1000px;
+  opacity: 1;
+  margin-top: 0;
+}
+
+/* Grid de filtros */
+.filtros-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  padding: 8px 0px 20px 0px;
+}
+
+/* Items de filtro */
+.filtro-item {
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease;
+}
+
+.filtro-item:hover {
+  transform: translateY(-1px);
+}
+
+.filtro-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.filtro-icon {
+  color: #6b7280;
+  transition: color 0.2s ease;
+}
+
+.filtro-item:hover .filtro-icon {
+  color: #e30613;
+}
+
+.filtro-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23374151' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 8px center;
+  background-repeat: no-repeat;
+  background-size: 16px;
+  padding-right: 40px;
+  color: #e30613;
+}
+
+.filtro-select:focus {
+  outline: none;
+  border-color: #e30613;
+  box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.1);
+  transform: translateY(-1px);
+  color: #e30613;
+}
+
+.filtro-select:hover {
+  border-color: #9ca3af;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  color: #e30613;
+}
+
+/* Estados activos */
+.filtro-select:not([value=""]) {
+  border-color: #e30613;
+  background-color: #fef2f2;
+  font-weight: 600;
+}
+
+.filtro-select:not([value=""]) + .filtro-icon {
+  color: #e30613;
+}
+
+/* ========== RESPONSIVE DESIGN MEJORADO ========== */
+
+/* Tablet y pantallas medianas */
+@media (max-width: 1024px) {
+  .filtros-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+  }
+  
+  .filtros-avanzados {
+    padding: 14px;
+  }
+  
+  .filtros-titulo {
+    font-size: 15px;
+  }
+}
+
+/* Móvil y pantallas pequeñas */
+@media (max-width: 768px) {
+  .filtros-avanzados {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .filtros-header {
+    margin-bottom: 8px;
+  }
+  
+  .filtros-titulo {
+    font-size: 14px;
+  }
+  
+  /* Hacer más compacto en móvil */
+  .filtros-limpiar-header {
+    padding: 3px 6px;
+    font-size: 10px;
+  }
+  
+  .filtros-limpiar-header svg {
+    width: 12px;
+    height: 12px;
+  }
+  
+  /* Grid en dos columnas para móvil */
+  .filtros-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  
+  .filtro-label {
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+  
+  .filtro-select {
+    padding: 8px 10px;
+    font-size: 13px;
+    border-radius: 6px;
+    padding-right: 30px;
+  }
+}
+
+/* Móvil muy pequeño */
+@media (max-width: 480px) {
+  .filtros-avanzados {
+    padding: 10px;
+    border-radius: 8px;
+  }
+  
+  .filtros-titulo {
+    font-size: 13px;
+  }
+  
+  .filtros-titulo svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  /* Grid en una columna para móviles muy pequeños */
+  .filtros-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  .filtro-select {
+    padding: 10px;
+    font-size: 13px;
+  }
+  
+  .filtros-activos-badge {
+    font-size: 9px;
+    padding: 1px 4px;
+  }
+}
+
+/* Escritorio grande - mejor espaciado */
+@media (min-width: 1200px) {
+  .filtros-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+  }
+  
+  .filtros-avanzados {
+    padding: 20px;
+  }
+  
+  .filtros-titulo {
+    font-size: 17px;
+  }
+}
+
+/* Animaciones suaves mejoradas */
+.filtros-content,
+.filtros-toggle-icon,
+.filtro-item,
+.filtro-select {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Mejorar accesibilidad */
+@media (prefers-reduced-motion: reduce) {
+  .filtros-content,
+  .filtros-toggle-icon,
+  .filtros-header,
+  .filtro-item,
+  .filtro-select,
+  .filtros-activos-badge {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* Estados de focus mejorados para accesibilidad */
+.filtros-toggle:focus-visible,
+.filtros-limpiar-header:focus-visible {
+  outline: 2px solid #e30613;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Efectos hover mejorados */
+.filtros-avanzados:hover .filtros-activos-badge {
+  transform: scale(1.05);
+}
+
+/* Estilos específicos para filtros enlazados */
+.filtros-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filtros-limpiar {
+  padding: 8px 12px;
+  background: #f97316;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filtros-limpiar:hover {
+  background: #ea580c;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
+}
+
+.filtros-limpiar:active {
+  transform: translateY(0);
+}
+
+.filtro-info {
+  font-size: 12px;
+  color: #059669;
+  margin-top: 4px;
+  padding: 4px 8px;
+  background: #d1fae5;
+  border-radius: 4px;
+  border-left: 3px solid #059669;
+}
+
+.filtro-loading {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.filtro-error {
+  font-size: 12px;
+  color: #dc2626;
+  margin-top: 4px;
+  padding: 4px 8px;
+  background: #fee2e2;
+  border-radius: 4px;
+  border-left: 3px solid #dc2626;
+}
+
+/* Indicador visual para filtros enlazados */
+.filtro-item {
+  position: relative;
+}
+
+.filtro-item:has(.filtro-select:not([value=""])) .filtro-label {
+  color: #e30613;
+  font-weight: 600;
+}
+
+.filtro-item:has(.filtro-select:not([value=""])) .filtro-select {
+  border-color: #e30613;
+  background-color: #fef2f2;
+}
+
+/* Animación para cambios en las opciones de filtros enlazados */
+.filtro-select {
+  transition: all 0.3s ease;
+}
+
+.filtro-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Tooltips para filtros enlazados */
+.filtro-tooltip {
+  display: block;
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: normal;
+  margin-top: 2px;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.filtro-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Responsive para filtros enlazados */
+@media (max-width: 768px) {
+  .filtros-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filtros-limpiar {
+    justify-content: center;
+    width: 100%;
+  }
+  
+  .filtro-info {
+    font-size: 11px;
+  }
+  
+  .filtro-tooltip {
+    font-size: 10px;
+  }
+}

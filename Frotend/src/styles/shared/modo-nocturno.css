@@ -1,0 +1,558 @@
+/* ===============================================
+   MODO NOCTURNO - ESTILOS PARA POPUPS, MODALES Y FILTROS
+   =============================================== */
+
+/* ===============================================
+   VARIABLES CSS PARA MODO NOCTURNO
+   =============================================== */
+:root {
+  /* Colores base modo nocturno */
+  --dark-bg-primary: #1a1a1a;
+  --dark-bg-secondary: #2d2d2d;
+  --dark-bg-tertiary: #3a3a3a;
+  --dark-text-primary: #ffffff;
+  --dark-text-secondary: #cccccc;
+  --dark-text-muted: #999999;
+  --dark-border: #444444;
+  --dark-border-light: #555555;
+  
+  /* Colores de Terpel adaptados */
+  --dark-terpel-red: #e31e24;
+  --dark-terpel-red-hover: #c41e3a;
+  --dark-terpel-red-light: rgba(227, 30, 36, 0.2);
+  
+  /* Sombras modo nocturno */
+  --dark-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --dark-shadow-light: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ===============================================
+   DETECCIÓN AUTOMÁTICA DE MODO NOCTURNO
+   =============================================== */
+@media (prefers-color-scheme: dark) {
+  
+  /* ===============================================
+     MODALES Y POPUPS - MODO NOCTURNO
+     =============================================== */
+  
+  /* Modal overlay */
+  .modal-overlay {
+    background: rgba(0, 0, 0, 0.8) !important;
+    backdrop-filter: blur(10px) !important;
+  }
+  
+  /* Modal content */
+  .modal-content {
+    background: var(--dark-bg-secondary) !important;
+    border: 1px solid var(--dark-border) !important;
+    box-shadow: var(--dark-shadow) !important;
+    color: var(--dark-text-primary) !important;
+  }
+  
+  /* Modal header */
+  .modal-header {
+    background: var(--dark-bg-tertiary) !important;
+    border-bottom: 1px solid var(--dark-border) !important;
+  }
+  
+  .modal-header h3,
+  .modal-header h2,
+  .modal-header h4 {
+    color: var(--dark-text-primary) !important;
+  }
+  
+  /* Modal body */
+  .modal-body {
+    background: var(--dark-bg-secondary) !important;
+    color: var(--dark-text-primary) !important;
+  }
+  
+  /* Modal footer */
+  .modal-footer {
+    background: var(--dark-bg-tertiary) !important;
+    border-top: 1px solid var(--dark-border) !important;
+  }
+  
+  /* Botón de cerrar */
+  .close-button {
+    color: var(--dark-text-secondary) !important;
+    background: transparent !important;
+  }
+  
+  .close-button:hover {
+    background: var(--dark-bg-primary) !important;
+    color: var(--dark-text-primary) !important;
+  }
+  
+  /* Estilos específicos para fotos modal */
+  .fotos-modal {
+    background: var(--dark-bg-secondary) !important;
+    color: var(--dark-text-primary) !important;
+  }
+  
+  /* ===============================================
+     FILTROS - MODO NOCTURNO
+     =============================================== */
+  
+  /* Panel de filtros */
+  .filter-panel {
+    background: var(--dark-bg-secondary) !important;
+    border: 1px solid var(--dark-border) !important;
+    box-shadow: var(--dark-shadow) !important;
+  }
+  
+  .filter-panel:hover {
+    box-shadow: 0 6px 30px rgba(0, 0, 0, 0.4) !important;
+  }
+  
+  /* Header del panel de filtros */
+  .filter-panel-header {
+    background: linear-gradient(135deg, var(--dark-terpel-red) 0%, var(--dark-terpel-red-hover) 100%) !important;
+  }
+  
+  .filter-panel-title h3 {
+    color: var(--dark-text-primary) !important;
+  }
+  
+  /* Contenido de filtros */
+  .filter-panel-content,
+  .filters-content {
+    background: var(--dark-bg-secondary) !important;
+  }
+  
+  .filters-content.expanded {
+    background: var(--dark-bg-secondary) !important;
+  }
+  
+  /* Header de filtros */
+  .filters-header {
+    background: linear-gradient(135deg, var(--dark-bg-tertiary) 0%, var(--dark-bg-primary) 100%) !important;
+    color: var(--dark-text-secondary) !important;
+  }
+  
+  /* Labels de filtros */
+  .filter-label,
+  .filter-group label {
+    color: var(--dark-text-primary) !important;
+  }
+  
+  /* ===============================================
+     INPUTS Y SELECTS - MODO NOCTURNO
+     =============================================== */
+  
+  /* Inputs generales */
+  .filter-input,
+  .filter-input-small,
+  input[type="text"],
+  input[type="email"],
+  input[type="number"],
+  input[type="datetime-local"] {
+    background: var(--dark-bg-tertiary) !important;
+    border: 2px solid var(--dark-border) !important;
+    color: var(--dark-text-primary) !important;
+  }
+  
+  .filter-input:focus,
+  .filter-input-small:focus,
+  input[type="text"]:focus,
+  input[type="email"]:focus,
+  input[type="number"]:focus,
+  input[type="datetime-local"]:focus {
+    border-color: var(--dark-terpel-red) !important;
+    box-shadow: 0 0 0 4px var(--dark-terpel-red-light) !important;
+    background: var(--dark-bg-primary) !important;
+  }
+  
+  .filter-input::placeholder,
+  .filter-input-small::placeholder,
+  input::placeholder {
+    color: var(--dark-text-muted) !important;
+  }
+  
+  /* ===============================================
+     INPUTS DE FECHA - ICONOS VISIBLES
+     =============================================== */
+  
+  /* Inputs de fecha específicos */
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"] {
+    background: var(--dark-bg-tertiary) !important;
+    border: 2px solid var(--dark-border) !important;
+    color: var(--dark-text-primary) !important;
+    color-scheme: dark !important; /* Esto hace que los iconos sean visibles */
+    position: relative;
+  }
+  
+  input[type="date"]:focus,
+  input[type="datetime-local"]:focus,
+  input[type="time"]:focus {
+    border-color: var(--dark-terpel-red) !important;
+    box-shadow: 0 0 0 4px var(--dark-terpel-red-light) !important;
+    background: var(--dark-bg-primary) !important;
+  }
+  
+  /* Iconos de calendario personalizados para navegadores que no soportan color-scheme */
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) !important; /* Invierte los colores para hacerlos visibles */
+    opacity: 0.8;
+    cursor: pointer;
+  }
+  
+  input[type="date"]::-webkit-calendar-picker-indicator:hover,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+  input[type="time"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+    filter: invert(1) brightness(1.2) !important;
+  }
+  
+  /* Clase específica para inputs de fecha en filtros */
+  .filter-date,
+  .filter-input[type="date"],
+  .filter-input[type="datetime-local"] {
+    background: var(--dark-bg-tertiary) !important;
+    border: 2px solid var(--dark-border) !important;
+    color: var(--dark-text-primary) !important;
+    color-scheme: dark !important;
+  }
+  
+  /* ===============================================
+     SELECTS - MODO NOCTURNO
+     =============================================== */
+  
+  .filter-select,
+  .filter-select-small,
+  select {
+    background: var(--dark-bg-tertiary) !important;
+    border: 2px solid var(--dark-border) !important;
+    color: var(--dark-text-primary) !important;
+  }
+  
+  .filter-select:focus,
+  .filter-select-small:focus,
+  select:focus {
+    border-color: var(--dark-terpel-red) !important;
+    box-shadow: 0 0 0 4px var(--dark-terpel-red-light) !important;
+    background: var(--dark-bg-primary) !important;
+  }
+  
+  /* Opciones de select */
+  .filter-select option,
+  .filter-select-small option,
+  select option {
+    background: var(--dark-bg-tertiary) !important;
+    color: var(--dark-text-primary) !important;
+  }
+  
+  /* Flecha personalizada para selects */
+  .filter-select-small {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+  }
+  
+  /* ===============================================
+     CARDS Y CONTENEDORES - MODO NOCTURNO
+     =============================================== */
+  
+  /* Info cards */
+  .info-card {
+    background: var(--dark-bg-tertiary) !important;
+    border: 1px solid var(--dark-border) !important;
+  }
+  
+  .card-header {
+    background: var(--dark-bg-secondary) !important;
+    border-bottom: 1px solid var(--dark-border) !important;
+  }
+  
+  .card-header h4 {
+    color: var(--dark-text-primary) !important;
+  }
+  
+  .card-content {
+    background: var(--dark-bg-tertiary) !important;
+  }
+  
+  /* Info rows */
+  .info-row label {
+    color: var(--dark-text-primary) !important;
+  }
+  
+  .info-row span {
+    color: var(--dark-text-secondary) !important;
+  }
+  
+  /* ===============================================
+     TABLAS - MODO NOCTURNO
+     =============================================== */
+  
+  /* Tablas en modales */
+  .productos-table {
+    background: var(--dark-bg-tertiary) !important;
+    border: 1px solid var(--dark-border) !important;
+  }
+  
+  .productos-table th {
+    background: var(--dark-bg-primary) !important;
+    color: var(--dark-text-primary) !important;
+    border-bottom: 1px solid var(--dark-border) !important;
+  }
+  
+  .productos-table td {
+    color: var(--dark-text-secondary) !important;
+    border-bottom: 1px solid var(--dark-border-light) !important;
+  }
+  
+  .productos-table tr:hover {
+    background: var(--dark-bg-secondary) !important;
+  }
+  
+  /* ===============================================
+     BOTONES - MODO NOCTURNO
+     =============================================== */
+  
+  /* Botón limpiar filtros */
+  .filter-clear-btn,
+  .clear-filters-btn {
+    background: linear-gradient(135deg, #6c757d, #5a6268) !important;
+    color: var(--dark-text-primary) !important;
+  }
+  
+  .filter-clear-btn:hover,
+  .clear-filters-btn:hover {
+    background: linear-gradient(135deg, #5a6268, #495057) !important;
+  }
+  
+  /* Botones de acción en modales */
+  .action-buttons button {
+    border: 1px solid var(--dark-border) !important;
+  }
+  
+  /* ===============================================
+     FOTOS Y MULTIMEDIA - MODO NOCTURNO
+     =============================================== */
+  
+  /* Grid de fotos */
+  .foto-item {
+    background: var(--dark-bg-tertiary) !important;
+    border: 1px solid var(--dark-border) !important;
+  }
+  
+  .foto-header {
+    background: var(--dark-bg-primary) !important;
+    border-bottom: 1px solid var(--dark-border) !important;
+  }
+  
+  .foto-tipo {
+    color: var(--dark-text-primary) !important;
+  }
+  
+  /* ===============================================
+     BADGES Y ESTADOS - MODO NOCTURNO
+     =============================================== */
+  
+  /* Contador de resultados */
+  .filter-results-counter {
+    background: var(--dark-bg-tertiary) !important;
+    border: 2px solid var(--dark-border) !important;
+  }
+  
+  .filter-results-text {
+    color: var(--dark-text-primary) !important;
+  }
+  
+  /* Estados específicos con mejor contraste */
+  .mercadeo_estado-badge.estado-aprobado {
+    background: #1e5a2e !important;
+    color: #4ade80 !important;
+    border: 1px solid #22c55e !important;
+  }
+  
+  .mercadeo_estado-badge.estado-rechazado {
+    background: #5c1e1e !important;
+    color: #f87171 !important;
+    border: 1px solid #ef4444 !important;
+  }
+  
+  .mercadeo_estado-badge.estado-pendiente {
+    background: #5c4a1e !important;
+    color: #fbbf24 !important;
+    border: 1px solid #f59e0b !important;
+  }
+  
+  .mercadeo_estado-badge.estado-revision {
+    background: #3e1e5c !important;
+    color: #c084fc !important;
+    border: 1px solid #a855f7 !important;
+  }
+  
+  /* ===============================================
+     ELEMENTOS ESPECÍFICOS - MODO NOCTURNO
+     =============================================== */
+  
+  /* Texto de observaciones */
+  .observacion-text {
+    background: var(--dark-bg-primary) !important;
+    border: 1px solid var(--dark-border) !important;
+    color: var(--dark-text-secondary) !important;
+  }
+  
+  /* Códigos y valores especiales */
+  .codigo-value {
+    background: #5c1e1e !important;
+    color: #f87171 !important;
+    border: 1px solid #ef4444 !important;
+  }
+  
+  .asesor-value {
+    color: var(--dark-text-primary) !important;
+  }
+  
+  /* ===============================================
+     SCROLLBARS - MODO NOCTURNO
+     =============================================== */
+  
+  /* Scrollbars personalizados */
+  .modal-body::-webkit-scrollbar,
+  .table-wrapper::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .modal-body::-webkit-scrollbar-track,
+  .table-wrapper::-webkit-scrollbar-track {
+    background: var(--dark-bg-primary) !important;
+    border-radius: 4px;
+  }
+  
+  .modal-body::-webkit-scrollbar-thumb,
+  .table-wrapper::-webkit-scrollbar-thumb {
+    background: var(--dark-terpel-red) !important;
+    border-radius: 4px;
+  }
+  
+  .modal-body::-webkit-scrollbar-thumb:hover,
+  .table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: var(--dark-terpel-red-hover) !important;
+  }
+  
+  /* ===============================================
+     ESTADOS VACÍOS - MODO NOCTURNO
+     =============================================== */
+  
+  .empty-state {
+    background: var(--dark-bg-secondary) !important;
+    border: 1px solid var(--dark-border) !important;
+  }
+  
+  .empty-state h3 {
+    color: var(--dark-text-primary) !important;
+  }
+  
+  .empty-state p {
+    color: var(--dark-text-secondary) !important;
+  }
+  
+  /* ===============================================
+     LOADING STATES - MODO NOCTURNO
+     =============================================== */
+  
+  .loading-spinner {
+    border: 3px solid var(--dark-bg-tertiary) !important;
+    border-top: 3px solid var(--dark-terpel-red) !important;
+  }
+  
+  .image-loading {
+    background: var(--dark-bg-primary) !important;
+  }
+  
+  /* ===============================================
+     TOOLTIPS - MODO NOCTURNO
+     =============================================== */
+  
+  .tooltip .tooltiptext {
+    background-color: var(--dark-bg-primary) !important;
+    color: var(--dark-text-primary) !important;
+    border: 1px solid var(--dark-border) !important;
+  }
+  
+  /* ===============================================
+     RESPONSIVE - MODO NOCTURNO
+     =============================================== */
+  
+  @media (max-width: 768px) {
+    .modal-content {
+      margin: 10px !important;
+      max-height: 95vh !important;
+    }
+    
+    .filter-panel {
+      margin-bottom: 12px !important;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .modal-overlay {
+      padding: 10px !important;
+    }
+    
+    .modal-content {
+      border-radius: 12px !important;
+    }
+  }
+}
+
+/* ===============================================
+   CLASES MANUALES PARA FORZAR MODO NOCTURNO
+   =============================================== */
+
+/* Si quieres aplicar modo nocturno manualmente, agrega estas clases */
+.dark-theme .modal-content,
+.modo-nocturno .modal-content {
+  background: var(--dark-bg-secondary) !important;
+  border: 1px solid var(--dark-border) !important;
+  box-shadow: var(--dark-shadow) !important;
+  color: var(--dark-text-primary) !important;
+}
+
+.dark-theme .filter-panel,
+.modo-nocturno .filter-panel {
+  background: var(--dark-bg-secondary) !important;
+  border: 1px solid var(--dark-border) !important;
+}
+
+/* Clase para forzar modo nocturno en inputs de fecha */
+.force-dark-date-input {
+  color-scheme: dark !important;
+}
+
+.force-dark-date-input::-webkit-calendar-picker-indicator {
+  filter: invert(1) !important;
+  opacity: 0.8;
+}
+
+.force-dark-date-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  filter: invert(1) brightness(1.2) !important;
+}
+
+/* ===============================================
+   FIX ESPECÍFICO PARA NAVEGADORES OLDER
+   =============================================== */
+
+/* Para navegadores que no soportan color-scheme */
+@supports not (color-scheme: dark) {
+  @media (prefers-color-scheme: dark) {
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator {
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3e%3c/rect%3e%3cline x1='16' y1='2' x2='16' y2='6'%3e%3c/line%3e%3cline x1='8' y1='2' x2='8' y2='6'%3e%3c/line%3e%3cline x1='3' y1='10' x2='21' y2='10'%3e%3c/line%3e%3c/svg%3e") !important;
+      width: 20px !important;
+      height: 20px !important;
+      background-size: contain !important;
+      background-repeat: no-repeat !important;
+      filter: none !important;
+    }
+  }
+}

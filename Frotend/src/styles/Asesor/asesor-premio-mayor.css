@@ -1,0 +1,295 @@
+/* Estilos para la página de Premio Mayor */
+
+.premio-mayor-container {
+  width: 100%;
+  min-height: auto;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 0 0 22% 0;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.premio-mayor-intro {
+  width: 100%;
+  max-width: 420px;
+  margin: 18px 0 10px 0;
+  box-sizing: border-box;
+}
+
+.premio-mayor-intro-text {
+  color: #666;
+  font-weight: 500;
+  font-size: 13px;
+  margin: 4px 30px 15px 30px;
+  letter-spacing: -0.1px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.premio-mayor-carrusel {
+  width: 95%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 18px;
+  box-sizing: border-box;
+}
+
+.premio-mayor-slide {
+  width: 100%;
+  height: 200px;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(227, 6, 19, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.premio-mayor-slide:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(227, 6, 19, 0.15);
+}
+
+.premio-mayor-slide-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  transition: transform 0.3s ease;
+}
+
+.premio-mayor-slide:hover .premio-mayor-slide-img {
+  transform: scale(1.02);
+}
+
+.premio-mayor-dots {
+  position: static;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.premio-mayor-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid #e30613;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.premio-mayor-dot.active {
+  background: #e30613;
+}
+
+.premio-mayor-dot.inactive {
+  background: #fff;
+}
+
+.premio-mayor-info {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.premio-mayor-titulo {
+  font-weight: 700;
+  font-size: 22px;
+  color: #e30613;
+  text-align: center;
+  margin-bottom: -1px;
+}
+
+.premio-mayor-descripcion {
+  font-weight: 100;
+  font-size: 15px;
+  color: #222;
+  text-align: center;
+  margin-bottom: 18px;
+  letter-spacing: 0.5px;
+}
+
+.premio-mayor-recuadro {
+  background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+  border-radius: 16px;
+  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.08);
+  padding: 24px 24px 26px 24px;
+  width: 80%;
+  text-align: left;
+  border: 1px solid rgba(227, 6, 19, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.premio-mayor-recuadro::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #e30613 0%, #ff4757 100%);
+}
+
+.premio-mayor-recuadro-titulo {
+  color: #e30613;
+  font-weight: 700;
+  font-size: 18px;
+  margin-bottom: 12px;
+  text-shadow: 0 1px 2px rgba(227, 6, 19, 0.1);
+}
+
+.premio-mayor-recuadro-texto {
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 12px;
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+.premio-mayor-recuadro-lista {
+  margin: 8px 0 12px 20px;
+  padding: 0;
+}
+
+.premio-mayor-recuadro-lista li {
+  margin-bottom: 1px;
+  line-height: 1.5;
+  color: #444;
+  font-weight: 400;
+  position: relative;
+}
+
+.premio-mayor-recuadro-lista li::marker {
+  color: #e30613;
+}
+
+.premio-mayor-recuadro-footer {
+  color: #e30613;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: rgba(227, 6, 19, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(227, 6, 19, 0.1);
+}
+
+/* Para pantallas muy grandes */
+@media (min-width: 1200px) {
+  .premio-mayor-container {
+    /* padding: 40px 30px 80px 30px; */
+    background: none;
+    box-shadow: none;
+    overflow-y: scroll;
+    height: 80vh;
+  }
+
+  /* Estilos personalizados para la barra de scroll en escritorio */
+  .premio-mayor-container::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .premio-mayor-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+  }
+
+  .premio-mayor-container::-webkit-scrollbar-thumb {
+    background: #e3061557;
+    border-radius: 10px;
+    transition: background 0.3s ease;
+  }
+
+  .premio-mayor-container::-webkit-scrollbar-thumb:hover {
+    background: #c505125b;
+  }
+
+  /* Soporte para Firefox */
+  .premio-mayor-container {
+    scrollbar-width: thin;
+    scrollbar-color: #e3061561 #f1f1f1;
+  }
+
+  /* .premio-mayor-carrusel {
+    max-width: 1400px;
+  } */
+
+  .premio-mayor-slide {
+    height: 300px;
+    border-radius: 24px;
+  }
+
+  .premio-mayor-slide-img {
+    border-radius: 24px;
+  }
+
+  .premio-mayor-info {
+    max-width: 1000px;
+  }
+
+  .premio-mayor-titulo {
+    font-size: 15px;
+  }
+
+  .premio-mayor-descripcion {
+    font-size: 11px;
+  }
+
+  .premio-mayor-recuadro {
+    max-width: 500px;
+    /* padding: 50px 60px; */
+  }
+
+  .premio-mayor-recuadro-titulo {
+    font-size: 12px;
+  }
+
+  .premio-mayor-recuadro-texto {
+    font-size: 11pxx;
+  }
+
+  .premio-mayor-recuadro-lista li {
+    font-size: 10px;
+  }
+
+  .premio-mayor-recuadro-footer {
+    font-size: 10px;
+    padding: 15px 25px;
+  }
+}
+
+/* Animaciones adicionales */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.premio-mayor-info {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.premio-mayor-carrusel {
+  animation: fadeInUp 0.6s ease-out 0.2s both;
+}
+
+.premio-mayor-intro {
+  animation: fadeInUp 0.6s ease-out 0.4s both;
+}

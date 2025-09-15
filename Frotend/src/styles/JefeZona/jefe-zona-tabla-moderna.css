@@ -1,0 +1,506 @@
+/**
+ * Estilos complementarios para la tabla moderna del historial de Jefe de Zona
+ * Estos estilos complementan los estilos del asesor importados
+ */
+
+/* Estadísticas mejoradas */
+.jefe-zona-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-item {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e9ecef;
+  text-align: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stat-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.stat-number {
+  display: block;
+  font-size: 2.5em;
+  font-weight: 700;
+  color: #e30613;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.stat-label {
+  display: block;
+  font-size: 14px;
+  color: #6c757d;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Barra de progreso para cumplimiento */
+.cumplimiento-stat {
+  position: relative;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  margin: 10px 0 8px 0;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+  position: relative;
+}
+
+.progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+/* Mejoras específicas para filtros */
+.search-filter-container {
+  margin-bottom: 24px;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: end;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e9ecef;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+}
+
+.filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filter-input,
+.filter-select {
+  padding: 10px 12px;
+  border: 2px solid #e9ecef;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.filter-input:focus,
+.filter-select:focus {
+  outline: none;
+  border-color: #e30613;
+  box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.1);
+}
+
+.filter-input::placeholder {
+  color: #adb5bd;
+  font-style: italic;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+}
+
+.apply-filter-btn,
+.clear-filter-btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.apply-filter-btn {
+  background: linear-gradient(135deg, #e30613, #c1050f);
+  color: white;
+}
+
+.apply-filter-btn:hover {
+  background: linear-gradient(135deg, #c1050f, #a1040e);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(227, 6, 19, 0.3);
+}
+
+.clear-filter-btn {
+  background: #6c757d;
+  color: white;
+}
+
+.clear-filter-btn:hover {
+  background: #5a6268;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+.filter-results {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e9ecef;
+}
+
+.results-count {
+  font-size: 13px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+/* Mejoras para botones de acción */
+.clear-filters-btn,
+.btn-nueva-visita {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin: 8px;
+}
+
+.clear-filters-btn {
+  background: #17a2b8;
+  color: white;
+}
+
+.clear-filters-btn:hover {
+  background: #138496;
+  transform: translateY(-1px);
+}
+
+.btn-nueva-visita {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+}
+
+.btn-nueva-visita:hover {
+  background: linear-gradient(135deg, #20c997, #17a2b8);
+  transform: translateY(-1px);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filter-group {
+    min-width: 100%;
+  }
+  
+  .filter-actions {
+    justify-content: center;
+    margin-top: 16px;
+  }
+  
+  .apply-filter-btn,
+  .clear-filter-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* Mejoras para la tabla en dispositivos pequeños */
+@media (max-width: 480px) {
+  .registros-table th,
+  .registros-table td {
+    padding: 8px 4px;
+    font-size: 11px;
+  }
+  
+  .codigo-highlight {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+  
+  .kpi-badge {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+}
+
+/* ===== ESTILOS MINIMALISTAS PARA KPIs ===== */
+
+/* Estadísticas minimalistas - sobreescriben las anteriores */
+.jefe-zona-stats {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 12px !important;
+  margin: 16px 0 !important;
+  padding: 12px !important;
+  background: #f8f9fa !important;
+  border-radius: 6px !important;
+  border: 1px solid #e9ecef !important;
+}
+
+.stat-item-mini {
+  text-align: center;
+  padding: 8px 6px;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-item-mini:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+
+.stat-number-mini {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: #dc2626;
+  margin-bottom: 2px;
+  line-height: 1.2;
+}
+
+.stat-label-mini {
+  display: block;
+  font-size: 10px;
+  color: #6b7280;
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+}
+
+.cumplimiento-stat-mini {
+  position: relative;
+}
+
+.progress-bar-container-mini {
+  width: 100%;
+  height: 3px;
+  background-color: #e5e7eb;
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-mini {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease-in-out;
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+  .jefe-zona-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    padding: 10px !important;
+  }
+  
+  .stat-item-mini {
+    padding: 6px 4px;
+  }
+  
+  .stat-number-mini {
+    font-size: 14px;
+  }
+  
+  .stat-label-mini {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 480px) {
+  .jefe-zona-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 6px !important;
+    padding: 8px !important;
+  }
+  
+  .stat-item-mini {
+    padding: 5px 3px;
+  }
+  
+  .stat-number-mini {
+    font-size: 13px;
+  }
+  
+  .stat-label-mini {
+    font-size: 8px;
+  }
+}
+
+/* Estilos específicos para asegurar la barra de desplazamiento horizontal */
+.registros-table-container {
+  width: 100%;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.table-wrapper {
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  width: 100%;
+  /* Asegurar que siempre muestre la barra cuando sea necesario */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Estilos para la barra de desplazamiento */
+.table-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+  background: #e30613;
+  border-radius: 4px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #c1050f;
+}
+
+/* Asegurar que la tabla tenga un ancho mínimo */
+.registros-table {
+  width: 100%;
+  min-width: 600px; /* Ancho mínimo para forzar scroll horizontal si es necesario */
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+/* ===== ALTURA MÁXIMA FIJA + SCROLL AUTOMÁTICO ===== */
+
+/* Contenedor de tabla con altura máxima */
+.registros-table-container,
+.jefe-zona-tabla-container {
+  max-height: 350px; /* ALTURA MÁXIMA FIJA */
+  overflow-y: auto;   /* SCROLL VERTICAL AUTOMÁTICO */
+  overflow-x: auto;   /* SCROLL HORIZONTAL AUTOMÁTICO */
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Wrapper de tabla */
+.table-wrapper {
+  overflow: visible; /* Dejar que el contenedor padre maneje el scroll */
+}
+
+/* Tablas */
+.registros-table,
+.jefe-zona-tabla {
+  width: 100%;
+  min-width: 600px; /* Forzar scroll horizontal si es necesario */
+  border-collapse: collapse;
+  margin: 0;
+}
+
+/* Headers fijos al hacer scroll */
+.registros-table thead th,
+.jefe-zona-tabla thead th {
+  position: sticky;
+  top: 0;
+  background: #e30613;
+  z-index: 10;
+  box-shadow: 0 2px 2px rgba(0,0,0,0.1);
+}
+
+/* Barras de scroll personalizadas */
+.registros-table-container::-webkit-scrollbar,
+.jefe-zona-tabla-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.registros-table-container::-webkit-scrollbar-track,
+.jefe-zona-tabla-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.registros-table-container::-webkit-scrollbar-thumb,
+.jefe-zona-tabla-container::-webkit-scrollbar-thumb {
+  background: #e30613;
+  border-radius: 4px;
+}
+
+.registros-table-container::-webkit-scrollbar-thumb:hover,
+.jefe-zona-tabla-container::-webkit-scrollbar-thumb:hover {
+  background: #c1050f;
+}
+
+/* Responsive - ajustar altura en móviles */
+@media (max-width: 768px) {
+  .registros-table-container,
+  .jefe-zona-tabla-container {
+    max-height: 300px; /* Menor altura en tablets */
+  }
+}
+
+@media (max-width: 480px) {
+  .registros-table-container,
+  .jefe-zona-tabla-container {
+    max-height: 250px; /* Menor altura en móviles */
+  }
+  
+  .registros-table,
+  .jefe-zona-tabla {
+    min-width: 400px; /* Menor ancho mínimo en móviles */
+    font-size: 12px;
+  }
+}

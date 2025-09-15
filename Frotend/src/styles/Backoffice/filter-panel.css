@@ -1,0 +1,749 @@
+/* ===============================================
+   FILTER PANEL - BackOffice - Componente de Filtros Desplegables
+   =============================================== */
+
+.backoffice-filter-panel {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
+  overflow: hidden;
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.backoffice-filter-panel:hover {
+  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+/* ===============================================
+   HEADER DEL PANEL DE FILTROS - BACKOFFICE
+   =============================================== */
+
+.backoffice-filter-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #e31e24 0%, #ff4757 100%);
+  color: white;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.backoffice-filter-panel-header:hover {
+  background: linear-gradient(135deg, #c41e3a 0%, #e31e24 100%);
+}
+
+.backoffice-filter-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.backoffice-filter-panel-icon {
+  font-size: 1.4rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.backoffice-filter-panel-title h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.backoffice-filter-panel-count {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+}
+
+.backoffice-filter-panel-toggle {
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.backoffice-filter-panel-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.backoffice-filter-panel-toggle.expanded {
+  transform: rotate(180deg);
+}
+
+.backoffice-filter-panel-toggle.collapsed {
+  transform: rotate(0deg);
+}
+
+/* ===============================================
+   CONTENIDO DEL PANEL DE FILTROS - BACKOFFICE
+   =============================================== */
+
+.backoffice-filter-panel-content {
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.backoffice-filter-panel-content.expanded {
+  max-height: 500px;
+  opacity: 1;
+  padding: 24px;
+}
+
+.backoffice-filter-panel-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+  padding: 0 24px;
+}
+
+.backoffice-filter-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+/* ===============================================
+   GRUPOS DE FILTROS - BACKOFFICE
+   =============================================== */
+
+.backoffice-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.backoffice-filter-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.backoffice-filter-label-icon {
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+/* ===============================================
+   INPUTS DE FILTROS - BACKOFFICE
+   =============================================== */
+
+.backoffice-filter-input-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.backoffice-filter-input {
+  padding: 12px 16px;
+  border: 2px solid #e9ecef;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  background: #fdfdfd;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.backoffice-filter-input:focus {
+  outline: none;
+  border-color: #e31e24;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(227, 30, 36, 0.1), inset 0 2px 4px rgba(0, 0, 0, 0.04);
+  transform: translateY(-2px);
+}
+
+.backoffice-filter-input::placeholder {
+  color: #adb5bd;
+  font-style: italic;
+}
+
+.backoffice-filter-input-focus-border {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #e31e24, #ff4757);
+  transition: all 0.4s ease;
+  transform: translateX(-50%);
+  border-radius: 2px;
+}
+
+.backoffice-filter-input:focus + .backoffice-filter-input-focus-border {
+  width: 100%;
+}
+
+.backoffice-filter-date {
+  color-scheme: light;
+}
+
+/* ===============================================
+   SELECTS DE FILTROS - BACKOFFICE
+   =============================================== */
+
+.backoffice-filter-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.backoffice-filter-select {
+  padding: 12px 40px 12px 16px;
+  border: 2px solid #e9ecef;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  background: #fdfdfd;
+  cursor: pointer;
+  width: 100%;
+  appearance: none;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.04);
+  box-sizing: border-box;
+}
+
+.backoffice-filter-select:focus {
+  outline: none;
+  border-color: #e31e24;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(227, 30, 36, 0.1), inset 0 2px 4px rgba(0, 0, 0, 0.04);
+  transform: translateY(-2px);
+}
+
+.backoffice-filter-select-arrow {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+.backoffice-filter-select:focus + .backoffice-filter-select-arrow {
+  color: #e31e24;
+  transform: translateY(-50%) rotate(180deg);
+}
+
+/* ===============================================
+   ACCIONES DEL PANEL - BACKOFFICE
+   =============================================== */
+
+.backoffice-filter-panel-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 20px;
+  border-top: 2px solid #f8f9fa;
+  gap: 16px;
+}
+
+.backoffice-filter-clear-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #6c757d, #5a6268);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+}
+
+.backoffice-filter-clear-btn:hover {
+  background: linear-gradient(135deg, #5a6268, #495057);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+}
+
+.backoffice-filter-clear-btn:active {
+  transform: translateY(0);
+}
+
+.backoffice-filter-clear-icon {
+  font-size: 1rem;
+}
+
+.backoffice-filter-results-counter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #f8f9fa;
+  border-radius: 20px;
+  border: 2px solid #e9ecef;
+}
+
+.backoffice-filter-results-icon {
+  font-size: 1rem;
+}
+
+.backoffice-filter-results-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #495057;
+}
+
+/* ===============================================
+   RESPONSIVE DESIGN - BACKOFFICE
+   =============================================== */
+
+/* Tablets */
+@media (max-width: 768px) {
+  .backoffice-filter-panel {
+    margin-bottom: 16px;
+    border-radius: 12px;
+  }
+
+  .backoffice-filter-panel-header {
+    padding: 16px 20px;
+  }
+
+  .backoffice-filter-panel-title h3 {
+    font-size: 1rem;
+  }
+
+  .backoffice-filter-panel-count {
+    font-size: 0.8rem;
+    padding: 3px 10px;
+  }
+
+  .backoffice-filter-panel-content.expanded {
+    padding: 20px;
+  }
+
+  .backoffice-filter-panel-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .backoffice-filter-panel-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .backoffice-filter-clear-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .backoffice-filter-results-counter {
+    justify-content: center;
+  }
+}
+
+/* Móviles */
+@media (max-width: 480px) {
+  .backoffice-filter-panel {
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+
+  .backoffice-filter-panel-header {
+    padding: 12px 16px;
+  }
+
+  .backoffice-filter-panel-title {
+    gap: 8px;
+  }
+
+  .backoffice-filter-panel-title h3 {
+    font-size: 0.9rem;
+  }
+
+  .backoffice-filter-panel-count {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+  }
+
+  .backoffice-filter-panel-content.expanded {
+    padding: 16px;
+  }
+
+  .backoffice-filter-panel-grid {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .backoffice-filter-input,
+  .backoffice-filter-select {
+    padding: 10px 14px;
+    font-size: 0.85rem;
+  }
+
+  .backoffice-filter-select {
+    padding-right: 36px;
+  }
+
+  .backoffice-filter-label {
+    font-size: 0.8rem;
+    gap: 6px;
+  }
+
+  .backoffice-filter-clear-btn {
+    padding: 10px 16px;
+    font-size: 0.8rem;
+  }
+
+  .backoffice-filter-results-counter {
+    padding: 6px 12px;
+  }
+
+  .backoffice-filter-results-text {
+    font-size: 0.8rem;
+  }
+}
+
+/* ===============================================
+   MEJORAS ADICIONALES RESPONSIVAS - BACKOFFICE
+   =============================================== */
+
+.backoffice-filter-panel-body {
+  padding: 20px 24px;
+}
+
+.backoffice-filter-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.backoffice-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.backoffice-filter-label {
+  font-weight: 600;
+  color: #495057;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
+.backoffice-filter-input,
+.backoffice-filter-select {
+  padding: 12px 16px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.backoffice-filter-input:focus,
+.backoffice-filter-select:focus {
+  outline: none;
+  border-color: #e31e24;
+  box-shadow: 0 0 0 3px rgba(227, 30, 36, 0.1);
+}
+
+.backoffice-filter-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 16px;
+  border-top: 1px solid #e9ecef;
+}
+
+.backoffice-btn-clear-filters {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.backoffice-btn-clear-filters:hover {
+  background: #5a6268;
+  transform: translateY(-2px);
+}
+
+/* ===============================================
+   ANIMACIONES Y EFECTOS ESPECIALES - BACKOFFICE
+   =============================================== */
+
+@keyframes backofficeFilterPanelSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.backoffice-filter-panel {
+  animation: backofficeFilterPanelSlideIn 0.4s ease-out;
+}
+
+/* Efecto de ondas al hacer hover - REMOVIDO */
+
+/* Estados de carga */
+.backoffice-filter-panel.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.backoffice-filter-panel.loading .backoffice-filter-panel-header::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 60px;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ===============================================
+   NUEVOS ESTILOS PARA FILTROS DESPLEGABLES CON ALTURA FIJA
+   =============================================== */
+
+.filter-panel-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
+  overflow: hidden;
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.filter-panel-container:hover {
+  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* Header desplegable */
+.filter-toggle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #e31e24 0%, #ff4757 100%);
+  color: white;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.filter-toggle-header:hover {
+  background: linear-gradient(135deg, #c41e3a 0%, #e31e24 100%);
+}
+
+.filter-toggle-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: white;
+}
+
+/* Icono de desplegable */
+.filter-toggle-icon {
+  font-size: 1.2rem;
+  transition: transform 0.3s ease;
+  color: white;
+  font-weight: bold;
+}
+
+.filter-toggle-icon.open {
+  transform: rotate(180deg);
+}
+
+/* Panel de filtros con altura fija */
+.filter-panel {
+  max-height: 0 !important;
+  overflow: hidden !important;
+  transition: max-height 0.4s ease-in-out !important;
+  background: #f8f9fa !important;
+  height: 0 !important;
+}
+
+.filter-panel.open {
+  max-height: 450px !important; /* Altura fija más específica */
+  height: auto !important;
+  min-height: 300px !important; /* Altura mínima garantizada */
+}
+
+.filter-panel.closed {
+  max-height: 0 !important;
+  height: 0 !important;
+}
+
+/* Contenido del panel con scroll si es necesario */
+.filter-section-content {
+  padding: 24px !important;
+  max-height: 400px !important; /* Altura máxima del contenido */
+  overflow-y: auto !important; /* Scroll vertical si el contenido es muy largo */
+  height: 350px !important; /* Altura fija del contenido */
+  box-sizing: border-box !important;
+}
+
+/* Estilos para los grupos de filtros */
+.filter-buttons-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.search-inputs-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.filter-group,
+.search-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-group label,
+.search-input-group label {
+  font-weight: 600;
+  color: #495057;
+  font-size: 0.9rem;
+}
+
+.filter-select,
+.search-input {
+  padding: 12px 16px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.filter-select:focus,
+.search-input:focus {
+  outline: none;
+  border-color: #e31e24;
+  box-shadow: 0 0 0 3px rgba(227, 30, 36, 0.1);
+}
+
+/* Botón de limpiar filtros */
+.filter-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #dee2e6;
+}
+
+.clear-filters-btn {
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+  color: white;
+  border: none;
+  padding: 6px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.75rem;
+}
+
+.clear-filters-btn:hover {
+  background: linear-gradient(135deg, #5a6268 0%, #343a40 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .filter-buttons-group,
+  .search-inputs-group {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .filter-toggle-header {
+    padding: 16px 20px;
+  }
+  
+  .filter-section-content {
+    padding: 20px !important;
+    max-height: 280px !important;
+    height: 250px !important;
+  }
+  
+  .filter-panel.open {
+    max-height: 350px !important;
+    min-height: 280px !important;
+  }
+}
+
+/* Estilos adicionales para forzar altura fija */
+.filter-panel-container .filter-panel {
+  display: block !important;
+  position: relative !important;
+}
+
+.filter-panel-container .filter-panel.open {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.filter-panel-container .filter-panel.closed {
+  display: block !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  transition: all 0.4s ease-in-out !important;
+}
+
+/* Contenedor principal con altura controlada */
+.filter-panel-container {
+  background: white !important;
+  border-radius: 16px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+  margin-bottom: 24px !important;
+  overflow: hidden !important;
+  border: 1px solid #e9ecef !important;
+  transition: all 0.3s ease !important;
+  position: relative !important;
+}

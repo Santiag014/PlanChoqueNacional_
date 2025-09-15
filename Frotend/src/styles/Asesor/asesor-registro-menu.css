@@ -1,0 +1,105 @@
+/* Estilos para la página de menú de registro */
+.registro-menu-container {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px;
+  min-height: 70vh; /* Usar 100vh para altura completa de ventana */
+  height: auto; /* Altura automática para adaptarse al contenido */
+  display: flex;
+  flex-direction: column; /* Cambio para mejor organización vertical */
+  justify-content: center; /* Centrar verticalmente los botones */
+  align-items: center;
+}
+
+.registro-menu-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.registro-menu-header h1 {
+  color: #e30613;
+  font-size: 2.2rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.registro-menu-header p {
+  color: #666;
+  font-size: 1rem;
+}
+
+.registro-menu-opciones {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+  width: 100%;
+  max-width: 350px; /* Limitar el ancho máximo */
+}
+
+.opcion-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: white;
+  border-radius: 12px;
+  padding: 15px 20px; /* Aumentar un poco el padding */
+  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid #e0e0e0;
+  width: 100%;
+  max-width: 100%; /* Usar todo el ancho disponible */
+  text-align: center;
+  min-height: 80px; /* Altura mínima para consistencia */
+}
+
+.opcion-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(227, 6, 19, 0.12);
+  border-color: #e30613;
+}
+
+.opcion-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-bottom: 8px; /* Agregar separación con el texto */
+}
+
+.opcion-icon img {
+  width: 40px;
+  height: 40px;
+  filter: none;
+}
+
+.opcion-content {
+  flex: 1;
+}
+
+.opcion-content h3 {
+  color: #e30613;
+  font-size: 0.9rem; /* Aumentar ligeramente el tamaño */
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+  margin-bottom: 4px; /* Agregar separación con el párrafo */
+}
+
+.opcion-content p {
+  color: #888;
+  font-size: 0.65rem; /* Aumentar ligeramente el tamaño */
+  line-height: 1.4;
+  margin: 0; /* Quitar margen negativo */
+}
+
+.opcion-arrow {
+  display: none;
+}
+

@@ -1,0 +1,718 @@
+/* ============================================
+   ESTILOS PARA GESTIÓN DE USUARIOS - BACKOFFICE
+   ============================================ */
+
+/* Tabla de usuarios */
+.usuarios-table-container {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.usuarios-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.usuarios-table th,
+.usuarios-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.usuarios-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #333;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.usuarios-table tbody tr:hover {
+  background-color: #f5f5f5;
+}
+
+.usuario-name {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+/* Badges y estados */
+.rol-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+/* Estilos específicos para cada rol */
+.rol-badge.asesor {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.rol-badge.mercadeo {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.rol-badge.director {
+  background: #fff3e0;
+  color: #ef6c00;
+}
+
+.rol-badge.coordinador {
+  background: #e8f5e8;
+  color: #2e7d32;
+}
+
+.rol-badge.mystery {
+  background: #fce4ec;
+  color: #c2185b;
+}
+
+.rol-badge.backoffice {
+  background: #e0f2f1;
+  color: #00695c;
+}
+
+.estado-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.estado-badge.activo {
+  background: #e8f5e8;
+  color: #2e7d32;
+}
+
+.estado-badge.inactivo {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.promotor-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.promotor-badge.yes {
+  background: #fff3e0;
+  color: #ef6c00;
+}
+
+.promotor-badge.no {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+/* Vista móvil para usuarios */
+.usuarios-mobile-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+/* Contador simple de usuarios */
+.contador-simple {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+/* Estilos para campo de email */
+.backoffice-email-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.backoffice-email-text {
+  font-size: 0.9rem;
+  color: #333;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.usuario-mobile-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-left: 4px solid #1976d2;
+}
+
+.usuario-mobile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.usuario-info h4 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+.usuario-cedula {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+.usuario-estado-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-top: 0.25rem;
+}
+
+.usuario-estado-badge.activo {
+  background: #e8f5e8;
+  color: #2e7d32;
+}
+
+.usuario-estado-badge.inactivo {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.usuario-mobile-details {
+  margin: 0.75rem 0;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.detail-value {
+  color: #333;
+  font-size: 0.9rem;
+  text-align: right;
+  max-width: 60%;
+  word-wrap: break-word;
+}
+
+.usuario-mobile-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.btn-action-mobile {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-action-mobile.btn-view {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.btn-action-mobile.btn-view:hover {
+  background: #bbdefb;
+}
+
+.btn-action-mobile.btn-activate {
+  background: #e8f5e8;
+  color: #2e7d32;
+}
+
+.btn-action-mobile.btn-activate:hover {
+  background: #c8e6c9;
+}
+
+.btn-action-mobile.btn-deactivate {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.btn-action-mobile.btn-deactivate:hover {
+  background: #ffcdd2;
+}
+
+/* ============================================
+   ESTILOS PARA GESTIÓN DE PDVs - BACKOFFICE
+   ============================================ */
+
+/* Tabla de PDVs */
+.pdvs-table-container {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.pdvs-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.pdvs-table th,
+.pdvs-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.pdvs-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #333;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.pdvs-table tbody tr:hover {
+  background-color: #f5f5f5;
+}
+
+.pdv-codigo {
+  font-weight: 600;
+  color: #e30613;
+}
+
+.pdv-name {
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.pdv-direccion {
+  max-width: 200px;
+  word-wrap: break-word;
+  font-size: 0.9rem;
+}
+
+.registros-count,
+.registros-aprobados,
+.registros-pendientes {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-weight: 500;
+  min-width: 20px;
+  text-align: center;
+}
+
+.registros-count {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.registros-aprobados {
+  background: #e8f5e8;
+  color: #2e7d32;
+}
+
+.registros-pendientes {
+  background: #fff3e0;
+  color: #ef6c00;
+}
+
+/* Vista móvil para PDVs */
+.pdvs-mobile-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.pdv-mobile-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-left: 4px solid #ef6c00;
+}
+
+.pdv-mobile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.pdv-info h4 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+.pdv-codigo {
+  font-size: 0.9rem;
+  color: #e30613;
+  font-weight: 600;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+.pdv-estado-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-top: 0.25rem;
+}
+
+.pdv-estado-badge.activo {
+  background: #e8f5e8;
+  color: #2e7d32;
+}
+
+.pdv-estado-badge.inactivo {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.pdv-mobile-details {
+  margin: 0.75rem 0;
+}
+
+.pdv-mobile-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+/* Modal de detalles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #eee;
+  background: #f8f9fa;
+  border-radius: 12px 12px 0 0;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.4rem;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.usuario-detail-grid,
+.pdv-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.detail-section {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.detail-section h3 {
+  margin: 0 0 1rem 0;
+  color: #2c3e50;
+  font-size: 1.1rem;
+  border-bottom: 2px solid #1976d2;
+  padding-bottom: 0.5rem;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.detail-item:last-child {
+  border-bottom: none;
+}
+
+.detail-item label {
+  font-weight: 600;
+  color: #495057;
+  margin-right: 1rem;
+}
+
+.detail-item span {
+  color: #212529;
+  text-align: right;
+  flex: 1;
+  word-wrap: break-word;
+}
+
+.codigo-highlight {
+  font-weight: 700;
+  color: #1976d2;
+  background: #e3f2fd;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+}
+
+.stat-number {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.stat-number.success {
+  color: #2e7d32;
+}
+
+.stat-number.error {
+  color: #c62828;
+}
+
+.stat-number.warning {
+  color: #ef6c00;
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #eee;
+  background: #f8f9fa;
+  border-radius: 0 0 12px 12px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.btn-modal {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.btn-modal.btn-activate {
+  background: #2e7d32;
+  color: white;
+}
+
+.btn-modal.btn-activate:hover {
+  background: #1b5e20;
+}
+
+.btn-modal.btn-deactivate {
+  background: #c62828;
+  color: white;
+}
+
+.btn-modal.btn-deactivate:hover {
+  background: #b71c1c;
+}
+
+.btn-modal.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-modal.btn-secondary:hover {
+  background: #5a6268;
+}
+
+/* Botones de acción en tabla */
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-action {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+}
+
+.btn-action.btn-view {
+  background: #e3f2fd;
+  border-color: #bbdefb;
+}
+
+.btn-action.btn-view:hover {
+  background: #bbdefb;
+  transform: scale(1.1);
+}
+
+.btn-action.btn-activate {
+  background: #e8f5e8;
+  border-color: #c8e6c9;
+}
+
+.btn-action.btn-activate:hover {
+  background: #c8e6c9;
+  transform: scale(1.1);
+}
+
+.btn-action.btn-deactivate {
+  background: #ffebee;
+  border-color: #ffcdd2;
+}
+
+.btn-action.btn-deactivate:hover {
+  background: #ffcdd2;
+  transform: scale(1.1);
+}
+
+.btn-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-action:disabled:hover {
+  transform: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .usuario-detail-grid,
+  .pdv-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .modal-content {
+    margin: 0.5rem;
+    max-height: 95vh;
+  }
+  
+  .modal-header {
+    padding: 1rem;
+  }
+  
+  .modal-body {
+    padding: 1rem;
+  }
+  
+  .modal-footer {
+    padding: 0.75rem 1rem;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+  }
+  
+  .btn-modal {
+    width: 100%;
+  }
+}

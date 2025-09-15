@@ -1,0 +1,215 @@
+/* Estilos para la tabla de productos */
+.product-table-container {
+  width: 100%;
+  overflow: hidden;
+}
+
+.table-responsive {
+  overflow-x: auto;
+  border-radius: 8px;
+}
+
+.product-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  font-size: 14px;
+}
+
+.product-table thead {
+  background-color: #f8f9fa;
+}
+
+.product-table th {
+  padding: 12px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #e0e0e0;
+  white-space: nowrap;
+}
+
+.product-table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+
+.product-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Celda de producto */
+.product-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 200px;
+}
+
+.product-mini-image {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.product-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.product-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.product-brand {
+  font-size: 12px;
+  color: #666;
+}
+
+/* Badge de presentación */
+.presentation-badge {
+  background-color: #e53e3e;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Alineaciones de texto */
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+/* Valores específicos */
+.volume-value {
+  font-weight: 600;
+  color: #059669;
+}
+
+.price-value {
+  font-weight: 600;
+  color: #333;
+}
+
+.price-real {
+  color: #e53e3e;
+}
+
+.price-total {
+  color: #059669;
+  font-size: 15px;
+}
+
+/* Botón de eliminar */
+.remove-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.remove-btn:hover {
+  background-color: #fef2f2;
+}
+
+/* Estado vacío */
+.table-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.table-empty p {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+}
+
+.table-empty-subtitle {
+  font-size: 14px;
+  color: #888;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .product-table {
+    font-size: 12px;
+  }
+  
+  .product-table th,
+  .product-table td {
+    padding: 8px 4px;
+  }
+  
+  .product-cell {
+    gap: 8px;
+    min-width: 150px;
+  }
+  
+  .product-mini-image {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .product-name {
+    font-size: 12px;
+  }
+  
+  .product-brand {
+    font-size: 11px;
+  }
+  
+  .presentation-badge {
+    font-size: 11px;
+    padding: 2px 6px;
+  }
+  
+  .price-value {
+    font-size: 12px;
+  }
+  
+  .price-total {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .table-responsive {
+    border-radius: 0;
+    margin: 0 -12px;
+  }
+  
+  .product-table th,
+  .product-table td {
+    padding: 6px 3px;
+  }
+  
+  .product-cell {
+    gap: 6px;
+    min-width: 120px;
+  }
+  
+  .product-mini-image {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .remove-btn {
+    font-size: 14px;
+  }
+}

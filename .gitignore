@@ -1,0 +1,20 @@
+# Ignorar node_modules en ambas carpetas
+Api/node_modules/
+Frotend/node_modules/
+# Ignorar archivos de entorno
+.env
+# Ignorar logs
+*.log
+# Ignorar directorios de subida
+Api/uploads/
+# Ignorar archivos grandes y storage
+Frotend/public/storage.zip
+Frotend/public/storage/
+Frotend/public/storage/catalogos/Catalogo_Celerity.pdf
+Frotend/public/storage/catalogos/Catalogo_Oiltec.pdf
+# Ignorar dependencias de lock
+Api/package-lock.json
+Frotend/package-lock.json
+# Ignorar archivos temporales de sistema
+.DS_Store
+Thumbs.db

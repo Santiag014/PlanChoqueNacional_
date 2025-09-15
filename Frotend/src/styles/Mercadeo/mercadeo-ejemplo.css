@@ -1,0 +1,212 @@
+/**
+ * @fileoverview Estilos para el componente de ejemplo de página protegida con HOC
+ * @module EjemploMercadeoCSS
+ * @author Sistema Plan de la Mejor Energía
+ * @version 1.0.0
+ * @since 2025
+ */
+
+/* Contenedor principal del ejemplo */
+.ejemplo-mercadeo-container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: calc(100vh - 160px);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* Header de la página */
+.ejemplo-mercadeo-container .page-header {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+}
+
+.ejemplo-mercadeo-container .page-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  font-weight: 700;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.ejemplo-mercadeo-container .user-info {
+  font-size: 1.2rem;
+  opacity: 0.9;
+  font-weight: 400;
+}
+
+/* Sección de contenido */
+.ejemplo-mercadeo-container .content-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+/* Tarjetas de información */
+.ejemplo-mercadeo-container .info-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(102, 126, 234, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.ejemplo-mercadeo-container .info-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+
+.ejemplo-mercadeo-container .info-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
+}
+
+.ejemplo-mercadeo-container .info-card h3 {
+  color: #333;
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ejemplo-mercadeo-container .info-card p {
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+/* Listas dentro de las tarjetas */
+.ejemplo-mercadeo-container .info-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ejemplo-mercadeo-container .info-card li {
+  color: #555;
+  margin-bottom: 0.8rem;
+  padding-left: 1.5rem;
+  position: relative;
+  line-height: 1.5;
+}
+
+.ejemplo-mercadeo-container .info-card li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #667eea;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+/* Datos del usuario */
+.ejemplo-mercadeo-container .user-data {
+  background: linear-gradient(135deg, #f8f9ff 0%, #e8ecff 100%);
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 2px solid rgba(102, 126, 234, 0.2);
+}
+
+.ejemplo-mercadeo-container .user-data p {
+  margin-bottom: 0.5rem;
+  color: #444;
+  font-size: 0.95rem;
+}
+
+.ejemplo-mercadeo-container .user-data strong {
+  color: #667eea;
+  font-weight: 600;
+}
+
+/* Responsividad */
+@media (max-width: 768px) {
+  .ejemplo-mercadeo-container {
+    padding: 1rem;
+    margin: 0.5rem;
+  }
+  
+  .ejemplo-mercadeo-container .page-header {
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  
+  .ejemplo-mercadeo-container .page-header h1 {
+    font-size: 2rem;
+  }
+  
+  .ejemplo-mercadeo-container .content-section {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .ejemplo-mercadeo-container .info-card {
+    padding: 1.5rem;
+  }
+  
+  .ejemplo-mercadeo-container .info-card h3 {
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .ejemplo-mercadeo-container {
+    padding: 0.5rem;
+  }
+  
+  .ejemplo-mercadeo-container .page-header {
+    padding: 1rem;
+  }
+  
+  .ejemplo-mercadeo-container .page-header h1 {
+    font-size: 1.6rem;
+  }
+  
+  .ejemplo-mercadeo-container .info-card {
+    padding: 1rem;
+  }
+}
+
+/* Animaciones */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ejemplo-mercadeo-container .info-card {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.ejemplo-mercadeo-container .info-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.ejemplo-mercadeo-container .info-card:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.ejemplo-mercadeo-container .info-card:nth-child(3) {
+  animation-delay: 0.3s;
+}

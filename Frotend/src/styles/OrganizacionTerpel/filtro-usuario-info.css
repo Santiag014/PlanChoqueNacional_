@@ -1,0 +1,115 @@
+/* Estilos para el componente de información de filtros de usuario OT */
+
+.filtro-usuario-info {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  border: 2px solid #f39c12;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(243, 156, 18, 0.2);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.filtro-usuario-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filtro-usuario-icon {
+  font-size: 20px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 50%, 100% {
+    opacity: 1;
+  }
+  25%, 75% {
+    opacity: 0.7;
+  }
+}
+
+.filtro-usuario-header h4 {
+  margin: 0;
+  color: #d68910;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.filtro-usuario-content {
+  color: #856404;
+}
+
+.filtro-usuario-description {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.filtro-usuario-companies {
+  margin-bottom: 12px;
+}
+
+.filtro-usuario-companies strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: #d68910;
+}
+
+.companies-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.company-tag {
+  background: #f39c12;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.filtro-usuario-note {
+  margin: 0;
+  font-size: 12px;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .filtro-usuario-info {
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .filtro-usuario-header h4 {
+    font-size: 14px;
+  }
+  
+  .filtro-usuario-description {
+    font-size: 13px;
+  }
+  
+  .company-tag {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+}

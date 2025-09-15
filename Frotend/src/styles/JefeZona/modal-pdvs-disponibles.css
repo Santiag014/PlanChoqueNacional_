@@ -1,0 +1,1213 @@
+/* ============================================
+   MODAL DE PDVs DISPONIBLES - JEFE DE ZONA
+   ============================================ */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+  backdrop-filter: blur(5px);
+}
+
+.modal-pdvs-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  max-width: 1600px;
+  width: 70%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ============================================
+   HEADER DEL MODAL
+   ============================================ */
+
+.modal-header {
+  background: linear-gradient(135deg, #e30613, #ff1744);
+  color: white;
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #c1050f;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.modal-close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-size: 1.5rem;
+  font-weight: bold;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: rotate(90deg);
+}
+
+/* ============================================
+   BODY DEL MODAL
+   ============================================ */
+
+.modal-body {
+  flex: 1;
+  padding: 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #f8f9fa;
+  overflow-y: auto;
+}
+
+/* ============================================
+   BUSCADOR
+   ============================================ */
+
+.pdv-search-container {
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.pdv-search-input {
+  width: 100%;
+  padding: 16px 20px 16px 50px;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.pdv-search-input:focus {
+  outline: none;
+  border-color: #e30613;
+  box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.1), 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.pdv-search-input::placeholder {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.pdv-search-container::before {
+  content: "🔍";
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  z-index: 1;
+}
+
+/* ============================================
+   CONTADOR DE RESULTADOS
+   ============================================ */
+
+.pdvs-count {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+}
+
+/* ============================================
+   CONTENEDOR DE TABLA
+   ============================================ */
+
+.pdvs-table-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  max-height: 600px;
+  min-height: 500px;
+}
+
+.pdvs-table-scroll {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 550px;
+}
+
+/* Estilos para la barra de desplazamiento */
+.pdvs-table-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.pdvs-table-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.pdvs-table-scroll::-webkit-scrollbar-thumb {
+  background: #e30613;
+  border-radius: 4px;
+}
+
+.pdvs-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: #c1050f;
+}
+
+/* ============================================
+   TABLA DE PDVs
+   ============================================ */
+
+.pdvs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 1400px;
+  table-layout: fixed;
+}
+
+.pdvs-table thead th {
+  background: linear-gradient(135deg, #495057, #6c757d);
+  color: white;
+  padding: 16px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #dee2e6;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+/* Anchos específicos para cada columna - MEJORADOS */
+.pdvs-table thead th:nth-child(1) { width: 120px; } /* Código */
+.pdvs-table thead th:nth-child(2) { width: 280px; } /* Descripción */
+.pdvs-table thead th:nth-child(3) { width: 400px; } /* Dirección */
+.pdvs-table thead th:nth-child(4) { width: 180px; } /* Ciudad */
+.pdvs-table thead th:nth-child(5) { width: 200px; } /* Empresa */
+.pdvs-table thead th:nth-child(6) { width: 140px; } /* Acción */
+
+.pdvs-table tbody tr {
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.pdvs-table tbody tr:hover {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  transform: translateX(2px);
+}
+
+.pdvs-table tbody tr:nth-child(even) {
+  background: #f8f9fa;
+}
+
+.pdvs-table tbody tr:nth-child(even):hover {
+  background: linear-gradient(135deg, #e9ecef, #dee2e6);
+}
+
+.pdvs-table td {
+  padding: 16px 12px;
+  vertical-align: middle;
+  border-bottom: 1px solid #e9ecef;
+  word-wrap: break-word;
+  overflow: visible;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.pdv-codigo {
+  font-weight: 700;
+  color: #e30613;
+  font-size: 15px;
+  text-align: center;
+  background: rgba(227, 6, 19, 0.08);
+  border-radius: 6px;
+  padding: 8px 6px;
+  margin: 2px;
+  display: block;
+  min-width: 80px;
+  white-space: nowrap;
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.pdv-nombre {
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+  line-height: 1.4;
+  word-wrap: break-word;
+  max-height: none;
+  white-space: normal;
+  overflow: visible;
+  padding-right: 8px;
+}
+
+.pdv-direccion {
+  color: #6c757d;
+  font-size: 13px;
+  line-height: 1.4;
+  word-wrap: break-word;
+  max-height: none;
+  white-space: normal;
+  overflow: visible;
+  padding-right: 8px;
+}
+
+.pdv-ciudad {
+  color: #17a2b8;
+  font-weight: 500;
+  font-size: 14px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pdv-empresa {
+  color: #28a745;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.4;
+  word-wrap: break-word;
+  white-space: normal;
+  text-align: center;
+}
+
+.pdv-accion {
+  text-align: center;
+  padding: 8px 4px;
+}
+
+.select-pdv-btn {
+  background: linear-gradient(135deg, #e30613, #a1000b);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 11px;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 6px rgba(40, 167, 69, 0.2);
+  white-space: nowrap;
+  min-width: 100px;
+}
+
+.select-pdv-btn:hover {
+  background: linear-gradient(135deg, #e30613, #a1000b);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.no-results {
+  text-align: center;
+  padding: 40px;
+  color: #6c757d;
+  font-style: italic;
+  font-size: 16px;
+}
+
+/* ============================================
+   ESTADOS DE CARGA Y ERROR
+   ============================================ */
+
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 40px;
+  text-align: center;
+  background: white;
+  border-radius: 12px;
+  margin: 20px 0;
+}
+
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #e30613;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-container p {
+  color: #6c757d;
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.error-container p {
+  color: #dc3545;
+  margin-bottom: 20px;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.retry-btn {
+  background: linear-gradient(135deg, #17a2b8, #20c997);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.retry-btn:hover {
+  background: linear-gradient(135deg, #138496, #17a2b8);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+}
+
+/* ============================================
+   FOOTER DEL MODAL
+   ============================================ */
+
+.modal-footer {
+  padding: 20px 24px;
+  background: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.modal-cancel-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.modal-cancel-btn:hover {
+  background: #5a6268;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+@media (max-width: 1200px) {
+  .modal-pdvs-container {
+    max-width: 95%;
+  }
+  
+  .pdvs-table {
+    min-width: 700px;
+  }
+}
+
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 5px;
+  }
+  
+  .modal-pdvs-container {
+    max-height: 95vh;
+  }
+  
+  .modal-header {
+    padding: 16px;
+  }
+  
+  .modal-header h2 {
+    font-size: 1.2rem;
+  }
+  
+  .modal-close-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1.3rem;
+  }
+  
+  .modal-body {
+    padding: 16px;
+  }
+  
+  .pdv-search-input {
+    padding: 14px 18px 14px 45px;
+    font-size: 16px; /* Evita zoom automático en iOS */
+  }
+  
+  .pdvs-count {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  
+  .pdvs-table {
+    min-width: 700px;
+    font-size: 13px;
+  }
+  
+  .pdvs-table thead th {
+    padding: 12px 8px;
+    font-size: 11px;
+  }
+  
+  .pdvs-table td {
+    padding: 12px 8px;
+  }
+  
+  .pdv-codigo {
+    font-size: 14px;
+  }
+  
+  .select-pdv-btn {
+    padding: 8px 12px;
+    font-size: 11px;
+    min-height: 36px; /* Área táctil mínima */
+  }
+  
+  .modal-footer {
+    padding: 16px;
+  }
+  
+  .modal-cancel-btn {
+    min-height: 44px; /* Área táctil mínima */
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 2px;
+  }
+  
+  .modal-pdvs-container {
+    max-height: 98vh;
+    border-radius: 12px;
+  }
+  
+  .modal-header {
+    padding: 12px;
+  }
+  
+  .modal-header h2 {
+    font-size: 1.1rem;
+  }
+  
+  .modal-body {
+    padding: 12px;
+  }
+  
+  .pdv-search-input {
+    padding: 12px 16px 12px 40px;
+    font-size: 16px; /* Evita zoom automático en iOS */
+  }
+  
+  .pdv-search-container::before {
+    left: 12px;
+    font-size: 16px;
+  }
+  
+  .pdvs-count {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  .pdvs-table {
+    min-width: 600px;
+    font-size: 11px;
+  }
+  
+  .pdvs-table thead th {
+    padding: 10px 6px;
+    font-size: 10px;
+  }
+  
+  .pdvs-table td {
+    padding: 10px 6px;
+  }
+  
+  .pdv-codigo {
+    font-size: 13px;
+  }
+  
+  .pdv-direccion {
+    max-width: 150px;
+  }
+  
+  .select-pdv-btn {
+    padding: 6px 10px;
+    font-size: 10px;
+    min-height: 32px;
+  }
+  
+  .loading-container,
+  .error-container {
+    padding: 30px 15px;
+  }
+  
+  .spinner {
+    width: 35px;
+    height: 35px;
+  }
+  
+  .modal-footer {
+    padding: 12px;
+  }
+  
+  .modal-cancel-btn {
+    width: 100%;
+    min-height: 44px;
+    font-size: 14px;
+  }
+}
+
+/* ============================================
+   MEJORAS PARA DISPOSITIVOS TÁCTILES
+   ============================================ */
+
+@media (hover: none) and (pointer: coarse) {
+  /* Dispositivos táctiles - áreas mínimas recomendadas */
+  .select-pdv-btn {
+    min-height: 44px !important;
+    min-width: 80px !important;
+    padding: 10px 14px !important;
+  }
+  
+  .modal-close-btn {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  
+  .modal-cancel-btn {
+    min-height: 44px !important;
+  }
+  
+  .pdvs-table tbody tr {
+    min-height: 44px;
+  }
+}
+
+/* ============================================
+   SCROLL HORIZONTAL MEJORADO EN MÓVILES
+   ============================================ */
+
+@media (max-width: 768px) {
+  .pdvs-table-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .pdvs-table-scroll::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  .pdvs-table-scroll::-webkit-scrollbar-thumb {
+    background: #e30613;
+    border-radius: 3px;
+  }
+}
+
+/* ============================================
+   ORIENTACIÓN LANDSCAPE EN MÓVILES
+   ============================================ */
+
+@media (max-width: 768px) and (orientation: landscape) {
+  .modal-pdvs-container {
+    max-height: 90vh;
+  }
+  
+  .modal-header {
+    padding: 12px 16px;
+  }
+  
+  .modal-body {
+    padding: 12px 16px;
+  }
+  
+  .pdvs-table {
+    font-size: 12px;
+  }
+  
+  .pdvs-table thead th {
+    padding: 8px 6px;
+  }
+  
+  .pdvs-table td {
+    padding: 8px 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-pdvs-container {
+    max-height: 95vh;
+  }
+  
+  .pdvs-table {
+    min-width: 500px;
+    font-size: 11px;
+  }
+  
+  .loading-container,
+  .error-container {
+    padding: 40px 20px;
+  }
+  
+  .spinner {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* ============================================
+   TABLA DE PDVs
+   ============================================ */
+
+.pdvs-table-container {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.pdvs-count {
+  background: #f8f9fa;
+  padding: 10px 15px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  font-weight: 500;
+  color: #495057;
+  border-left: 4px solid #2a5298;
+}
+
+.pdvs-table-scroll {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+}
+
+.pdvs-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.pdvs-table thead {
+  background: #f8f9fa;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.pdvs-table th {
+  padding: 12px 10px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;
+  font-size: 0.9rem;
+}
+
+.pdvs-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid #dee2e6;
+  font-size: 0.9rem;
+  vertical-align: top;
+}
+
+.pdv-row {
+  transition: background-color 0.2s;
+}
+
+.pdv-row:hover {
+  background-color: #f8f9fa;
+}
+
+.pdv-codigo {
+  font-weight: 600;
+  color: #2a5298;
+  font-family: 'Courier New', monospace;
+}
+
+.pdv-nombre {
+  font-weight: 500;
+  color: #495057;
+}
+
+.pdv-direccion {
+  color: #6c757d;
+  font-size: 0.85rem;
+  max-width: 200px;
+  word-wrap: break-word;
+}
+
+.pdv-ciudad {
+  color: #6c757d;
+  font-size: 0.85rem;
+}
+
+.pdv-empresa {
+  color: #28a745;
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.select-pdv-btn {
+  background: linear-gradient(135deg, #e30613, #a1000b);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.select-pdv-btn:hover {
+  background: linear-gradient(135deg, #e30613, #a1000b);
+}
+
+.no-results {
+  text-align: center;
+  padding: 40px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* ============================================
+   FOOTER DEL MODAL
+   ============================================ */
+
+.modal-footer {
+  padding: 20px;
+  border-top: 1px solid #dee2e6;
+  display: flex;
+  justify-content: flex-end;
+  background: #f8f9fa;
+}
+
+.modal-cancel-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.modal-cancel-btn:hover {
+  background: #5a6268;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN PARA MODAL
+   ============================================ */
+
+/* Tablets */
+@media (max-width: 1024px) {
+  .modal-pdvs-container {
+    max-width: 95%;
+  }
+  
+  .pdvs-table {
+    min-width: 900px;
+    font-size: 13px;
+  }
+  
+  .pdvs-table thead th {
+    padding: 12px 8px;
+    font-size: 11px;
+  }
+  
+  .pdvs-table td {
+    padding: 10px 6px;
+  }
+  
+  .select-pdv-btn {
+    padding: 6px 10px;
+    font-size: 10px;
+    min-width: 90px;
+  }
+}
+
+/* Móviles */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 10px;
+  }
+  
+  .modal-pdvs-container {
+    max-height: 95vh;
+    max-width: 98%;
+  }
+  
+  .modal-header {
+    padding: 15px;
+  }
+  
+  .modal-header h2 {
+    font-size: 1.2rem;
+  }
+  
+  .modal-body {
+    padding: 15px;
+  }
+  
+  .pdv-search-input {
+    padding: 12px 16px 12px 40px;
+    font-size: 16px; /* Evita zoom en iOS */
+  }
+  
+  .pdvs-count {
+    padding: 10px 15px;
+    font-size: 12px;
+  }
+  
+  .pdvs-table {
+    min-width: 700px;
+    font-size: 12px;
+  }
+  
+  .pdvs-table thead th {
+    padding: 10px 6px;
+    font-size: 10px;
+  }
+  
+  .pdvs-table td {
+    padding: 8px 4px;
+  }
+  
+  .pdv-codigo {
+    font-size: 12px;
+    padding: 6px 3px;
+    min-width: 50px;
+  }
+  
+  .pdv-nombre {
+    font-size: 11px;
+  }
+  
+  .pdv-direccion {
+    font-size: 10px;
+  }
+  
+  .pdv-ciudad {
+    font-size: 11px;
+  }
+  
+  .pdv-empresa {
+    font-size: 10px;
+  }
+  
+  .select-pdv-btn {
+    padding: 5px 8px;
+    font-size: 9px;
+    min-width: 80px;
+  }
+  
+  .modal-footer {
+    padding: 15px;
+  }
+}
+
+/* Móviles pequeños */
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 5px;
+  }
+  
+  .modal-pdvs-container {
+    border-radius: 10px;
+  }
+  
+  .modal-header {
+    padding: 12px;
+  }
+  
+  .modal-header h2 {
+    font-size: 1.1rem;
+  }
+  
+  .modal-close-btn {
+    width: 35px;
+    height: 35px;
+    font-size: 1.3rem;
+  }
+  
+  .modal-body {
+    padding: 12px;
+  }
+  
+  .pdv-search-input {
+    padding: 10px 14px 10px 35px;
+  }
+  
+  .pdvs-count {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+  
+  .pdvs-table {
+    min-width: 600px;
+    font-size: 11px;
+  }
+  
+  .pdvs-table thead th {
+    padding: 8px 4px;
+    font-size: 9px;
+  }
+  
+  /* Anchos específicos para móvil */
+  .pdvs-table thead th:nth-child(1) { width: 12%; } /* Código */
+  .pdvs-table thead th:nth-child(2) { width: 28%; } /* Descripción */
+  .pdvs-table thead th:nth-child(3) { width: 30%; } /* Dirección */
+  .pdvs-table thead th:nth-child(4) { width: 15%; } /* Ciudad */
+  .pdvs-table thead th:nth-child(5) { width: 0%; }  /* Empresa - oculta */
+  .pdvs-table thead th:nth-child(6) { width: 15%; } /* Acción */
+  
+  /* Ocultar columna empresa en móviles pequeños */
+  .pdvs-table thead th:nth-child(5),
+  .pdvs-table tbody td:nth-child(5) {
+    display: none;
+  }
+  
+  .pdvs-table td {
+    padding: 6px 3px;
+  }
+  
+  .pdv-codigo {
+    font-size: 11px;
+    padding: 4px 2px;
+    min-width: 45px;
+  }
+  
+  .pdv-nombre {
+    font-size: 10px;
+  }
+  
+  .pdv-direccion {
+    font-size: 9px;
+  }
+  
+  .pdv-ciudad {
+    font-size: 10px;
+  }
+  
+  .select-pdv-btn {
+    padding: 4px 6px;
+    font-size: 8px;
+    min-width: 70px;
+  }
+  
+  .modal-footer {
+    padding: 12px;
+  }
+}
+
+/* ================================
+   CONTENEDOR DE CARDS (NUEVO DISEÑO)
+   ================================ */
+
+.pdvs-content-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.pdvs-cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+  gap: 16px;
+  padding: 16px;
+  overflow-y: auto;
+  max-height: 500px;
+}
+
+/* ================================
+   TARJETAS DE PDV
+   ================================ */
+
+.pdv-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.pdv-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  border-color: #b91010;
+}
+
+.pdv-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.pdv-codigo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.codigo-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.codigo-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+  background: #e30613;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.pdv-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pdv-field {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5563;
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.field-value {
+  font-size: 14px;
+  color: #1f2937;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* ================================
+   MENSAJE SIN RESULTADOS PARA CARDS
+   ================================ */
+
+.no-results-card {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+  font-size: 16px;
+  background: #f9fafb;
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  margin: 20px;
+}
+
+/* ================================
+   RESPONSIVE DESIGN PARA CARDS
+   ================================ */
+
+@media (max-width: 768px) {
+  .pdvs-cards-container {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px;
+  }
+  
+  .pdv-card {
+    padding: 12px;
+  }
+  
+  .pdv-card-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .select-pdv-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 14px;
+  }
+}
