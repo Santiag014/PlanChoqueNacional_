@@ -1,0 +1,160 @@
+.unauthorized-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 20px;
+}
+
+.unauthorized-content {
+  text-align: center;
+  background: white;
+  padding: 60px 40px;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  max-width: 600px;
+  width: 100%;
+}
+
+.unauthorized-icon {
+  margin-bottom: 30px;
+}
+
+.unauthorized-content h1 {
+  color: #e30613;
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  font-family: 'Terpel-Sans-Bold', Arial, sans-serif;
+}
+
+.unauthorized-info {
+  margin-bottom: 40px;
+}
+
+.main-message {
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.user-info {
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 15px;
+  margin: 20px 0;
+  border-left: 4px solid #e30613;
+}
+
+.user-info p {
+  margin: 5px 0;
+  color: #555;
+  font-size: 14px;
+}
+
+.help-message {
+  color: #666;
+  font-size: 16px;
+  line-height: 1.6;
+  margin-top: 20px;
+}
+
+.unauthorized-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 30px;
+}
+
+.btn-primary, .btn-secondary, .btn-logout {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 130px;
+}
+
+.btn-primary {
+  background-color: #e30613;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #c5050f;
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background-color: #f8f9fa;
+  color: #666;
+  border: 2px solid #dee2e6;
+}
+
+.btn-secondary:hover {
+  background-color: #e9ecef;
+  transform: translateY(-2px);
+}
+
+.btn-logout {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-logout:hover {
+  background-color: #5a6268;
+  transform: translateY(-2px);
+}
+
+.security-note {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  padding: 15px;
+  color: #856404;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.security-note strong {
+  color: #e30613;
+}
+
+@media (max-width: 768px) {
+  .unauthorized-content {
+    padding: 40px 20px;
+  }
+  
+  .unauthorized-content h1 {
+    font-size: 24px;
+  }
+  
+  .main-message {
+    font-size: 16px;
+  }
+  
+  .unauthorized-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .btn-primary, .btn-secondary, .btn-logout {
+    width: 100%;
+    max-width: 200px;
+  }
+
+  .user-info {
+    padding: 12px;
+  }
+
+  .security-note {
+    padding: 12px;
+    font-size: 11px;
+  }
+}

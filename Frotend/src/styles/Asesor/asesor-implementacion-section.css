@@ -1,0 +1,409 @@
+/* Estilos específicos para ImplementationSection del Asesor */
+
+/* Contenedor principal de la sección */
+.implementation-section {
+  margin-top: 10px;
+  border-radius: 8px;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.3s ease-out forwards;
+}
+
+.implementation-section.kpi-transition {
+  animation: fadeInUp 0.3s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Contenedor principal de fotos seleccionadas para implementación */
+.asesor-fotos-seleccionadas-implementacion {
+  margin-top: 15px;
+  padding: 15px;
+  background: rgba(227, 6, 19, 0.02);
+  border-radius: 10px;
+  border: 1px solid rgba(227, 6, 19, 0.1);
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Contador de fotos */
+.asesor-fotos-count-implementacion {
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e30613;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Lista de fotos */
+.asesor-fotos-list-implementacion {
+  display: flex !important;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 150px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+/* Item individual de foto */
+.asesor-foto-item-implementacion {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.asesor-foto-item-implementacion:hover {
+  border-color: #e30613;
+  box-shadow: 0 3px 10px rgba(227, 6, 19, 0.15);
+  transform: translateY(-1px);
+}
+
+/* Nombre de la foto */
+.asesor-foto-name-implementacion {
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+  flex: 1;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  margin-right: 10px;
+}
+
+/* Botón de eliminar foto */
+.asesor-foto-remove-implementacion {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  width: 28px;
+  height: 28px;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.asesor-foto-remove-implementacion:hover {
+  background: rgba(220, 53, 69, 0.1);
+  color: #c82333;
+  transform: scale(1.1);
+}
+
+/* Asegurar que se muestre en todas las resoluciones */
+@media (min-width: 769px) {
+  .asesor-fotos-seleccionadas-implementacion {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  .asesor-fotos-count-implementacion,
+  .asesor-fotos-list-implementacion,
+  .asesor-foto-item-implementacion {
+    display: flex !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .asesor-fotos-seleccionadas-implementacion {
+    padding: 12px;
+    margin-top: 12px;
+  }
+  
+  .asesor-fotos-count-implementacion {
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+  
+  .asesor-foto-item-implementacion {
+    padding: 8px 10px;
+  }
+  
+  .asesor-foto-name-implementacion {
+    font-size: 12px;
+  }
+}
+
+/* Otros estilos existentes del componente */
+.implementation-table-container {
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.add-product-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  padding: 10px;
+}
+
+.btn-add-product {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 25px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-add-product:hover {
+  background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.5);
+}
+
+.btn-add-product .btn-icon {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.btn-add-product .btn-text {
+  font-size: 14px;
+}
+
+/* Estilos para inputs */
+.implementation-inputs {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+}
+
+.implementation-inputs-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  max-width: 100%;
+}
+
+.pdv-row-fecha,
+.pdv-row-foto {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 15px;
+  width: 100%;
+  margin-bottom: 15px;
+}
+
+.pdv-row-foto {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 15px;
+}
+
+.pdv-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+.pdv-input-date {
+  flex: 1;
+  width: 100% !important;
+  max-width: 100%;
+  min-width: 0;
+  padding: 12px 15px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  transition: all 0.3s ease;
+  box-sizing: border-box !important;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+.pdv-input-date:focus {
+  outline: none;
+  border-color: #e30613;
+  box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.1);
+}
+
+/* Botones de acción */
+.implementation-actions {
+  display: flex;
+  justify-content: center;
+  padding-top: 10px;
+  padding-bottom: 40px;
+  border-top: 2px solid #e9ecef;
+}
+
+.btn-cargar-registro {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+}
+
+.btn-cargar-registro:hover:not(:disabled) {
+  background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.5);
+}
+
+.btn-cargar-registro:disabled {
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* =============================================================================
+   📱 RESPONSIVE FIXES PARA BOTÓN CARGAR REGISTRO EN TABLETS PEQUEÑAS
+   ============================================================================= */
+
+/* Contenedor de acciones de volumen - asegurar visibilidad */
+.volume-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 10px 40px 10px;
+  margin-top: 20px;
+  width: 100%;
+  position: relative;
+  min-height: 80px;
+}
+
+/* 📱 Tablets pequeñas: 768px - 1023px */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .btn-cargar-registro {
+    padding: 14px 24px;
+    font-size: 13px;
+    min-width: 180px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  
+  .volume-actions {
+    padding: 25px 15px 50px 15px;
+    margin-top: 25px;
+    min-height: 90px;
+  }
+}
+
+/* 📱 Tablets pequeñas verticales: máximo 900px de altura */
+@media (min-width: 768px) and (max-width: 1023px) and (max-height: 900px) {
+  .btn-cargar-registro {
+    padding: 12px 20px;
+    font-size: 12px;
+    min-width: 160px;
+    height: 44px;
+  }
+  
+  .volume-actions {
+    padding: 20px 10px 35px 10px;
+    margin-top: 15px;
+    min-height: 70px;
+  }
+}
+
+/* 📱 Móviles: hasta 767px */
+@media (max-width: 767px) {
+  .btn-cargar-registro {
+    padding: 12px 18px;
+    font-size: 11px;
+    min-width: 140px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  
+  .volume-actions {
+    padding: 15px 10px 30px 10px;
+    margin-top: 15px;
+    min-height: 65px;
+  }
+}
+
+/* Botón de foto */
+.foto-btn-simple {
+  background: linear-gradient(135deg, #e30613 0%, #c10511 100%);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  justify-content: center;
+}
+
+.foto-btn-simple:hover {
+  background: linear-gradient(135deg, #c10511 0%, #a8040f 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(227, 6, 19, 0.3);
+}
+
+/* Ocultar input de archivo */
+.display-none {
+  display: none !important;
+}
+
+/* Contenedor de upload de fotos */
+.foto-upload-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}

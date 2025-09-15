@@ -1,0 +1,654 @@
+.pdv-main-box {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 16px 8px 0 8px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.pdv-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.pdv-row-fecha,
+.pdv-row-foto{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+/* Formato especial para fecha: label e input en la misma fila */
+.pdv-row-fecha {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 15px;
+}
+
+.pdv-row-foto {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 15px;
+}
+
+/* Labels específicos para foto */
+.pdv-row-foto .pdv-label {
+  min-width: 90px;
+  flex-shrink: 0;
+  line-height: 1.1;
+  font-size: 11px;
+}
+
+/* Estilos para checkbox de tipo de foto */
+.pdv-row-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 18px;
+  padding: 15px 0;
+  /* background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); */
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+  position: relative;
+  overflow: hidden;
+}
+
+.pdv-row-checkbox::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #e30613, #ff4757);
+  border-radius: 12px 12px 0 0;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1.4;
+  padding: 0 15px;
+  width: 100%;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.checkbox-container:hover {
+  transform: translateY(-1px);
+}
+
+.checkbox-container:hover .checkbox-checkmark {
+  border-color: #e30613;
+  box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.1);
+}
+
+.checkbox-input {
+  display: none;
+}
+
+.checkbox-checkmark {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  margin-top: 2px;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.checkbox-input:checked + .checkbox-checkmark {
+  background: linear-gradient(135deg, #e30613 0%, #ff4757 100%);
+  border-color: #e30613;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(227, 6, 19, 0.3);
+}
+
+.checkbox-input:checked + .checkbox-checkmark::after {
+  content: '✓';
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  animation: checkmark-bounce 0.3s ease;
+}
+
+@keyframes checkmark-bounce {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes checkbox-pulse {
+  0% { box-shadow: 0 4px 12px rgba(227, 6, 19, 0.3); }
+  50% { box-shadow: 0 4px 20px rgba(227, 6, 19, 0.5); }
+  100% { box-shadow: 0 4px 12px rgba(227, 6, 19, 0.3); }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.checkbox-label {
+  color: #495057;
+  font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.checkbox-input:checked + .checkbox-checkmark {
+  background: linear-gradient(135deg, #e30613 0%, #ff4757 100%);
+  border-color: #e30613;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(227, 6, 19, 0.3);
+  animation: checkbox-pulse 2s ease-in-out infinite;
+}
+
+.pdv-row-checkbox::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(-45deg, #e30613, #ff4757, #e30613, #ff4757);
+  background-size: 400% 400%;
+  border-radius: 12px 12px 0 0;
+  animation: gradient-shift 3s ease infinite;
+}
+
+.checkbox-label small {
+  display: block;
+  color: #6c757d !important;
+  font-size: 12px !important;
+  margin-top: 4px !important;
+  font-weight: 400 !important;
+  padding: 6px 12px;
+  background: rgba(227, 6, 19, 0.05);
+  border-radius: 20px;
+  border: 1px solid rgba(227, 6, 19, 0.1);
+  transition: all 0.3s ease;
+}
+
+.checkbox-input:checked ~ .checkbox-label small {
+  background: rgba(227, 6, 19, 0.1);
+  color: #e30613 !important;
+  border-color: rgba(227, 6, 19, 0.2);
+}
+
+.pdv-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.pdv-input-codigo {
+  flex: 1;
+  background: #e30613;
+  color: #fff;
+  border-radius: 10px;
+  border: none;
+  font-size: 12px;
+  padding: 6px 10px;
+  text-align: center;
+  outline: none;
+  letter-spacing: 1px;
+  box-sizing: border-box;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(227, 6, 19, 0.2);
+}
+
+.pdv-input-corresponde {
+  flex: 1;
+  background: #f8f9fa;
+  color: #6c757d;
+  border-radius: 10px;
+  border: 1px solid #e0e0e0;
+  font-size: 12px;
+  padding: 6px 10px;
+  text-align: center;
+  outline: none;
+  box-sizing: border-box;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.corresponde-na {
+  background: #f8d7da !important;
+  color: #721c24 !important;
+  border-color: #f5c6cb !important;
+}
+
+.pdv-input-codigo:focus {
+  box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.3), 0 2px 8px rgba(227, 6, 19, 0.2);
+}
+
+.pdv-input-codigo:hover {
+  box-shadow: 0 4px 12px rgba(227, 6, 19, 0.3);
+}
+
+.pdv-input-corresponde:focus {
+  border-color: #e30613;
+  box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.1), 0 2px 8px rgba(0, 0, 0, 0.15);
+  background: white;
+}
+
+.pdv-input-corresponde:hover {
+  border-color: #999;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.pdv-forgot-code {
+  text-align: center;
+  margin: 15px 0;
+}
+
+.pdv-forgot-link {
+  display: inline-block;
+  text-align: center;
+  background: transparent;
+  border: 2px solid #e30613;
+  color: #e30613;
+  padding: 8px 20px;
+  border-radius: 25px;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  max-width: 250px;
+}
+
+.pdv-forgot-link:hover {
+  background: #e30613;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(227, 6, 19, 0.2);
+}
+
+.pdv-info-container {
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 15px;
+  border-left: 4px solid #e30613;
+  margin-bottom: 15px;
+  margin-top: 15px;
+}
+
+.pdv-info-container h3 {
+  color: #e30613;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+.pdv-info-container p {
+  color: #666;
+  margin: 5px 0 0 0;
+  font-size: 0.9rem;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+.pdv-spinner-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.spinner-red {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(227, 6, 19, 0.3);
+  border-top: 4px solid #e30613;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* =============================================================================
+   📱 ESTILOS PARA BOTÓN CARGAR REGISTRO Y CONTENEDOR DE ACCIONES
+   ============================================================================= */
+
+/* Contenedor de acciones de volumen - asegurar visibilidad */
+.volume-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 10px 40px 10px;
+  margin-top: 20px;
+  width: 100%;
+  position: relative;
+  min-height: 80px;
+  clear: both;
+}
+
+/* Botón cargar registro */
+.btn-cargar-registro {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 14px 28px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+  min-width: 180px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.btn-cargar-registro:hover:not(:disabled) {
+  background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.5);
+}
+
+.btn-cargar-registro:disabled {
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* =============================================================================
+   📱 RESPONSIVE PARA BOTÓN CARGAR REGISTRO EN TABLETS PEQUEÑAS
+   ============================================================================= */
+
+/* 📱 Tablets pequeñas: 768px - 1023px */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .btn-cargar-registro {
+    padding: 15px 30px;
+    font-size: 14px;
+    min-width: 200px;
+    height: 50px;
+  }
+  
+  .volume-actions {
+    padding: 30px 20px 50px 20px;
+    margin-top: 25px;
+    min-height: 100px;
+  }
+  
+  .pdv-main-box {
+    padding-bottom: 100px;
+  }
+}
+
+/* 📱 Tablets pequeñas verticales: máximo 900px de altura */
+@media (min-width: 768px) and (max-width: 1023px) and (max-height: 900px) {
+  .btn-cargar-registro {
+    padding: 12px 24px;
+    font-size: 13px;
+    min-width: 180px;
+    height: 46px;
+  }
+  
+  .volume-actions {
+    padding: 25px 15px 40px 15px;
+    margin-top: 20px;
+    min-height: 80px;
+  }
+  
+  .pdv-main-box {
+    padding-bottom: 80px;
+  }
+}
+
+/* 📱 Móviles: hasta 767px */
+@media (max-width: 767px) {
+  .btn-cargar-registro {
+    padding: 12px 20px;
+    font-size: 12px;
+    min-width: 160px;
+    height: 44px;
+  }
+  
+  .volume-actions {
+    padding: 20px 10px 35px 10px;
+    margin-top: 15px;
+    min-height: 70px;
+  }
+  
+  .pdv-main-box {
+    padding-bottom: 80px;
+  }
+}
+
+/* Estilos específicos para visitas dentro del contenedor de implementación */
+.visitas-content .volume-actions {
+  padding: 25px 15px 40px 15px;
+  margin-top: 20px;
+  min-height: 85px;
+}
+
+.visitas-content .btn-cargar-registro {
+  min-width: 180px;
+  height: 48px;
+}
+
+/* 📱 Responsive específico para visitas en tablets */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .visitas-content .volume-actions {
+    padding: 30px 20px 50px 20px;
+    margin-top: 25px;
+    min-height: 100px;
+  }
+  
+  .visitas-content .btn-cargar-registro {
+    padding: 15px 30px;
+    font-size: 14px;
+    min-width: 200px;
+    height: 50px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) and (max-height: 900px) {
+  .visitas-content .volume-actions {
+    padding: 25px 15px 40px 15px;
+    margin-top: 20px;
+    min-height: 80px;
+  }
+  
+  .visitas-content .btn-cargar-registro {
+    padding: 12px 24px;
+    font-size: 13px;
+    min-width: 180px;
+    height: 46px;
+  }
+}
+
+@media (max-width: 767px) {
+  .visitas-content .volume-actions {
+    padding: 20px 10px 35px 10px;
+    margin-top: 15px;
+    min-height: 70px;
+  }
+  
+  .visitas-content .btn-cargar-registro {
+    padding: 12px 20px;
+    font-size: 12px;
+    min-width: 160px;
+    height: 44px;
+  }
+}
+
+/* =============================================================================
+   🔧 CORRECCIONES ESPECÍFICAS PARA IMPLEMENTACIÓN EN PDV-MAIN-BOX
+   ============================================================================= */
+
+/* Cuando hay implementación, asegurar espacio extra */
+.pdv-main-box:has(.implementation-section) {
+  padding-bottom: 180px !important;
+  min-height: calc(100vh - 60px) !important;
+}
+
+/* Alternativa si :has() no funciona - usar clase adicional */
+.pdv-main-box.with-implementation {
+  padding-bottom: 180px !important;
+  min-height: calc(100vh - 60px) !important;
+}
+
+/* 📱 Tablets: espacio extra para implementación */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .pdv-main-box:has(.implementation-section),
+  .pdv-main-box.with-implementation {
+    padding-bottom: 220px !important;
+    min-height: calc(100vh - 40px) !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* 📱 Tablets con altura limitada (como en las imágenes) */
+@media (min-width: 768px) and (max-width: 1023px) and (max-height: 900px) {
+  .pdv-main-box:has(.implementation-section),
+  .pdv-main-box.with-implementation {
+    padding-bottom: 200px !important;
+    min-height: calc(100vh - 20px) !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* 📱 Tablets muy pequeñas (altura <= 800px) */
+@media (min-width: 768px) and (max-width: 1023px) and (max-height: 800px) {
+  .pdv-main-box:has(.implementation-section),
+  .pdv-main-box.with-implementation {
+    padding-bottom: 180px !important;
+    min-height: calc(100vh - 10px) !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* 📱 Móviles */
+@media (max-width: 767px) {
+  .pdv-main-box:has(.implementation-section),
+  .pdv-main-box.with-implementation {
+    padding-bottom: 160px !important;
+    min-height: calc(100vh - 50px) !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* Estilos específicos para botones de implementación inline */
+.implementation-section button[style*="width: 100%"] {
+  margin-bottom: 60px !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+/* Espacio extra para toda la sección de implementación */
+.implementation-section {
+  padding-bottom: 80px !important;
+  margin-bottom: 40px !important;
+}
+
+/* Asegurar que la pregunta de autorización sea visible */
+.implementation-section p,
+.implementation-section div {
+  margin-bottom: 20px !important;
+}
+
+/* 📱 Responsive para botones inline de implementación */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .implementation-section button[style*="width: 100%"] {
+    margin-bottom: 80px !important;
+    padding: 18px 35px !important;
+    font-size: 16px !important;
+    min-height: 52px !important;
+  }
+  
+  .implementation-section {
+    padding-bottom: 100px !important;
+    margin-bottom: 60px !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) and (max-height: 900px) {
+  .implementation-section button[style*="width: 100%"] {
+    margin-bottom: 70px !important;
+    padding: 16px 30px !important;
+    font-size: 15px !important;
+    min-height: 48px !important;
+  }
+  
+  .implementation-section {
+    padding-bottom: 90px !important;
+    margin-bottom: 50px !important;
+  }
+}
+
+/* Tablets muy pequeñas - asegurar visibilidad completa */
+@media (min-width: 768px) and (max-width: 1023px) and (max-height: 800px) {
+  .implementation-section button[style*="width: 100%"] {
+    margin-bottom: 60px !important;
+    padding: 14px 25px !important;
+    font-size: 14px !important;
+    min-height: 46px !important;
+  }
+  
+  .implementation-section {
+    padding-bottom: 80px !important;
+    margin-bottom: 40px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .implementation-section button[style*="width: 100%"] {
+    margin-bottom: 50px !important;
+    padding: 14px 25px !important;
+    font-size: 14px !important;
+    min-height: 46px !important;
+  }
+  
+  .implementation-section {
+    padding-bottom: 70px !important;
+    margin-bottom: 30px !important;
+  }
+}

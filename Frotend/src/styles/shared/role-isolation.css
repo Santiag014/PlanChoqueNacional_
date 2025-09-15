@@ -1,0 +1,251 @@
+/**
+ * @fileoverview CSS para prevenir conflictos entre estilos de diferentes roles
+ * Este archivo define reglas de aislamiento y normalización para evitar que
+ * los estilos específicos de un rol afecten a otros roles
+ * 
+ * @author Plan Choque Terpel Team
+ * @version 1.0.0
+ */
+
+/* ============================================
+   VARIABLES CSS COMPARTIDAS
+   ============================================ */
+
+:root {
+  /* Colores principales de la marca Terpel */
+  --terpel-red: #e30613;
+  --terpel-red-hover: #c40511;
+  --terpel-red-light: #ffebec;
+  
+  /* Colores secundarios */
+  --terpel-gray: #666666;
+  --terpel-gray-light: #f5f5f5;
+  --terpel-gray-dark: #333333;
+  
+  /* Espaciado estándar */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* Tipografía */
+  --font-family-primary: 'Terpel Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 24px;
+  
+  /* Sombras estándar */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
+  
+  /* Bordes estándar */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  
+  /* Z-index hierarchy */
+  --z-index-dropdown: 1000;
+  --z-index-modal: 2000;
+  --z-index-tooltip: 3000;
+}
+
+/* ============================================
+   CONTENEDORES DE AISLAMIENTO POR ROL
+   ============================================ */
+
+/**
+ * Contenedor para aislar estilos del rol ASESOR
+ * Previene que los estilos de asesor afecten otros roles
+ */
+.role-container--asesor {
+  --role-primary-color: var(--terpel-red);
+  --role-prefix: 'asesor';
+  isolation: isolate;
+}
+
+/**
+ * Contenedor para aislar estilos del rol MERCADEO
+ * Mantiene separados los estilos específicos de mercadeo
+ */
+.role-container--mercadeo {
+  --role-primary-color: var(--terpel-red);
+  --role-prefix: 'mercadeo';
+  isolation: isolate;
+}
+
+/**
+ * Contenedor para aislar estilos del rol DIRECTOR
+ * Aísla componentes específicos del director comercial
+ */
+.role-container--director {
+  --role-primary-color: var(--terpel-red);
+  --role-prefix: 'director';
+  isolation: isolate;
+}
+
+/**
+ * Contenedor para aislar estilos del rol ORGANIZACIÓN TERPEL
+ * Mantiene separados los estilos de vista global
+ */
+.role-container--ot {
+  --role-primary-color: var(--terpel-red);
+  --role-prefix: 'ot';
+  isolation: isolate;
+}
+
+/**
+ * Contenedor para aislar estilos del rol MYSTERY SHOPPER
+ * Aísla componentes específicos del mystery shopper
+ */
+.role-container--mystery {
+  --role-primary-color: var(--terpel-red);
+  --role-prefix: 'mystery';
+  isolation: isolate;
+}
+
+/* ============================================
+   RESET DE CONFLICTOS COMUNES
+   ============================================ */
+
+/**
+ * Prevenir que los estilos de filtros se mezclen entre roles
+ * Cada rol debe mantener sus propios estilos de filtros
+ */
+.role-container--asesor .filtros-avanzados,
+.role-container--mercadeo .filtros-avanzados,
+.role-container--director .filtros-avanzados,
+.role-container--ot .filtros-avanzados {
+  /* Reset base para todos los filtros */
+  box-sizing: border-box;
+  font-family: var(--font-family-primary);
+}
+
+/**
+ * Normalizar botones entre roles
+ * Evita que los estilos de botones se hereden incorrectamente
+ */
+.role-container--asesor button,
+.role-container--mercadeo button,
+.role-container--director button,
+.role-container--ot button,
+.role-container--mystery button {
+  box-sizing: border-box;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/**
+ * Normalizar formularios entre roles
+ * Consistencia en inputs y selects
+ */
+.role-container--asesor input,
+.role-container--asesor select,
+.role-container--mercadeo input,
+.role-container--mercadeo select,
+.role-container--director input,
+.role-container--director select,
+.role-container--ot input,
+.role-container--ot select,
+.role-container--mystery input,
+.role-container--mystery select {
+  box-sizing: border-box;
+  outline: none;
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-sm);
+  font-size: var(--font-size-md);
+}
+
+/* ============================================
+   UTILIDADES DE AISLAMIENTO
+   ============================================ */
+
+/**
+ * Clase para prevenir propagación de estilos
+ * Usar en componentes que necesiten aislamiento completo
+ */
+.style-isolation {
+  isolation: isolate;
+  contain: style;
+}
+
+/**
+ * Clase para resetear herencia de estilos
+ * Útil para componentes que no deben heredar estilos de padres
+ */
+.style-reset {
+  all: unset;
+  box-sizing: border-box;
+  display: block;
+}
+
+/* ============================================
+   MEDIA QUERIES COMPARTIDAS
+   ============================================ */
+
+/**
+ * Breakpoints estándar para todos los roles
+ * Mantiene consistencia en responsive design
+ */
+@media (max-width: 768px) {
+  .role-container--asesor,
+  .role-container--mercadeo,
+  .role-container--director,
+  .role-container--ot,
+  .role-container--mystery {
+    padding: var(--spacing-sm);
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .role-container--asesor,
+  .role-container--mercadeo,
+  .role-container--director,
+  .role-container--ot,
+  .role-container--mystery {
+    padding: var(--spacing-md);
+  }
+}
+
+@media (min-width: 1025px) {
+  .role-container--asesor,
+  .role-container--mercadeo,
+  .role-container--director,
+  .role-container--ot,
+  .role-container--mystery {
+    padding: var(--spacing-lg);
+  }
+}
+
+/* ============================================
+   DEBUG Y DESARROLLO
+   ============================================ */
+
+/**
+ * Clase de debug para visualizar contenedores de rol
+ * Solo visible en modo desarrollo
+ */
+.debug-role-containers .role-container--asesor {
+  border: 2px solid blue;
+}
+
+.debug-role-containers .role-container--mercadeo {
+  border: 2px solid green;
+}
+
+.debug-role-containers .role-container--director {
+  border: 2px solid orange;
+}
+
+.debug-role-containers .role-container--ot {
+  border: 2px solid purple;
+}
+
+.debug-role-containers .role-container--mystery {
+  border: 2px solid red;
+}

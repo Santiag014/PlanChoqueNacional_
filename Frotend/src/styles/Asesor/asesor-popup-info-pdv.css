@@ -1,0 +1,396 @@
+/* Estilos para el pop-up de registro de PDV */
+.pdv-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  /* padding: 20px; */
+  box-sizing: border-box;
+  animation: fadeIn 0.3s ease-out;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.pdv-popup-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  max-width: 900px;
+  width: 90%;
+  max-height: 70vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  animation: popupAppear 0.3s ease-out;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+@keyframes popupAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Header removido - ya no se usa */
+.pdv-popup-header {
+  display: none;
+}
+
+.pdv-popup-header h2 {
+  display: none;
+}
+
+.pdv-popup-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+}
+
+.pdv-popup-content {
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+/* Estilos para la tabla */
+.pdv-table-container {
+  margin-bottom: 20px;
+  overflow-x: auto;
+  max-width: 100vw;
+  width: 100%;
+}
+
+.pdv-table {
+  width: 100%;
+  min-width: 600px;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+.pdv-table th,
+.pdv-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+  font-size: 12px;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+.pdv-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #333;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+.pdv-table tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.pdv-table tbody tr:hover {
+  background-color: #f5f5f5;
+}
+
+/* Celdas con colores específicos */
+.volume-cell {
+  background-color: #d4edda !important;
+}
+
+.price-cell {
+  background-color: #fff3cd !important;
+}
+
+/* Input dentro de la tabla */
+.table-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: center;
+  font-size: 12px;
+  padding: 4px;
+  outline: none;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+.table-input:focus {
+  background-color: rgba(0, 123, 255, 0.1);
+}
+
+/* Estilos para los inputs inferiores */
+.pdv-inputs-container {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.input-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 15px;
+}
+
+.input-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.input-group label {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 5px;
+  font-size: 14px;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+.form-input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.3s;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+.file-input {
+  padding: 6px 12px;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+.pdv-info-display {
+  background-color: #e9ecef;
+  padding: 10px;
+  border-radius: 4px;
+  margin-top: 10px;
+}
+
+.pdv-info-display p {
+  margin: 0;
+  font-size: 14px;
+  color: #495057;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+/* Botones */
+.pdv-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.btn-primary {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+.btn-primary:hover {
+  background-color: #c82333;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+.btn-secondary:hover {
+  background-color: #5a6268;
+}
+
+/* Botón para seleccionar PDV */
+.btn-select-pdv {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+.btn-select-pdv:hover {
+  background-color: #c82333;
+}
+
+/* Spinner rojo pequeño */
+.spinner-red.small {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #dc3545;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .pdv-popup-container {
+    max-width: 95%;
+  }
+  
+  .input-row {
+    flex-direction: column;
+  }
+  
+  .pdv-table {
+    font-size: 10px;
+  }
+  
+  .pdv-table th,
+  .pdv-table td {
+    padding: 4px;
+  }
+}
+
+/* Prevenir scroll del body cuando el popup está abierto */
+body.popup-open {
+  overflow: hidden;
+}
+
+/* Asegurar tipografía Terpel Sans en todos los elementos del popup */
+.pdv-popup-overlay *,
+.pdv-popup-container *,
+.pdv-popup-content *,
+.pdv-table *,
+.pdv-inputs-container *,
+.input-group *,
+.pdv-info-display *,
+.pdv-actions * {
+  font-family: 'Terpel Sans', Arial, sans-serif !important;
+}
+
+/* Estilos específicos para títulos y secciones */
+.pdv-popup-content h1,
+.pdv-popup-content h2,
+.pdv-popup-content h3,
+.pdv-popup-content h4,
+.pdv-popup-content h5,
+.pdv-popup-content h6 {
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 15px;
+}
+
+/* Estilos para el texto de información del PDV */
+.pdv-info-text {
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  font-weight: 500;
+  color: #333;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+/* Estilos para subtítulos de secciones */
+.section-subtitle {
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  font-weight: 600;
+  color: #dc3545;
+  font-size: 18px;
+  margin-bottom: 15px;
+  margin-top: 20px;
+}
+
+/* Estilos mejorados para los labels de inputs */
+.input-group label {
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 5px;
+  font-size: 14px;
+  display: block;
+}
+
+/* Estilos para texto descriptivo */
+.description-text {
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  font-weight: 400;
+  color: #666;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+/* Estilos para elementos de lista */
+.pdv-popup-content ul,
+.pdv-popup-content ol,
+.pdv-popup-content li {
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+/* Asegurar que los placeholders también usen la fuente */
+.form-input::placeholder,
+.table-input::placeholder {
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  color: #999;
+}
+
+/* Estilos para select elements si los hay */
+select.form-input {
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+/* Estilos para textarea si los hay */
+textarea.form-input {
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  resize: vertical;
+}

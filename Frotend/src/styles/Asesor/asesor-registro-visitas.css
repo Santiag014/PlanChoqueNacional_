@@ -1,0 +1,1853 @@
+/* =============================================================================
+   📋 ESTILOS PARA REGISTRO DE VISITAS - SISTEMA TERPEL
+   =============================================================================
+   
+   🎯 Propósito: Estilos para la funcionalidad de registro de visitas e implementaciones
+   📱 Responsive: Mobile-first design con breakpoints para tablet y desktop
+   🎨 Tema: Colores corporativos Terpel (rojo #e30613 principal)
+   
+   📐 Breakpoints:
+   - 📱 Mobile: hasta 767px
+   - 📱 Tablet: 768px - 1023px  
+   - 💻 Desktop: 1024px - 1439px
+   - 🖥️ Desktop XL: 1440px+
+   
+   ============================================================================= */
+
+/* =============================================================================
+   🎛️ CONTENEDOR PRINCIPAL - ANCHOS MÁXIMOS POR DISPOSITIVO
+   ============================================================================= */
+
+/* 📱 Contenedor principal con responsive widths y scroll habilitado */
+.visitas-main-container {
+  /* 📐 Anchos máximos por dispositivo */
+  max-width: 100%;
+  width: 100%;
+  margin: 0 auto;
+  
+  /* 🎨 Apariencia */
+  background: transparent;
+  position: relative;
+  
+  /* 📜 Mobile: Sin restricciones de altura para evitar doble scroll */
+  overflow-x: hidden;
+  /* overflow-y y max-height solo para tablet/desktop */
+  
+  /* 🔤 Tipografía Terpel */
+  font-family: 'Terpel Sans', Arial, sans-serif !important;
+  
+  /* 📱 Mobile: ancho completo con margen mínimo */
+  padding: 20px;
+}
+
+/* 📱 Tablet: ancho máximo 800px */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .visitas-main-container {
+    max-width: 750px;
+    padding: 20px 20px 60px 20px; /* 🔧 Padding-bottom aumentado para botón */
+    margin: 0 auto;
+    /* 📜 Scroll habilitado solo en tablet/desktop */
+    overflow-y: auto;
+    max-height: calc(100vh - 120px);
+    min-height: calc(100vh - 140px); /* 🔧 Altura mínima asegurada */
+  }
+}
+
+/* 💻 Desktop: ancho máximo 1000px */
+@media (min-width: 1024px) and (max-width: 1439px) {
+  .visitas-main-container {
+    max-width: 750px;
+    padding: 25px;
+    margin: 0 auto;
+    /* 📜 Scroll habilitado solo en tablet/desktop */
+    overflow-y: auto;
+    max-height: calc(100vh - 120px);
+  }
+}
+
+/* 🖥️ Desktop XL: ancho máximo 1200px */
+@media (min-width: 1440px) {
+  .visitas-main-container {
+    max-width: 750px;
+    padding: 30px;
+    margin: 0 auto;
+    /* 📜 Scroll habilitado solo en tablet/desktop */
+    overflow-y: auto;
+    max-height: calc(100vh - 120px);
+  }
+}
+
+/* 🔤 Asegurar tipografía Terpel Sans en todo el componente */
+.visitas-main-container,
+.visitas-main-container * {
+  font-family: 'Terpel Sans', Arial, sans-serif !important;
+}
+
+/* =============================================================================
+   🎛️ BOTONES TOGGLE - VISITAS/IMPLEMENTACIÓN
+   ============================================================================= */
+
+/* 🔄 Contenedor de botones toggle */
+.toggle-buttons-container {
+  display: flex;
+  border-radius: 12px;
+  margin-bottom: 15px;
+  position: relative;
+  z-index: 2;
+}
+
+/* 🔘 Botón toggle individual */
+.toggle-btn {
+  flex: 1;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Terpel-Sans-Medium', Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: transparent;
+  color: #566573;
+}
+
+/* 🔴 Botón activo - estilo Terpel */
+.toggle-btn.active {
+  background: linear-gradient(135deg, #a0260e 0%, #e72b2b 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+}
+
+/* 🔴 Hover en botón inactivo */
+.toggle-btn:hover:not(.active) {
+  color: rgb(227, 6, 19);
+}
+
+/* =============================================================================
+   📋 SECCIONES DE CONTENIDO
+   ============================================================================= */
+
+/* 🏗️ Sección de implementación */
+.implementacion-content {
+  border-radius: 18px;
+  padding: 0px;
+  padding-bottom: 50px;
+  margin-top: 10px;
+  position: relative;
+  z-index: 2;
+}
+
+/* 👁️ Contenedor de contenido de visitas - transparente como galonaje */
+.visitas-content {
+  background: transparent;
+  margin-top: 10px;
+}
+
+/* =============================================================================
+   ℹ️ INFORMACIÓN DEL PDV
+   ============================================================================= */
+
+/* 📊 Información simple del PDV */
+.pdv-info-simple {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: rgba(227, 6, 19, 0.05);
+  border: 1px solid rgba(227, 6, 19, 0.15);
+  border-radius: 8px;
+  max-width: fit-content;
+}
+
+/* 📈 Estadística del PDV */
+.pdv-stat {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2c3e50;
+  background: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* 🏷️ Segmento del PDV */
+.pdv-segment {
+  font-size: 12px;
+  font-weight: 500;
+  color: #e30613;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* =============================================================================
+   ⛽ INFORMACIÓN DE GALONAJE
+   ============================================================================= */
+
+/* ⏳ Loading de galonaje */
+.loading-galonaje {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(52, 152, 219, 0.1);
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+/* 🔄 Spinner pequeño */
+.spinner-small {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(52, 152, 219, 0.3);
+  border-top: 2px solid #3498db;
+  border-radius: 50%;
+  animation: visitas-spin 1s linear infinite;
+  margin-right: 10px;
+}
+
+/* 📊 Información de galonaje principal */
+.galonaje-info {
+  background: linear-gradient(135deg, #ebf4fb 0%, #d6eaf8 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 2px solid rgba(52, 152, 219, 0.2);
+}
+
+.galonaje-info h4 {
+  color: #1a252f;
+  margin: 0 0 15px 0;
+  font-family: 'Terpel-Sans-Bold', Arial, sans-serif;
+  font-size: 16px;
+}
+
+/* 📊 Estadísticas de galonaje */
+.galonaje-stats {
+  display: flex;
+  gap: 20px;
+}
+
+/* 📈 Item de estadística */
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 🏷️ Etiqueta de estadística */
+.stat-label {
+  font-size: 12px;
+  color: #566573;
+  margin-bottom: 5px;
+  font-family: 'Terpel-Sans-Medium', Arial, sans-serif;
+}
+
+/* 🔢 Valor de estadística */
+.stat-value {
+  font-size: 18px;
+  font-weight: bold;
+  color: #2980b9;
+  font-family: 'Terpel-Sans-Bold', Arial, sans-serif;
+}
+
+/* =============================================================================
+   🏗️ IMPLEMENTACIONES SELECCIONADAS
+   ============================================================================= */
+
+/* 🎯 Implementación seleccionada */
+.implementacion-selected {
+  border-radius: 15px;
+  padding: 5px;
+  margin-top: 20px;
+}
+
+.implementacion-selected h4 {
+  color: rgb(227, 6, 19);
+  margin: 0 0 5px 0;
+  font-family: 'Terpel-Sans-Bold', Arial, sans-serif;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* 🚫 Mensaje cuando no hay implementaciones */
+.no-implementaciones {
+  text-align: center;
+  padding: 30px;
+  background: rgba(236, 112, 99, 0.1);
+  border-radius: 12px;
+  border: 2px dashed #ec7063;
+}
+
+.no-implementaciones p {
+  color: #566573;
+  margin: 5px 0;
+  font-family: 'Terpel-Sans-Regular', Arial, sans-serif;
+}
+
+/* =============================================================================
+   🎯 CAMPO DE ACTIVACIÓN - SELECT SI/NO
+   ============================================================================= */
+
+/* 📋 Contenedor del campo de activación */
+.activacion-field-container {
+  margin: 15px 0;
+  display: flex;
+  flex-direction: row;
+}
+
+/* 🏷️ Label de activación */
+.activacion-label {
+  display: block;
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+/* 🎛️ Select de activación */
+.activacion-select {
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 10px;
+  background: white;
+  color: #333;
+}
+
+.activacion-select:focus {
+  outline: none;
+  border-color: #e30613;
+}
+
+/* =============================================================================
+   📝 CAMPO DE OBSERVACIONES
+   ============================================================================= */
+
+/* 📋 Contenedor del campo observaciones */
+.observaciones-field-container {
+  margin: 15px 0;
+}
+  
+/* 🏷️ Label del campo observaciones */
+.observaciones-label {
+  display: block;
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+/* 📝 Textarea de observaciones */
+.observaciones-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  color: #333;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.observaciones-textarea:focus {
+  outline: none;
+  border-color: #e30613;
+}
+
+.observaciones-textarea::placeholder {
+  color: #999;
+}
+
+/* 📊 Contador de caracteres */
+.observaciones-counter {
+  text-align: right;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #7f8c8d;
+  font-family: 'Terpel-Sans-Regular', Arial, sans-serif;
+}
+
+.observaciones-counter.warning {
+  color: #f39c12;
+}
+
+.observaciones-counter.danger {
+  color: #e74c3c;
+}
+
+/* =============================================================================
+   🎬 ANIMACIONES PARA CAMPOS NUEVOS
+   ============================================================================= */
+
+/* 📱 Animación de aparición */
+@keyframes slideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+    max-height: 0;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 300px;
+  }
+}
+
+/* 🔄 Animación de desaparición */
+@keyframes slideUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 300px;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px);
+    max-height: 0;
+  }
+}
+
+/* =============================================================================
+   ✅ CHECKBOX DE SEGUIMIENTO
+   ============================================================================= */
+
+/* 📋 Contenedor del checkbox de seguimiento */
+.visitas-checkbox-container {
+  display: flex;
+  align-items: center;
+  background: rgba(52, 152, 219, 0.05);
+  padding: 15px 20px;
+  border-radius: 8px;
+  margin: 15px 0 20px 0;
+  border: 1px solid rgba(52, 152, 219, 0.2);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* 🎨 Hover del checkbox container */
+.visitas-checkbox-container:hover {
+  background: rgba(52, 152, 219, 0.1);
+  border-color: rgba(52, 152, 219, 0.3);
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.15);
+}
+
+/* ✅ Checkbox individual */
+.visitas-checkbox {
+  width: 18px;
+  height: 18px;
+  margin-right: 15px;
+  accent-color: #3498db;
+  cursor: pointer;
+  transform: scale(1.1);
+}
+
+/* 🏷️ Label del checkbox */
+.visitas-checkbox-label {
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  color: #2c3e50;
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 500;
+}
+
+/* =============================================================================
+   📝 CAMPOS DE FORMULARIO - FILAS PDV
+   ============================================================================= */
+
+/* 📋 Fila de PDV para visitas - diseño horizontal */
+.visitas-pdv-row, 
+.visitas-pdv-row-corresponde {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  flex-direction: row;
+  margin-bottom: 10px;
+}
+
+/* 🏷️ Labels de las filas PDV */
+.visitas-pdv-row label, 
+.visitas-pdv-row-corresponde label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #495057;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 🔴 Input principal (rojo) */
+.visitas-pdv-row input {
+  flex: 1;
+  background: #e30613;
+  color: #fff;
+  border-radius: 10px;
+  border: none;
+  font-size: 12px;
+  padding: 6px 10px;
+  text-align: center;
+  outline: none;
+  letter-spacing: 1px;
+  box-sizing: border-box;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(227, 6, 19, 0.2);
+}
+
+/* 💭 Placeholder del input rojo */
+.visitas-pdv-row input::placeholder {
+  color: #fff;
+  font-weight: 400;
+}
+
+/* 💭 Placeholder del input gris */
+.visitas-pdv-row-corresponde input::placeholder {
+  color: #495057;
+  font-weight: 400;
+}
+
+/* ⚪ Input secundario (gris) */
+.visitas-pdv-row-corresponde input {
+  flex: 1;
+  color: #fff;
+  border-radius: 10px;
+  border: none;
+  font-size: 12px;
+  padding: 6px 10px;
+  text-align: center;
+  outline: none;
+  letter-spacing: 1px;
+  box-sizing: border-box;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(227, 6, 19, 0.2);
+}
+
+/* 📋 Configuración de fila corresponde */
+.visitas-pdv-row-corresponde {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  flex-direction: row;
+  margin-bottom: 15px;
+}
+
+.visitas-pdv-row-corresponde label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #495057;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+.visitas-pdv-row-corresponde input {
+  flex: 1;
+  background: #f8f9fa;
+  color: #6c757d;
+  border-radius: 10px;
+  border: 1px solid #e0e0e0;
+  font-size: 12px;
+  padding: 6px 10px;
+  text-align: center;
+  outline: none;
+  box-sizing: border-box;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* =============================================================================
+   🎨 ESTADOS HOVER Y FOCUS DE INPUTS
+   ============================================================================= */
+
+/* 🔴 Estados del input rojo */
+.visitas-pdv-row input:focus {
+  box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.3), 0 2px 8px rgba(227, 6, 19, 0.2);
+}
+
+.visitas-pdv-row input:hover {
+  box-shadow: 0 4px 12px rgba(227, 6, 19, 0.3);
+}
+
+/* ⚪ Estados del input gris */
+.visitas-pdv-row-corresponde input:focus {
+  border-color: #e30613;
+  box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.1), 0 2px 8px rgba(0, 0, 0, 0.15);
+  background: white;
+}
+
+.visitas-pdv-row-corresponde input:hover {
+  border-color: #999;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 🚫 Clase para PDV no encontrado */
+.visitas-input-corresponde.corresponde-na {
+  color: #cb4335;
+  background: #fdeaea;
+  border-color: #f1948a;
+}
+
+/* =============================================================================
+   📅 CAMPO DE FECHA
+   ============================================================================= */
+
+/* 📅 Campo de fecha - estructura horizontal */
+.visitas-fecha-field {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  flex-direction: row;
+  margin-bottom: 20px;
+}
+
+/* 🏷️ Label del campo fecha */
+.visitas-fecha-label {
+  font-weight: 600;
+  font-size: 12px;
+  color: #495057;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  background: #f8f9fa;
+  padding: 8px 12px;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 📅 Input de fecha */
+.visitas-fecha-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  color: #333;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+/* 🎨 Estados del input fecha */
+.visitas-fecha-input:focus {
+  outline: none;
+  border-color: #e30613;
+}
+
+/* =============================================================================
+   📷 CAMPO DE FOTO
+   ============================================================================= */
+
+/* 📷 Campo de foto - estructura horizontal */
+.visitas-foto-field {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  flex-direction: row;
+  margin-bottom: 20px;
+}
+
+/* 🏷️ Label del campo foto */
+.visitas-foto-label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #495057;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  background: #f8f9fa;
+  padding: 8px 12px;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  line-height: 1.2;
+}
+
+/* 📷 Input de foto */
+.visitas-foto-input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  background: white;
+  color: #333;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+
+/* 🎨 Estados del input foto */
+.visitas-foto-input:focus {
+  outline: none;
+  border-color: #e30613;
+  box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.1), 0 2px 8px rgba(0, 0, 0, 0.15);
+  background: white;
+}
+
+.visitas-foto-input:hover {
+  border-color: #999;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* ✅ Estado válido del input foto */
+.visitas-foto-input:valid {
+  background: #f0f8ff;
+  border-color: #3498db;
+}
+
+/* =============================================================================
+   🔘 BOTONES DE ACCIÓN
+   ============================================================================= */
+
+/* 🎛️ Contenedor de botones */
+.visitas-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 25px;
+}
+
+/* 🔘 Botón base */
+.visitas-btn {
+  padding: 14px 35px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 🔴 Botón primario (rojo Terpel) */
+.visitas-btn-primary {
+  background: linear-gradient(135deg, #e30613 0%, #c70612 100%);
+  color: white;
+  border: 2px solid transparent;
+}
+
+/* 🎨 Hover del botón primario */
+.visitas-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #c70612 0%, #a10510 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(227, 6, 19, 0.4);
+}
+
+/* 🚫 Estado deshabilitado del botón primario */
+.visitas-btn-primary:disabled {
+  background: #cccccc;
+  color: #666666;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-color: #cccccc;
+}
+
+/* ⚪ Botón secundario */
+.visitas-btn-secondary {
+  background: white;
+  color: #e30613;
+  border: 2px solid #e30613;
+}
+
+/* 🎨 Hover del botón secundario */
+.visitas-btn-secondary:hover {
+  background: #e30613;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(227, 6, 19, 0.3);
+}
+
+/* =============================================================================
+   🔗 ENLACES DE AYUDA
+   ============================================================================= */
+
+/* 🆘 Contenedor de ayuda para PDV */
+.visitas-forgot-code {
+  text-align: center;
+  margin: 15px auto;
+}
+
+/* 🔗 Enlace de ayuda PDV */
+.visitas-forgot-link {
+  display: block;
+  text-align: center;
+  margin: 15px auto;
+  background: transparent;
+  border: 2px solid #e30613;
+  color: #e30613;
+  padding: 4px 20px;
+  border-radius: 25px;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  max-width: 250px;
+}
+
+/* 🔗 Botón de ayuda galonaje */
+.galonaje-forgot-button {
+  display: block;
+  text-align: center;
+  margin: 15px auto;
+  background: transparent;
+  border: 2px solid #e30613;
+  color: #e30613;
+  padding: 4px 20px;
+  border-radius: 25px;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  max-width: 250px;
+}
+
+/* 🎨 Hover del botón galonaje */
+.galonaje-forgot-button:hover {
+  background: #e30613;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(227, 6, 19, 0.2);
+}
+
+/* =============================================================================
+   ⏳ SPINNERS Y LOADING
+   ============================================================================= */
+
+/* 🌀 Overlay del spinner */
+.visitas-spinner-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(5px);
+}
+
+/* 🌀 Spinner principal */
+.visitas-spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top: 4px solid #ffffff;
+  border-radius: 50%;
+  animation: visitas-spin 1.5s linear infinite;
+}
+
+/* 🔄 Animación de spin */
+@keyframes visitas-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 📄 Sección de contenido específica */
+.visitas-content-section {
+  margin-top: 10px;
+  position: relative;
+  z-index: 2;
+}
+
+/* =============================================================================
+   📷 ÁREA DE FOTO ESPECÍFICA
+   ============================================================================= */
+
+/* 📷 Contenedor de foto para visitas */
+.visitas-foto-container {
+  background: linear-gradient(135deg, #ebf4fb 0%, #d6eaf8 100%);
+  border-radius: 15px;
+  padding: 20px;
+  text-align: center;
+  transition: all 0.3s ease;
+  margin: 15px 0;
+}
+
+/* 🎨 Hover del contenedor de foto */
+.visitas-foto-container:hover {
+  background: linear-gradient(135deg, #d6eaf8 0%, #aed6f1 100%);
+  transform: scale(1.02);
+}
+
+/* =============================================================================
+   ✅ ESTADOS DE VALIDACIÓN
+   ============================================================================= */
+
+/* ✅ Input válido */
+.visitas-input-valid {
+  border-color: #58d68d !important;
+  background: #f7fff9 !important;
+}
+
+/* ❌ Input con error */
+.visitas-input-error {
+  border-color: #ec7063 !important;
+  background: #fdeaea !important;
+  animation: visitas-shake 0.5s ease-in-out;
+}
+
+/* 🔄 Animación de error (shake) */
+@keyframes visitas-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+/* ✅ Indicador de éxito */
+.visitas-success-indicator {
+  background: linear-gradient(135deg, #a8e6cf 0%, #7fcdcd 100%);
+  border: 2px solid #58d68d;
+  color: #1e8449;
+  padding: 12px;
+  border-radius: 10px;
+  margin: 10px 0;
+  text-align: center;
+  font-weight: 600;
+  animation: visitas-success-pulse 2s ease-in-out infinite;
+}
+
+/* 🔄 Animación de éxito (pulse) */
+@keyframes visitas-success-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+/* =============================================================================
+   📱 RESPONSIVE DESIGN - MOBILE FIRST
+   ============================================================================= */
+
+/* 📱 Tablet - Ajustes específicos para pantallas medianas */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* 📋 Ajustes de filas PDV para tablet */
+  .visitas-pdv-row, 
+  .visitas-pdv-row-corresponde {
+    padding: 12px;
+    gap: 25px;
+  }
+  
+  /* 📝 Inputs con mejor padding en tablet */
+  .visitas-input-codigo,
+  .visitas-input-corresponde {
+    padding: 14px 18px;
+    font-size: 15px;
+  }
+  
+  /* ✅ Checkbox container más espacioso */
+  .visitas-checkbox-container {
+    padding: 18px;
+  }
+  
+  /* 🔘 Botones más grandes en tablet */
+  .visitas-btn {
+    padding: 16px 40px;
+    font-size: 15px;
+  }
+  
+  /* 🎯 Campos nuevos en tablet */
+  .activacion-field-container,
+  .observaciones-field-container {
+    padding: 22px;
+    margin: 25px 0;
+  }
+  
+  .activacion-select {
+    font-size: 12px;
+  }
+  
+  .observaciones-textarea {
+    padding: 18px;
+    font-size: 15px;
+    min-height: 120px;
+  }
+}
+
+/* 💻 Desktop - Ajustes para pantallas grandes */
+@media (min-width: 1024px) {
+  /* 📋 Filas PDV optimizadas para desktop */
+  .visitas-pdv-row, 
+  .visitas-pdv-row-corresponde {
+    padding: 15px;
+    gap: 30px;
+  }
+  
+  /* 📝 Inputs con tamaño óptimo para desktop */
+  .visitas-input-codigo,
+  .visitas-input-corresponde {
+    padding: 16px 20px;
+    font-size: 16px;
+  }
+  
+  /* ✅ Checkbox con espaciado desktop */
+  .visitas-checkbox-container {
+    padding: 20px;
+  }
+  
+  /* 🔘 Botones tamaño desktop */
+  .visitas-btn {
+    padding: 18px 45px;
+    font-size: 16px;
+  }
+  
+  /* 🎯 Campos nuevos en desktop */
+  .activacion-field-container,
+  .observaciones-field-container {
+    padding: 25px;
+    margin: 30px 0;
+  }
+  
+  .activacion-select {
+    /* padding: 18px 20px; */
+    font-size: 12px;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  
+  .observaciones-textarea {
+    padding: 20px;
+    font-size: 16px;
+    min-height: 140px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+}
+
+/* 📱 Mobile - Optimización para dispositivos móviles */
+@media (max-width: 767px) {
+  /* 🎯 Campos nuevos en mobile */
+  .activacion-field-container,
+  .observaciones-field-container {
+    padding: 16px;
+    margin: 15px 0;
+    border-radius: 10px;
+  }
+  
+  .activacion-label,
+  .observaciones-label {
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+  
+  .activacion-select {
+    /* padding: 12px 14px; */
+    font-size: 12px;
+    padding-right: 35px;
+    background-size: 14px;
+    background-position: right 10px center;
+  }
+  
+  .observaciones-textarea {
+    padding: 14px;
+    font-size: 14px;
+    min-height: 80px;
+    border-radius: 6px;
+  }
+  
+  .observaciones-counter {
+    font-size: 11px;
+    margin-top: 6px;
+  }
+  
+  /* 🎬 Animaciones más suaves en mobile */
+  @keyframes slideDown {
+    0% {
+      opacity: 0;
+      transform: translateY(-10px);
+      max-height: 0;
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+      max-height: 200px;
+    }
+  }
+}
+
+/* =============================================================================
+   📋 ESTILOS PARA PDV-ROW-VISITAS
+   ============================================================================= */
+
+/* 📋 Fila principal de PDV para visitas */
+.pdv-row-visitas {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  transition: all 0.3s ease;
+}
+
+/* 🎨 Hover de la fila PDV */
+.pdv-row-visitas:hover {
+  box-shadow: 0 2px 8px rgba(227, 6, 19, 0.1);
+}
+
+/* 🏷️ Label en las filas de visitas */
+.pdv-row-visitas .pdv-label {
+  color: #495057;
+  font-family: 'Terpel-Sans-Bold', Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  min-width: 120px;
+  flex-shrink: 0;
+  border: none;
+  margin: 0;
+}
+
+/* 🏷️ Label multilínea */
+.pdv-row-visitas .pdv-label-multiline {
+  line-height: 1.2;
+  padding: 12px 20px;
+}
+
+/* 📦 Contenedor relativo */
+.pdv-row-visitas .relative {
+  flex: 1;
+  padding: 0;
+  margin: 0;
+}
+
+.pdv-row-visitas .flex-1 {
+  width: 100%;
+}
+
+/* 📅 Input de fecha en PDV visitas */
+.pdv-row-visitas .pdv-input-date-visitas {
+  width: 100%;
+  border: 1px solid #ddd;
+  background: white;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  font-size: 14px;
+  color: #333;
+  outline: none;
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin: 0;
+}
+
+.pdv-row-visitas .pdv-input-date-visitas:focus {
+  border-color: #e30613;
+}
+
+/* 📷 Contenedor de adjuntar foto */
+.pdv-row-visitas .adjuntar-foto-box {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+.pdv-row-visitas .adjuntar-foto-input-visitas {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: white;
+  border: none;
+  width: 100%;
+  min-height: 28px;
+  transition: all 0.3s ease;
+  border-radius: 12px;
+  margin: 0;
+}
+
+.pdv-row-visitas .adjuntar-foto-input-visitas:hover {
+  background: #f8fafc;
+}
+
+/* 📷 Icono de foto */
+.pdv-row-visitas .foto-icon {
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* 💭 Placeholder de adjuntar foto */
+.pdv-row-visitas .adjuntar-foto-placeholder {
+  color: #566573;
+  font-family: 'Terpel-Sans-Medium', Arial, sans-serif;
+  font-size: 14px;
+  flex: 1;
+}
+
+/* =============================================================================
+   🎛️ DROPDOWN DE IMPLEMENTACIONES
+   ============================================================================= */
+
+/* 📦 Contenedor principal del dropdown */
+.implementacion-dropdown-container {
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.implementacion-dropdown-container h4 {
+  color: #1a252f;
+  margin: 0 0 15px 0;
+  font-family: 'Terpel-Sans-Bold', Arial, sans-serif;
+  font-size: 16px;
+}
+
+/* 🎛️ Dropdown principal */
+.implementacion-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+/* 📋 Header del dropdown */
+.implementacion-dropdown-header {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 15px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s ease;
+  min-height: 20px;
+}
+
+/* 🎨 Estados del header */
+.implementacion-dropdown-header:hover {
+  border-color: rgb(227, 6, 19);
+  background: #f8fafc;
+}
+
+.implementacion-dropdown-header.open {
+  border-color: rgb(227, 6, 19);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  background: #ebf4fb;
+}
+
+.implementacion-dropdown-header.disabled {
+  background: #f5f5f5;
+  border-color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.implementacion-dropdown-header.disabled:hover {
+  border-color: #cccccc;
+  background: #f5f5f5;
+}
+
+/* 📝 Contenido del header */
+.implementacion-dropdown-content {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+/* 💭 Placeholder del dropdown */
+.implementacion-dropdown-placeholder {
+  color: #95a5a6;
+  font-family: 'Terpel-Sans-Regular', Arial, sans-serif;
+  font-size: 14px;
+}
+
+/* ✅ Item seleccionado */
+.implementacion-dropdown-selected {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 🔢 Número de implementación */
+.implementacion-dropdown-numero {
+  background: rgb(227, 6, 19);
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.implementacion-dropdown-numero.disabled {
+  background: #95a5a6;
+}
+
+/* 📝 Texto del dropdown */
+.implementacion-dropdown-text {
+  flex: 1;
+}
+
+.implementacion-dropdown-title {
+  font-family: 'Terpel-Sans-Medium', Arial, sans-serif;
+  font-size: 14px;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.implementacion-dropdown-subtitle {
+  font-family: 'Terpel-Sans-Regular', Arial, sans-serif;
+  font-size: 12px;
+  color: #7f8c8d;
+  margin: 2px 0 0 0;
+}
+
+/* ⬇️ Flecha del dropdown */
+.implementacion-dropdown-arrow {
+  transition: transform 0.3s ease;
+  color: #7f8c8d;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.implementacion-dropdown-arrow.open {
+  transform: rotate(180deg);
+}
+
+/* 📜 Lista desplegable */
+.implementacion-dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid rgb(227, 6, 19);
+  border-top: none;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
+}
+
+/* 📋 Items de la lista */
+.implementacion-dropdown-item {
+  padding: 12px 15px;
+  border-bottom: 1px solid #ecf0f1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.implementacion-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.implementacion-dropdown-item:hover {
+  background: #f8fafc;
+}
+
+.implementacion-dropdown-item.disabled {
+  background: #fdf2f2;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.implementacion-dropdown-item.disabled:hover {
+  background: #fdf2f2;
+}
+
+.implementacion-dropdown-item.selected {
+  background: #ebf4fb;
+  border-left: 4px solid #3498db;
+}
+
+/* 📊 Estado de cada item */
+.implementacion-item-status {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.implementacion-item-status.available {
+  background: #d5f4e6;
+  color: #27ae60;
+}
+
+.implementacion-item-status.unavailable {
+  background: #fdeaea;
+  color: #e74c3c;
+}
+
+.implementacion-item-status.completed {
+  background: #dbeafe;
+  color: #2563eb;
+  border: 1px solid #93c5fd;
+}
+
+/* 🛒 Productos requeridos */
+.productos-requeridos {
+  margin-top: 15px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 1px solid #dee2e6;
+  border-radius: 12px;
+  padding: 15px;
+}
+
+.productos-requeridos h5 {
+  color: #495057;
+  margin: 0 0 10px 0;
+  font-family: 'Terpel-Sans-Medium', Arial, sans-serif;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.productos-requeridos-icon {
+  color: #6c757d;
+  font-size: 16px;
+}
+
+.productos-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.producto-item {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #495057;
+  font-family: 'Terpel-Sans-Regular', Arial, sans-serif;
+  transition: all 0.2s ease;
+}
+
+.producto-item:hover {
+  border-color: #3498db;
+  background: #f8fafc;
+}
+
+/* =============================================================================
+   📱 RESPONSIVE PARA DROPDOWN
+   ============================================================================= */
+
+/* 📱 Mobile - Dropdown optimizado */
+@media (max-width: 767px) {
+  .implementacion-dropdown-header {
+    padding: 12px;
+  }
+  
+  .implementacion-dropdown-selected {
+    gap: 8px;
+  }
+  
+  .implementacion-dropdown-numero {
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+  }
+  
+  .implementacion-dropdown-title {
+    font-size: 13px;
+  }
+  
+  .implementacion-dropdown-subtitle {
+    font-size: 11px;
+  }
+  
+  .implementacion-dropdown-item {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  
+  .productos-lista {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  
+  .producto-item {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+}
+
+/* =============================================================================
+   🏗️ SECCIÓN DE IMPLEMENTACIÓN MEJORADA
+   ============================================================================= */
+
+/* 📋 Header de implementación */
+.implementacion-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  border-radius: 10px;
+}
+
+.implementacion-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+/* 🔄 Botón de refresh galonaje */
+.btn-refresh-galonaje {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #e30613 0%, #c00511 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 90px;
+  justify-content: center;
+}
+
+/* 🎨 Hover del botón refresh */
+.btn-refresh-galonaje:hover:not(:disabled) {
+  background: linear-gradient(135deg, #c00511 0%, #a0040d 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(227, 6, 19, 0.3);
+}
+
+.btn-refresh-galonaje:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 🌀 Spinner mini */
+.spinner-mini {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* =============================================================================
+   ⛽ GALONAJE INFO CARD MEJORADA
+   ============================================================================= */
+
+/* 📊 Card principal de galonaje */
+.galonaje-info-card {
+  background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+  border: 1px solid #e30613;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(227, 6, 19, 0.1);
+  overflow: hidden;
+}
+
+/* 📋 Header de galonaje */
+.galonaje-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #e30613 0%, #c00511 100%);
+  color: white;
+  padding: 6px 12px;
+  border-bottom: 2px solid #b8050f;
+}
+
+/* 🎯 Icono de galonaje */
+.galonaje-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+}
+
+/* 📝 Título de galonaje */
+.galonaje-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+/* 📝 Contenido de galonaje */
+.galonaje-content {
+  padding: 20px;
+}
+
+/* 📊 Estadística principal */
+.galonaje-main-stat {
+  text-align: center;
+  margin-bottom: 15px;
+  padding: 15px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 10px;
+  border: 2px solid #e30613;
+}
+
+/* 🏷️ Label de estadística principal */
+.main-stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6c757d;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+/* 🔢 Valor de estadística principal */
+.main-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #e30613;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  line-height: 1;
+}
+
+.main-stat-value .unit {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6c757d;
+  margin-left: 4px;
+}
+
+/* 📊 Detalles de galonaje */
+.galonaje-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 📋 Item de detalle */
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.detail-item:hover {
+  border-color: #e30613;
+  box-shadow: 0 2px 8px rgba(227, 6, 19, 0.1);
+}
+
+/* 🎯 Icono de detalle */
+.detail-icon {
+  font-size: 20px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+/* 📝 Contenido de detalle */
+.detail-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 🏷️ Label de detalle */
+.detail-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6c757d;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+}
+
+/* 🔢 Valor de detalle */
+.detail-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  font-family: 'Terpel Sans', Arial, sans-serif;
+  word-wrap: break-word;
+}
+
+/* 🎨 Colores específicos para tipos de detalles */
+.detail-item.segmento .detail-icon {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+}
+
+.detail-item.descripcion .detail-icon {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+}
+
+.detail-item.codigo .detail-icon {
+  background: linear-gradient(135deg, #6f42c1 0%, #5a2d91 100%);
+  color: white;
+}
+
+/* =============================================================================
+   📱 RESPONSIVE FINAL - GALONAJE CARD
+   ============================================================================= */
+
+/* 📱 Mobile responsive para galonaje */
+@media (max-width: 480px) {
+  .galonaje-content {
+    padding: 16px;
+  }
+  
+  .main-stat-value {
+    font-size: 22px;
+  }
+  
+  .detail-item {
+    padding: 10px 12px;
+  }
+}
+
+/* =============================================================================
+   🔄 ANIMACIONES GLOBALES
+   ============================================================================= */
+
+/* 🌀 Animación de spin */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* =============================================================================
+   📱 CORRECCIONES ESPECÍFICAS PARA BOTÓN CARGAR REGISTRO EN TABLETS
+   ============================================================================= */
+
+/* Asegurar que el contenido de visitas tenga suficiente espacio */
+.visitas-content .visitas-main-container {
+  padding-bottom: 80px !important;
+}
+
+/* Contenedor de acciones de volumen dentro de visitas */
+.visitas-content .volume-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 25px 15px 40px 15px;
+  margin-top: 20px;
+  width: 100%;
+  position: relative;
+  min-height: 85px;
+  clear: both;
+}
+
+/* Botón cargar registro dentro de visitas */
+.visitas-content .btn-cargar-registro {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 14px 28px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+  min-width: 180px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+/* 📱 Tablets pequeñas específicas para visitas */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .visitas-content .volume-actions {
+    padding: 30px 20px 50px 20px;
+    margin-top: 25px;
+    min-height: 100px;
+  }
+  
+  .visitas-content .btn-cargar-registro {
+    padding: 15px 30px;
+    font-size: 14px;
+    min-width: 200px;
+    height: 50px;
+  }
+  
+  .visitas-content .visitas-main-container {
+    padding-bottom: 100px !important;
+  }
+}
+
+/* 📱 Tablets pequeñas con altura limitada */
+@media (min-width: 768px) and (max-width: 1023px) and (max-height: 900px) {
+  .visitas-content .volume-actions {
+    padding: 25px 15px 40px 15px;
+    margin-top: 20px;
+    min-height: 80px;
+  }
+  
+  .visitas-content .btn-cargar-registro {
+    padding: 12px 24px;
+    font-size: 13px;
+    min-width: 180px;
+    height: 46px;
+  }
+}
+
+/* 📱 Móviles específicas para visitas */
+@media (max-width: 767px) {
+  .visitas-content .volume-actions {
+    padding: 20px 10px 35px 10px;
+    margin-top: 15px;
+    min-height: 70px;
+  }
+  
+  .visitas-content .btn-cargar-registro {
+    padding: 12px 20px;
+    font-size: 12px;
+    min-width: 160px;
+    height: 44px;
+  }
+  
+  .visitas-content .visitas-main-container {
+    padding-bottom: 80px !important;
+  }
+}
+
+/* 🎯 Fin del archivo CSS optimizado */
