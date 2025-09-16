@@ -91,14 +91,7 @@ const RegistroFotograficoImplementacion = ({
         padding: '15px', 
         marginBottom: '20px'
       }}>
-        <div className="info-icon" style={{color: '#d68910'}}>🚨</div>
         <div className="info-text">
-          <strong>RESTRICCIONES OBLIGATORIAS:</strong>
-          <ol style={{margin: '8px 0', paddingLeft: '20px'}}>
-            <li><strong>PASO 1:</strong> Primero debes subir la foto de implementación</li>
-            <li><strong>PASO 2:</strong> Después puedes subir la foto de remisión</li>
-            <li><strong>PASO 3:</strong> Los comentarios son OBLIGATORIOS</li>
-          </ol>
           <small style={{color: '#856404'}}>⚠️ No podrás cargar la foto de remisión sin antes cargar la foto de implementación</small>
         </div>
       </div>

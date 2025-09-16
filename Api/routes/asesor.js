@@ -128,9 +128,9 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
     );
     const totalReal = realResult[0]?.totalReal || 0;
 
-    // MODIFICADO: Cálculo GLOBAL de puntos de volumen (máximo 200 puntos)
+    // MODIFICADO: Cálculo GLOBAL de puntos de volumen (SIN límite máximo)
     const puntosVolumen = totalMeta > 0 ? 
-      Math.round((totalReal / totalMeta) * 200) : 0;
+      Math.round((totalReal / totalMeta) * 350) : 0;
 
     // Calcular porcentaje de cumplimiento GLOBAL
     const porcentajeCumplimiento = totalMeta > 0 ? 
@@ -141,8 +141,8 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
     console.log('Total meta (global):', totalMeta);
     console.log('Total real (global):', totalReal);
     console.log('Porcentaje cumplimiento (global):', porcentajeCumplimiento);
-    console.log('Puntos volumen (global, max 200):', puntosVolumen);
-    console.log('Fórmula: (' + totalReal + '/' + totalMeta + ') * 200 =', puntosVolumen);
+    console.log('Puntos volumen (global, SIN límite):', puntosVolumen);
+    console.log('Fórmula: (' + totalReal + '/' + totalMeta + ') * 350 =', puntosVolumen);
     console.log('=====================================');
 
     // MODIFICADO: Obtener detalle por PDV SIN calcular puntos individuales
@@ -168,6 +168,51 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
 
     // Verificar que pdvs sea un array válido
     const pdvs = Array.isArray(pdvsResult) ? pdvsResult : [];
+
+    // CORREGIDO: Distribuir puntos totales proporcionalmente según % cumplimiento
+    // 1. Calcular el cumplimiento total ponderado de todos los PDVs
+    const cumplimientoTotal = pdvs.reduce((sum, pdv) => {
+      if (pdv.meta > 0) {
+        return sum + (pdv.real / pdv.meta); // Suma de ratios de cumplimiento
+      }
+      return sum;
+    }, 0);
+    
+    const pdvsConPuntos = pdvs.map(pdv => {
+      const cumplimiento = pdv.meta > 0 ? (pdv.real / pdv.meta) * 100 : 0;
+      
+      // 2. Distribuir puntos totales proporcionalmente según cumplimiento
+      let puntosPorPDV = 0;
+      if (pdv.meta > 0 && cumplimientoTotal > 0) {
+        const ratioCumplimiento = (pdv.real / pdv.meta); // Ratio individual
+        const proporcionCumplimiento = ratioCumplimiento / cumplimientoTotal; // % del total
+        puntosPorPDV = Math.round(puntosVolumen * proporcionCumplimiento); // SIN límite por PDV
+      }
+      
+      return {
+        ...pdv,
+        puntos: puntosPorPDV, // Distribución proporcional por cumplimiento (SIN límite)
+        cumplimiento: Number(cumplimiento.toFixed(2))
+      };
+    });
+
+    // Debug: Verificar distribución de puntos
+    const sumaPuntosPorPDV = pdvsConPuntos.reduce((sum, pdv) => sum + pdv.puntos, 0);
+    console.log('=== DEBUG DISTRIBUCIÓN POR CUMPLIMIENTO ASESOR ===');
+    console.log('Puntos totales calculados:', puntosVolumen);
+    console.log('Suma de puntos distribuidos por PDV:', sumaPuntosPorPDV);
+    console.log('Diferencia (debe ser mínima):', Math.abs(puntosVolumen - sumaPuntosPorPDV));
+    console.log('Cumplimiento total ponderado:', cumplimientoTotal);
+    console.log('PDVs con puntos:', pdvsConPuntos.filter(p => p.puntos > 0).map(p => ({
+      codigo: p.codigo,
+      nombre: p.nombre,
+      meta: p.meta,
+      real: p.real,
+      cumplimiento: p.cumplimiento + '%',
+      puntos: p.puntos,
+      proporcionCumplimiento: cumplimientoTotal > 0 ? ((p.real / p.meta) / cumplimientoTotal * 100).toFixed(2) + '%' : '0%'
+    })));
+    console.log('===============================================');
 
     // Obtener resumen por segmento
     const segmentosResult = await executeQueryForMultipleUsers(
@@ -216,10 +261,10 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
         Number(((p.galonaje / totalGalonaje) * 100).toFixed(1)) : 0;
     });
 
-    // MODIFICADO: Respuesta JSON con cálculo GLOBAL de puntos
+    // MODIFICADO: Respuesta JSON con cálculo GLOBAL de puntos y puntos por PDV
     res.json({
       success: true,
-      pdvs,
+      pdvs: pdvsConPuntos, // Usar pdvs con puntos calculados
       meta_volumen: totalMeta,
       real_volumen: totalReal,
       porcentaje_cumplimiento: porcentajeCumplimiento,
@@ -1066,9 +1111,9 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
       );
       const totalRealVolumen = realVolumenResult[0]?.totalReal || 0;
 
-      // Calcular puntos GLOBALES de volumen (máximo 200)
+      // Calcular puntos GLOBALES de volumen (máximo 350)
       const puntosVolumen = totalMetaVolumen > 0 ? 
-        Math.round((totalRealVolumen / totalMetaVolumen) * 200) : 0;
+        Math.round((totalRealVolumen / totalMetaVolumen) * 350) : 0;
 
       // 3. PUNTOS VISITAS - Igual que cobertura pero con meta de 20 visitas por PDV
       const totalPdvs = pdvsAsesor.length;
@@ -1101,8 +1146,8 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
       console.log(`PDVs implementados: ${totalImplementados}`);
       console.log(`Puntos cobertura: ${puntosCobertura}`);
       console.log(`Meta volumen total: ${totalMetaVolumen}, Real volumen total: ${totalRealVolumen}`);
-      console.log(`Puntos volumen (GLOBAL, max 200): ${puntosVolumen}`);
-      console.log(`Fórmula volumen: (${totalRealVolumen}/${totalMetaVolumen}) * 200 = ${puntosVolumen}`);
+      console.log(`Puntos volumen (GLOBAL, max 350): ${puntosVolumen}`);
+      console.log(`Fórmula volumen: (${totalRealVolumen}/${totalMetaVolumen}) * 350 = ${puntosVolumen}`);
       console.log(`Meta visitas: ${metaVisitas}, Real visitas: ${totalVisitas}`);
       console.log(`Puntos visitas: ${puntosVisitas}`);
       console.log(`PDVs con precios: ${totalReportados}`);

@@ -30,14 +30,14 @@ export default function FilterButtons({
 
   const estadoBackofficeOptions = [
     { value: 'TODOS', label: 'Todos los Estados BackOffice' },
-    { value: 'VALIDADO', label: 'VALIDADO / APROBADO' },
+    { value: 'ACEPTADO', label: 'VALIDADO / APROBADO' },
     { value: 'PENDIENTE', label: 'PENDIENTE / EN REVISIÓN' },
     { value: 'RECHAZADO', label: 'RECHAZADO' }
   ];
 
   const estadoAgenteOptions = [
     { value: 'TODOS', label: 'Todos los Estados Agente' },
-    { value: 'VALIDADO', label: 'VALIDADO / APROBADO' },
+    { value: 'ACEPTADO', label: 'VALIDADO / APROBADO' },
     { value: 'PENDIENTE', label: 'PENDIENTE / EN REVISIÓN' },
     { value: 'RECHAZADO', label: 'RECHAZADO' }
   ];
