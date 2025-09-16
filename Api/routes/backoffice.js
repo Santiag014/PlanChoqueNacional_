@@ -146,7 +146,7 @@ router.get('/registros-tabla', authenticateToken, requireBackOffice, logAccess, 
     });
 
   } catch (err) {
-    console.error('Error obteniendo registros para tabla:', err);
+    //console.error('Error obteniendo registros para tabla:', err);
     res.status(500).json({
       success: false,
       message: 'Error al obtener registros para tabla',

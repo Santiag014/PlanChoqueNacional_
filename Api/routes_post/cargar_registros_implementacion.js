@@ -72,6 +72,15 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
     if (!nro_implementacion) {
       return res.status(400).json({ success: false, message: 'Debe enviar el número de implementación' });
     }
+    
+    // 🚨 RESTRICCIÓN BACKEND: Comentarios OBLIGATORIOS
+    if (!observacion_implementacion || !observacion_implementacion.trim()) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Los comentarios son obligatorios para cargar la implementación. Por favor ingresa una observación.',
+        error_type: 'COMENTARIOS_OBLIGATORIOS'
+      });
+    }
 
     conn = await getConnection();
 
@@ -167,6 +176,14 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
             console.warn('⚠️⚠️⚠️ BACKEND DETECTÓ DUPLICACIÓN: La misma foto se está usando para implementación y remisión!');
             console.warn(`Archivo duplicado: ${fotoImplementacionUrl}`);
             console.warn('Archivos recibidos:', req.files.map(f => ({ fieldname: f.fieldname, filename: f.filename })));
+            
+            // 🛑 RECHAZAR el registro con duplicación
+            await conn.rollback();
+            return res.status(400).json({ 
+              success: false, 
+              message: 'Error: No puedes usar la misma foto para la implementación y la remisión. Por favor selecciona fotos diferentes.',
+              error_type: 'FOTO_DUPLICADA'
+            });
           }
         } else {
           console.log(`⚠️ No se encontró foto de implementación para número: ${nro_implementacion}`);

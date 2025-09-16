@@ -128,29 +128,24 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
     );
     const totalReal = realResult[0]?.totalReal || 0;
 
-    // Obtener los puntos de volumen usando la misma lógica que la consulta de PDVs
-    const puntosResult = await executeQueryForMultipleUsers(
-      `SELECT COALESCE(SUM(pts.total_puntos), 0) as totalPuntos
-       FROM puntos_venta pv
-       LEFT JOIN (
-         SELECT rs.pdv_id, SUM(rpt.puntos) as total_puntos
-         FROM registro_servicios rs
-         INNER JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 1
-         WHERE rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
-         GROUP BY rs.pdv_id
-       ) pts ON pts.pdv_id = pv.id
-       ${whereClausePDV}`, [user_id, ...queryParamsPDV]
-    );
-    const puntosVolumen = puntosResult[0]?.totalPuntos || 0;
+    // MODIFICADO: Cálculo GLOBAL de puntos de volumen (SIN límite máximo)
+    const puntosVolumen = totalMeta > 0 ? 
+      Math.round((totalReal / totalMeta) * 350) : 0;
 
-    console.log('=== DEBUG VOLUMEN ASESOR ===');
+    // Calcular porcentaje de cumplimiento GLOBAL
+    const porcentajeCumplimiento = totalMeta > 0 ? 
+      Number(((totalReal / totalMeta) * 100).toFixed(1)) : 0;
+
+    console.log('=== DEBUG VOLUMEN ASESOR (GLOBAL) ===');
     console.log('Filtro PDV aplicado:', pdv_id);
-    console.log('Total meta:', totalMeta);
-    console.log('Total real:', totalReal);
-    console.log('Puntos volumen:', puntosVolumen);
-    console.log('=============================');
+    console.log('Total meta (global):', totalMeta);
+    console.log('Total real (global):', totalReal);
+    console.log('Porcentaje cumplimiento (global):', porcentajeCumplimiento);
+    console.log('Puntos volumen (global, SIN límite):', puntosVolumen);
+    console.log('Fórmula: (' + totalReal + '/' + totalMeta + ') * 350 =', puntosVolumen);
+    console.log('=====================================');
 
-    // Obtener detalle por PDV (aplicar filtro si existe)
+    // MODIFICADO: Obtener detalle por PDV SIN calcular puntos individuales
     const pdvsResult = await executeQueryForMultipleUsers(
       `SELECT 
          pv.id,
@@ -158,8 +153,7 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
          pv.descripcion AS nombre,
          pv.segmento,
          pv.meta_volumen AS meta,
-         COALESCE(vol.total_volumen, 0) AS \`real\`,
-         COALESCE(pts.total_puntos, 0) AS puntos
+         COALESCE(vol.total_volumen, 0) AS \`real\`
        FROM puntos_venta pv
        LEFT JOIN (
          SELECT rs.pdv_id, SUM(rp.conversion_galonaje) as total_volumen
@@ -168,19 +162,57 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
          WHERE rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
          GROUP BY rs.pdv_id
        ) vol ON vol.pdv_id = pv.id
-       LEFT JOIN (
-         SELECT rs.pdv_id, SUM(rpt.puntos) as total_puntos
-         FROM registro_servicios rs
-         INNER JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 1
-         WHERE rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
-         GROUP BY rs.pdv_id
-       ) pts ON pts.pdv_id = pv.id
        ${whereClausePDV}`,
-      [user_id, user_id, ...queryParamsPDV] // CORREGIDO: user_id primero para los JOINs
+      [user_id, ...queryParamsPDV]
     );
 
     // Verificar que pdvs sea un array válido
     const pdvs = Array.isArray(pdvsResult) ? pdvsResult : [];
+
+    // CORREGIDO: Distribuir puntos totales proporcionalmente según % cumplimiento
+    // 1. Calcular el cumplimiento total ponderado de todos los PDVs
+    const cumplimientoTotal = pdvs.reduce((sum, pdv) => {
+      if (pdv.meta > 0) {
+        return sum + (pdv.real / pdv.meta); // Suma de ratios de cumplimiento
+      }
+      return sum;
+    }, 0);
+    
+    const pdvsConPuntos = pdvs.map(pdv => {
+      const cumplimiento = pdv.meta > 0 ? (pdv.real / pdv.meta) * 100 : 0;
+      
+      // 2. Distribuir puntos totales proporcionalmente según cumplimiento
+      let puntosPorPDV = 0;
+      if (pdv.meta > 0 && cumplimientoTotal > 0) {
+        const ratioCumplimiento = (pdv.real / pdv.meta); // Ratio individual
+        const proporcionCumplimiento = ratioCumplimiento / cumplimientoTotal; // % del total
+        puntosPorPDV = Math.round(puntosVolumen * proporcionCumplimiento); // SIN límite por PDV
+      }
+      
+      return {
+        ...pdv,
+        puntos: puntosPorPDV, // Distribución proporcional por cumplimiento (SIN límite)
+        cumplimiento: Number(cumplimiento.toFixed(2))
+      };
+    });
+
+    // Debug: Verificar distribución de puntos
+    const sumaPuntosPorPDV = pdvsConPuntos.reduce((sum, pdv) => sum + pdv.puntos, 0);
+    console.log('=== DEBUG DISTRIBUCIÓN POR CUMPLIMIENTO ASESOR ===');
+    console.log('Puntos totales calculados:', puntosVolumen);
+    console.log('Suma de puntos distribuidos por PDV:', sumaPuntosPorPDV);
+    console.log('Diferencia (debe ser mínima):', Math.abs(puntosVolumen - sumaPuntosPorPDV));
+    console.log('Cumplimiento total ponderado:', cumplimientoTotal);
+    console.log('PDVs con puntos:', pdvsConPuntos.filter(p => p.puntos > 0).map(p => ({
+      codigo: p.codigo,
+      nombre: p.nombre,
+      meta: p.meta,
+      real: p.real,
+      cumplimiento: p.cumplimiento + '%',
+      puntos: p.puntos,
+      proporcionCumplimiento: cumplimientoTotal > 0 ? ((p.real / p.meta) / cumplimientoTotal * 100).toFixed(2) + '%' : '0%'
+    })));
+    console.log('===============================================');
 
     // Obtener resumen por segmento
     const segmentosResult = await executeQueryForMultipleUsers(
@@ -229,13 +261,10 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
         Number(((p.galonaje / totalGalonaje) * 100).toFixed(1)) : 0;
     });
 
-    // Calcular porcentaje de cumplimiento
-    const porcentajeCumplimiento = totalMeta > 0 ? 
-      Number(((totalReal / totalMeta) * 100).toFixed(1)) : 0;
-
+    // MODIFICADO: Respuesta JSON con cálculo GLOBAL de puntos y puntos por PDV
     res.json({
       success: true,
-      pdvs,
+      pdvs: pdvsConPuntos, // Usar pdvs con puntos calculados
       meta_volumen: totalMeta,
       real_volumen: totalReal,
       porcentaje_cumplimiento: porcentajeCumplimiento,
@@ -1058,20 +1087,33 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
       const totalImplementados = implementados.length;
       const puntosCobertura = totalAsignados > 0 ? Math.round((totalImplementados / totalAsignados) * 150) : 0;
 
-      // 2. PUNTOS VOLUMEN - MISMA LÓGICA EXACTA que endpoint /volumen
-      const puntosVolumenResult = await executeQueryForMultipleUsers(
-        `SELECT COALESCE(SUM(pts.total_puntos), 0) as totalPuntos
+      // 2. PUNTOS VOLUMEN - MISMA LÓGICA GLOBAL que endpoint /volumen (máximo 200 puntos)
+      // Obtener meta total de volumen del asesor
+      const metaVolumenResult = await executeQueryForMultipleUsers(
+        `SELECT SUM(meta_volumen) as totalMeta 
+         FROM puntos_venta 
+         WHERE user_id = ?`, [asesor.id]
+      );
+      const totalMetaVolumen = metaVolumenResult[0]?.totalMeta || 0;
+
+      // Obtener volumen real total del asesor
+      const realVolumenResult = await executeQueryForMultipleUsers(
+        `SELECT COALESCE(SUM(vol.total_volumen), 0) as totalReal
          FROM puntos_venta pv
          LEFT JOIN (
-           SELECT rs.pdv_id, SUM(rpt.puntos) as total_puntos
+           SELECT rs.pdv_id, SUM(rp.conversion_galonaje) as total_volumen
            FROM registro_servicios rs
-           INNER JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 1
+           INNER JOIN registro_productos rp ON rp.registro_id = rs.id
            WHERE rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
            GROUP BY rs.pdv_id
-         ) pts ON pts.pdv_id = pv.id
+         ) vol ON vol.pdv_id = pv.id
          WHERE pv.user_id = ?`, [asesor.id, asesor.id]
       );
-      const puntosVolumen = Number(puntosVolumenResult[0]?.totalPuntos) || 0;
+      const totalRealVolumen = realVolumenResult[0]?.totalReal || 0;
+
+      // Calcular puntos GLOBALES de volumen (máximo 350)
+      const puntosVolumen = totalMetaVolumen > 0 ? 
+        Math.round((totalRealVolumen / totalMetaVolumen) * 350) : 0;
 
       // 3. PUNTOS VISITAS - Igual que cobertura pero con meta de 20 visitas por PDV
       const totalPdvs = pdvsAsesor.length;
@@ -1103,7 +1145,9 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
       console.log(`PDVs asignados: ${totalAsignados}`);
       console.log(`PDVs implementados: ${totalImplementados}`);
       console.log(`Puntos cobertura: ${puntosCobertura}`);
-      console.log(`Puntos volumen: ${puntosVolumen}`);
+      console.log(`Meta volumen total: ${totalMetaVolumen}, Real volumen total: ${totalRealVolumen}`);
+      console.log(`Puntos volumen (GLOBAL, max 350): ${puntosVolumen}`);
+      console.log(`Fórmula volumen: (${totalRealVolumen}/${totalMetaVolumen}) * 350 = ${puntosVolumen}`);
       console.log(`Meta visitas: ${metaVisitas}, Real visitas: ${totalVisitas}`);
       console.log(`Puntos visitas: ${puntosVisitas}`);
       console.log(`PDVs con precios: ${totalReportados}`);

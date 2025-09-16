@@ -27,7 +27,7 @@ const corsOptions = {
       'http://localhost:5173', // Frontend local
       'http://localhost:3000', // Frontend local alternativo
       'https://plandelamejorenergia.com', // Frontend en producción
-      'https://www.plandelamejorenergia.com' // Con www
+      'https://www.plandelamejorenergia.com', // Con www
     ];
     
     // Permitir requests sin origin (móviles, Postman, etc.)
