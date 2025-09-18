@@ -17,6 +17,47 @@ const router = express.Router();
 // 📊 ENDPOINTS PARA DASHBOARD ASESOR - MÉTRICAS PRINCIPALES
 // ========================================================================
 
+// ENDPOINT DE BONIFICACIÓN PARA DASHBOARD ASESOR
+router.get('/bonificacion/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
+  const { user_id } = req.params;
+  const { pdv_id, agente_id, desde, hasta } = req.query;
+  try {
+    // Construir filtros dinámicos
+    let where = 'WHERE b.id_asesor = ?';
+    let params = [user_id];
+    if (pdv_id) {
+      where += ' AND b.pdv_id = ?';
+      params.push(pdv_id);
+    }
+    if (agente_id) {
+      where += ' AND b.id_agente = ?';
+      params.push(agente_id);
+    }
+
+    // Consulta principal (ajusta la tabla/columnas según tu modelo real)
+    const bonificaciones = await executeQueryForMultipleUsers(
+      `SELECT 
+         b.id_asesor,
+         b.id_agente,
+         b.descripcion,
+         b.pdv_id,
+         b.puntos,
+         b.created
+       FROM retos_bonificadores b
+       ${where}
+       ORDER BY b.created DESC`,
+      params
+    );
+
+    res.json({
+      success: true,
+      bonificaciones
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error al obtener bonificaciones', error: err.message });
+  }
+});
+
 // ENDPOINT DE COBERTURA REAL PARA DASHBOARD ASESOR
 router.get('/cobertura/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
   const { user_id } = req.params;
@@ -57,10 +98,11 @@ router.get('/cobertura/:user_id', authenticateToken, requireAsesor, logAccess, a
     const totalImplementadosRealGlobal = implementadosTodosGlobalesSet.size;
     const totalImplementadosPuntosGlobal = implementadosValidosGlobalesSet.size;
     const puntosCoberturaGlobal = totalAsignadosGlobal > 0 ? 
-      Math.round((totalImplementadosPuntosGlobal / totalAsignadosGlobal) * 150) : 0;
+      // Bonificacion Aqui de 3000 Puntos por cobertura Mazimo
+      Math.round((totalImplementadosPuntosGlobal / totalAsignadosGlobal) * 3000) : 0;
 
     // PASO 5: Asignar puntos GLOBALES a cada PDV (estos NO cambian nunca)
-    const puntosPorPDVGlobal = totalAsignadosGlobal > 0 ? Math.floor(150 / totalAsignadosGlobal) : 0;
+    const puntosPorPDVGlobal = totalAsignadosGlobal > 0 ? Math.floor(3000 / totalAsignadosGlobal) : 0;
     const pdvsConPuntosGlobales = todosLosPdvsGlobales.map(pdv => {
       // Estado: REGISTRADO si tiene cualquier registro (sin importar fecha)
       const estado = implementadosTodosGlobalesSet.has(pdv.id) ? 'REGISTRADO' : 'NO REGISTRADO';
@@ -166,7 +208,7 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
 
     // PASO 3: Calcular puntos GLOBALES (base para distribución individual)
     const puntosVolumenGlobal = totalMetaGlobal > 0 ? 
-      Math.round((totalRealGlobal / totalMetaGlobal) * 350) : 0;
+      Math.round((totalRealGlobal / totalMetaGlobal) * 6000) : 0;
 
     // PASO 4: Obtener TODOS los PDVs con sus datos (sin filtro) para calcular puntos globales
     const todosLosPdvsResult = await executeQueryForMultipleUsers(
@@ -412,7 +454,7 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
     
     // PASO 3: Calcular puntos GLOBALES (base para distribución individual)
     const puntosVisitasGlobal = metaVisitasGlobal > 0 ? 
-      Math.round((totalVisitasGlobal / metaVisitasGlobal) * 150) : 0;
+      Math.round((totalVisitasGlobal / metaVisitasGlobal) * 1000) : 0;
     
     // PASO 4: Obtener detalle de visitas GLOBAL para cada PDV (sin filtro)
     const pdvsVisitasGlobalesResult = await executeQueryForMultipleUsers(
@@ -432,7 +474,7 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
     // PASO 5: Asignar puntos GLOBALES a cada PDV (estos NO cambian nunca)
     const pdvsConPuntosGlobales = Array.isArray(pdvsVisitasGlobalesResult) ? 
       pdvsVisitasGlobalesResult.map(pdv => {
-        const porcentaje = pdv.meta > 0 ? Math.round((pdv.cantidadVisitas / pdv.meta) * 100) : 0;
+        const porcentaje = pdv.meta > 0 ? Math.round((pdv.cantidadVisitas / pdv.meta) * 1000 ) : 0;
         
         // Calcular puntos proporcionales: (visitas_del_pdv / total_visitas_global) * puntos_globales
         let puntosIndividuales = 0;
@@ -555,10 +597,10 @@ router.get('/precios/:user_id', authenticateToken, requireAsesor, logAccess, asy
     // 3. Cálculo de puntos por precios (similar a cobertura)
     const totalAsignados = pdvs.length;
     const totalReportados = reportadosSet.size;
-    const puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * 150) : 0;
+    const puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * 2000) : 0;
 
     // 4. Asignar puntos individuales por PDV
-    const puntosPorPDV = totalReportados > 0 ? Math.floor(150 / totalAsignados) : 0;
+    const puntosPorPDV = totalReportados > 0 ? Math.floor(2000 / totalAsignados) : 0;
     const pdvsDetalle = pdvs.map(pdv => ({
       ...pdv,
       estado: reportadosSet.has(pdv.id) ? 'REPORTADOS' : 'NO REPORTADOS',
@@ -1171,7 +1213,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
          WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2 AND fecha_registro <= ?`, [asesor.id, '2025-09-06']
       );
       const totalImplementados = implementados.length;
-      const puntosCobertura = totalAsignados > 0 ? Math.round((totalImplementados / totalAsignados) * 150) : 0;
+      const puntosCobertura = totalAsignados > 0 ? Math.round((totalImplementados / totalAsignados) * 3000) : 0;
 
       // 2. PUNTOS VOLUMEN - MISMA LÓGICA GLOBAL que endpoint /volumen (máximo 200 puntos)
       // Obtener meta total de volumen del asesor
@@ -1197,9 +1239,9 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
       );
       const totalRealVolumen = realVolumenResult[0]?.totalReal || 0;
 
-      // Calcular puntos GLOBALES de volumen (máximo 350)
+      // Calcular puntos GLOBALES de volumen (máximo 6000)
       const puntosVolumen = totalMetaVolumen > 0 ? 
-        Math.round((totalRealVolumen / totalMetaVolumen) * 350) : 0;
+        Math.round((totalRealVolumen / totalMetaVolumen) * 6000) : 0;
 
       // 3. PUNTOS VISITAS - Igual que cobertura pero con meta de 20 visitas por PDV
       const totalPdvs = pdvsAsesor.length;
@@ -1212,7 +1254,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
       const totalVisitas = realVisitasResult[0]?.totalVisitas || 0;
 
       // Calcular puntos como porcentaje de cumplimiento * 150 puntos (igual que cobertura)
-      const puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 150) : 0;
+      const puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 1000) : 0;
 
       // 4. PUNTOS PRECIOS - Misma lógica que endpoint /precios
       const reportadosPrecios = await executeQueryForMultipleUsers(
@@ -1221,10 +1263,16 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
          WHERE user_id = ? AND kpi_precio = 1 AND registros_mistery_shopper.id IS NOT NULL`, [asesor.id]
       );
       const totalReportados = reportadosPrecios.length;
-      const puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * 150) : 0;
+      const puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * 2000) : 0;
 
-      // Calcular total general usando la misma lógica que los endpoints individuales
-      const totalGeneral = puntosCobertura + puntosVolumen + puntosVisitas + puntosPrecios;
+      // 5. PUNTOS BONIFICACIONES (retos)
+      const bonificaciones = await executeQueryForMultipleUsers(
+        `SELECT COALESCE(SUM(puntos),0) as totalBonificacion FROM retos_bonificadores WHERE id_asesor = ?`, [asesor.id]
+      );
+      const puntosBonificacion = 0;
+
+      // Calcular total general usando la misma lógica que los endpoints individuales + bonificaciones
+      const totalGeneral = puntosCobertura + puntosVolumen + puntosVisitas + puntosPrecios + puntosBonificacion;
 
       // DEBUG: Log para comparar con ranking de mercadeo
       console.log(`=== RANKING ASESOR - ASESOR ${asesor.name} (ID: ${asesor.id}) ===`);
@@ -1232,12 +1280,13 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
       console.log(`PDVs implementados: ${totalImplementados}`);
       console.log(`Puntos cobertura: ${puntosCobertura}`);
       console.log(`Meta volumen total: ${totalMetaVolumen}, Real volumen total: ${totalRealVolumen}`);
-      console.log(`Puntos volumen (GLOBAL, max 350): ${puntosVolumen}`);
-      console.log(`Fórmula volumen: (${totalRealVolumen}/${totalMetaVolumen}) * 350 = ${puntosVolumen}`);
+      console.log(`Puntos volumen (GLOBAL, max 6000): ${puntosVolumen}`);
+      console.log(`Fórmula volumen: (${totalRealVolumen}/${totalMetaVolumen}) * 6000 = ${puntosVolumen}`);
       console.log(`Meta visitas: ${metaVisitas}, Real visitas: ${totalVisitas}`);
       console.log(`Puntos visitas: ${puntosVisitas}`);
       console.log(`PDVs con precios: ${totalReportados}`);
       console.log(`Puntos precios: ${puntosPrecios}`);
+      console.log(`Puntos bonificación (retos): ${puntosBonificacion}`);
       console.log(`TOTAL PUNTOS: ${totalGeneral}`);
       console.log('===============================================');
 
@@ -1254,6 +1303,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
         puntos_volumen: puntosVolumen,
         puntos_visitas: puntosVisitas,
         puntos_precios: puntosPrecios,
+        puntos_bonificacion: puntosBonificacion,
         total_puntos: totalGeneral,
         // Información adicional para debugging
         total_pdvs_asignados: totalAsignados,

@@ -50,8 +50,6 @@ body {
   width: 80%; /* Más ancho que el 50% original */
   margin: 0 auto;
   padding: 0 10px;
-  /* Scroll horizontal para casos donde el contenido sea muy ancho */
-  overflow-x: auto;
   overflow-y: visible;
 }
 

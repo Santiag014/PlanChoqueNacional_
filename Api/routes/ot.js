@@ -296,7 +296,8 @@ router.get('/cobertura', authenticateToken, requireOT, addUserRestrictions, logA
     // Cálculo de puntos cobertura (más realista)
     const totalAsignados = pdvs.length;
     const totalImplementados = implementadosSet.size;
-    const puntosCobertura = totalAsignados > 0 ? Math.round((totalImplementados / totalAsignados) * 100) : 0;
+    // Matriz máxima de puntos para cobertura: 3.000
+    const puntosCobertura = totalAsignados > 0 ? Math.round((totalImplementados / totalAsignados) * 3000) : 0;
 
     // Asignar puntos individuales por PDV (máximo 5 puntos por PDV implementado)
     const pdvsDetalle = pdvs.map(pdv => ({
@@ -348,8 +349,8 @@ router.get('/volumen', authenticateToken, requireOT, addUserRestrictions, logAcc
     const realResult = await executeQueryForMultipleUsers(realQuery, realParams);
     const totalReal = realResult[0]?.totalReal || 0;
 
-    // Calcular puntos de volumen de forma más realista
-    const puntosVolumen = Math.min(totalMeta > 0 ? Math.round((totalReal / totalMeta) * 100) : 0, 100);
+  // Matriz máxima de puntos para volumen: 6.000
+  const puntosVolumen = totalMeta > 0 ? Math.round((totalReal / totalMeta) * 6000) : 0;
 
     // Consulta base para detalle por PDV con información del asesor
     const basePdvsQuery = `
@@ -377,23 +378,34 @@ router.get('/volumen', authenticateToken, requireOT, addUserRestrictions, logAcc
     const { query: pdvsQuery, params: pdvsParams } = await applyUserFilters(basePdvsQuery, req.user.id, '', null, 'name', 'ag.descripcion');
     const pdvs = await executeQueryForMultipleUsers(pdvsQuery, pdvsParams);
 
-    // Calcular puntos individuales por PDV basado en cumplimiento de meta
-    const pdvsConPuntos = pdvs.map(pdv => {
-      const cumplimiento = pdv.meta > 0 ? (pdv.real / pdv.meta) * 100 : 0;
-      let puntos = 0;
-      
-      if (cumplimiento >= 100) puntos = 10;
-      else if (cumplimiento >= 80) puntos = 8;
-      else if (cumplimiento >= 60) puntos = 6;
-      else if (cumplimiento >= 40) puntos = 4;
-      else if (cumplimiento >= 20) puntos = 2;
-      else if (cumplimiento > 0) puntos = 1;
-      
-      return {
-        ...pdv,
-        puntos
-      };
-    });
+    // Calcular puntos proporcionales por PDV (igual que asesor.js)
+      // Sumar el cumplimiento total global (galonaje real / meta por PDV, máximo 1 por PDV)
+      const cumplimientoTotalGlobal = pdvs.reduce((sum, pdv) => {
+        const meta = pdv.meta || 0;
+        const real = pdv.real || 0;
+        return sum + (meta > 0 ? Math.min(real / meta, 1) : 0);
+      }, 0);
+
+      // Calcular puntos globales para cada PDV
+      const puntosPorPDVGlobal = pdvs.length > 0 ? Math.floor(6000 / pdvs.length) : 0;
+
+      // Asignar puntos proporcionales por PDV
+      const pdvsConPuntos = pdvs.map(pdv => {
+        const meta = pdv.meta || 0;
+        const real = pdv.real || 0;
+        const porcentaje = meta > 0 ? Math.round((real / meta) * 100) : 0;
+        let puntos = 0;
+        if (porcentaje >= 100) {
+          puntos = puntosPorPDVGlobal;
+        } else {
+          puntos = Math.round((porcentaje / 100) * puntosPorPDVGlobal);
+        }
+        return {
+          ...pdv,
+          porcentaje,
+          puntos
+        };
+      });
 
     // Consulta base para resumen por segmento con filtros de usuario
     const baseSegmentosQuery = `
@@ -491,8 +503,8 @@ router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAcc
     const realResult = await executeQueryForMultipleUsers(realQuery, realParams);
     const totalVisitas = realResult[0]?.totalVisitas || 0;
     
-    // Calcular puntos de visitas de forma más realista
-    const puntosVisitas = Math.min(metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 100) : 0, 100);
+  // Matriz máxima de puntos para visitas/frecuencia: 1.000
+  const puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 1000) : 0;
     
     // Consulta base para detalle de visitas por PDV con filtros de usuario
     const basePdvsDetalleQuery = `
@@ -518,18 +530,18 @@ router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAcc
     const { query: pdvsDetalleQuery, params: pdvsDetalleParams } = await applyUserFilters(basePdvsDetalleQuery, req.user.id, 'pv');
     const pdvs = await executeQueryForMultipleUsers(pdvsDetalleQuery, pdvsDetalleParams);
     
-    // Calcular porcentaje de cumplimiento y puntos para cada PDV
+    // Calcular puntos proporcionales por PDV (igual que asesor.js)
+    const puntosPorPDVGlobal = pdvs.length > 0 ? Math.floor(1000 / pdvs.length) : 0;
     const pdvsDetalle = pdvs.map(pdv => {
-      const porcentaje = pdv.meta > 0 ? Math.round((pdv.cantidadVisitas / pdv.meta) * 100) : 0;
+      const meta = pdv.meta || 0;
+      const real = pdv.cantidadVisitas || 0;
+      const porcentaje = meta > 0 ? Math.round((real / meta) * 100) : 0;
       let puntos = 0;
-      
-      if (porcentaje >= 100) puntos = 10;
-      else if (porcentaje >= 80) puntos = 8;
-      else if (porcentaje >= 60) puntos = 6;
-      else if (porcentaje >= 40) puntos = 4;
-      else if (porcentaje >= 20) puntos = 2;
-      else if (porcentaje > 0) puntos = 1;
-      
+      if (porcentaje >= 100) {
+        puntos = puntosPorPDVGlobal;
+      } else {
+        puntos = Math.round((porcentaje / 100) * puntosPorPDVGlobal);
+      }
       return {
         ...pdv,
         porcentaje,
@@ -609,17 +621,25 @@ router.get('/precios', authenticateToken, requireOT, addUserRestrictions, logAcc
     const reportados = await executeQueryForMultipleUsers(reportadosQueryFinal, reportadosParams);
     const reportadosSet = new Set(reportados.map(r => r.pdv_id));
 
-    // 3. Cálculo de puntos por precios (más realista)
-    const totalAsignados = pdvs.length;
-    const totalReportados = reportadosSet.size;
-    const puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * 100) : 0;
+  // 3. Cálculo de puntos por precios (matriz máxima: 2.000)
+  const totalAsignados = pdvs.length;
+  const totalReportados = reportadosSet.size;
+  const puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * 2000) : 0;
 
-    // 4. Asignar puntos individuales por PDV (5 puntos por PDV reportado)
-    const pdvsDetalle = pdvs.map(pdv => ({
-      ...pdv,
-      estado: reportadosSet.has(pdv.id) ? 'REPORTADOS' : 'NO REPORTADOS',
-      puntos: reportadosSet.has(pdv.id) ? 5 : 0
-    }));
+    // 4. Asignar puntos individuales por PDV proporcionalmente (igual que asesor.js)
+    const puntosPorPDVGlobal = totalAsignados > 0 ? Math.floor(2000 / totalAsignados) : 0;
+    const pdvsDetalle = pdvs.map(pdv => {
+      const reportado = reportadosSet.has(pdv.id);
+      let puntos = 0;
+      if (reportado) {
+        puntos = puntosPorPDVGlobal;
+      }
+      return {
+        ...pdv,
+        estado: reportado ? 'REPORTADOS' : 'NO REPORTADOS',
+        puntos
+      };
+    });
     
     res.json({
       success: true,
@@ -687,12 +707,20 @@ router.get('/profundidad', authenticateToken, requireOT, addUserRestrictions, lo
     const totalConProfundidad = pdvsConProfundidad.size;
     const puntosProfundidad = totalAsignados > 0 ? Math.round((totalConProfundidad / totalAsignados) * 100) : 0;
 
-    // 4. Asignar puntos individuales por PDV (8 puntos por PDV con profundidad)
-    const pdvsDetalle = pdvs.map(pdv => ({
-      ...pdv,
-      estado: pdvsConProfundidad.has(pdv.id) ? 'REGISTRADO' : 'NO REGISTRADO',
-      puntos: pdvsConProfundidad.has(pdv.id) ? 8 : 0
-    }));
+    // 4. Asignar puntos individuales por PDV proporcionalmente (igual que asesor.js)
+    const puntosPorPDVGlobal = totalAsignados > 0 ? Math.floor(100 / totalAsignados) : 0;
+    const pdvsDetalle = pdvs.map(pdv => {
+      const tieneProfundidad = pdvsConProfundidad.has(pdv.id);
+      let puntos = 0;
+      if (tieneProfundidad) {
+        puntos = puntosPorPDVGlobal;
+      }
+      return {
+        ...pdv,
+        estado: tieneProfundidad ? 'REGISTRADO' : 'NO REGISTRADO',
+        puntos
+      };
+    });
     
     res.json({
       success: true,
@@ -1084,6 +1112,7 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
         INNER JOIN agente ON agente.id = puntos_venta.id_agente
         LEFT JOIN productos_agrupados pa ON pa.registro_id = registro_servicios.id
         LEFT JOIN fotos_agrupadas fa ON fa.id_registro = registro_servicios.id
+        WHERE registro_servicios.isImplementacion IS NULL OR registro_servicios.isImplementacion = 0
         ORDER BY registro_servicios.id DESC;
     `;
 

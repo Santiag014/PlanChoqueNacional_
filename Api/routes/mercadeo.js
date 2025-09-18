@@ -619,8 +619,9 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
 
     const porcentajeCobertura = totalAsignados > 0 ? (totalImpactadosReales / totalAsignados) : 0; // USAR REALES para el %
     
-    // PUNTOS BASE: Calculados con métricas base (sin filtros de PDV) - ESTÁTICOS
-    const puntosBasePorPDV = totalAsignadosBase > 0 ? (150 / totalAsignadosBase) : 0;
+  // NUEVA MATRIZ DE PUNTOS MÁXIMOS: Cobertura = 3000
+  const MAX_PUNTOS_COBERTURA = 3000;
+  const puntosBasePorPDV = totalAsignadosBase > 0 ? (MAX_PUNTOS_COBERTURA / totalAsignadosBase) : 0;
 
     const query = `
       SELECT 
@@ -653,8 +654,8 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
     
     const rows = await executeQueryForMultipleUsers(query, queryParams);
 
-    // PUNTOS BASE: Calculados con métricas base (sin filtros de PDV) - ESTÁTICOS
-    const puntosCoberturaBase = totalAsignadosBase > 0 ? Math.round((totalImpactadosBase / totalAsignadosBase) * 150) : 0;
+  // PUNTOS BASE: Calculados con métricas base (sin filtros de PDV) - ESTÁTICOS
+  const puntosCoberturaBase = totalAsignadosBase > 0 ? Math.round((totalImpactadosBase / totalAsignadosBase) * MAX_PUNTOS_COBERTURA) : 0;
     
     // CORREGIDO: Si hay filtro PDV específico y ese PDV no tiene datos → 0 puntos
     const puntosFinales = pdv_id && totalImpactadosValidos === 0 ? 0 : puntosCoberturaBase;
@@ -827,17 +828,9 @@ router.get('/volumen', authenticateToken, requireMercadeo, logAccess, async (req
     const realResult = await executeQueryForMultipleUsers(realQuery, realParams);
     const totalReal = realResult[0]?.totalReal || 0;
 
-    // CORREGIDO: Usar la misma lógica MATEMÁTICA DIRECTA que asesor.js
-    // NUEVA LÓGICA: Calcular puntos con fórmula (totalReal / totalMeta) * 350 SIN LÍMITE
-    let puntosVolumen;
-    
-    if (asesor_id) {
-      // Si hay filtro por asesor, usar la MISMA fórmula que asesor.js (SIN límite)
-      puntosVolumen = totalMeta > 0 ? Math.round((totalReal / totalMeta) * 350) : 0;
-    } else {
-      // Para consultas generales por agente, usar fórmula directa también (SIN límite)
-      puntosVolumen = totalMeta > 0 ? Math.round((totalReal / totalMeta) * 350) : 0;
-    }
+    // NUEVA MATRIZ DE PUNTOS MÁXIMOS: Volumen = 6000
+    const MAX_PUNTOS_VOLUMEN = 6000;
+    let puntosVolumen = totalMeta > 0 ? Math.round((totalReal / totalMeta) * MAX_PUNTOS_VOLUMEN) : 0;
 
     console.log('=== DEBUG VOLUMEN MERCADEO (DISTRIBUCIÓN PROPORCIONAL) ===');
     console.log('Filtros aplicados:', { asesor_id, pdv_id, agente_id });
@@ -1123,8 +1116,9 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
 
     const porcentajeVisitas = metaVisitas > 0 ? (totalVisitas / metaVisitas) : 0;
     
-    // PUNTOS BASE: Calculados con métricas base (sin filtros de PDV) - ESTÁTICOS
-    const puntosVisitasBase = metaBase > 0 ? Math.round((totalVisitasBase / metaBase) * 150) : 0;
+  // NUEVA MATRIZ DE PUNTOS MÁXIMOS: Frecuencia = 1000
+  const MAX_PUNTOS_FRECUENCIA = 1000;
+  const puntosVisitasBase = metaBase > 0 ? Math.round((totalVisitasBase / metaBase) * MAX_PUNTOS_FRECUENCIA) : 0;
     
     console.log('=== DEBUG MÉTRICAS BASE vs FILTRADAS ===');
     console.log('Meta BASE (puntos):', metaBase, 'Visitas BASE:', totalVisitasBase, 'Puntos BASE:', puntosVisitasBase);
@@ -1342,7 +1336,9 @@ router.get('/precios', authenticateToken, requireMercadeo, logAccess, async (req
     const totalAsignados = totalesResult[0]?.totalAsignados || 0;
     const totalConPrecios = totalesResult[0]?.totalConPrecios || 0;
     const porcentajePrecios = totalAsignados > 0 ? (totalConPrecios / totalAsignados) : 0;
-    const puntosPorPDV = totalAsignados > 0 ? Math.floor(150 / totalAsignados) : 0;
+  // NUEVA MATRIZ DE PUNTOS MÁXIMOS: Precios = 2000
+  const MAX_PUNTOS_PRECIOS = 2000;
+  const puntosPorPDV = totalAsignados > 0 ? Math.floor(MAX_PUNTOS_PRECIOS / totalAsignados) : 0;
 
     const query = `
       SELECT 
@@ -1375,8 +1371,8 @@ router.get('/precios', authenticateToken, requireMercadeo, logAccess, async (req
     
     const rows = await executeQueryForMultipleUsers(query, queryParams);
 
-    // Calcular puntos totales (IGUAL QUE ASESOR: 150 puntos máximo)
-    const puntosPrecios = totalAsignados > 0 ? Math.round((totalConPrecios / totalAsignados) * 150) : 0;
+  // Calcular puntos totales (IGUAL QUE ASESOR: 2000 puntos máximo)
+  const puntosPrecios = totalAsignados > 0 ? Math.round((totalConPrecios / totalAsignados) * MAX_PUNTOS_PRECIOS) : 0;
 
     res.json({
       success: true,
@@ -2109,28 +2105,34 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
     // Para cada asesor, calcular sus puntos usando la MISMA LÓGICA EXACTA que el ranking de asesor
     const rankingDetallado = [];
 
+    // MATRIZ DE PUNTOS MÁXIMOS
+    const MAX_PUNTOS = {
+      cobertura: 3000,
+      volumen: 6000,
+      visitas: 1000,
+      precios: 2000
+    };
+
     for (const asesor of asesores) {
-      // 1. PUNTOS COBERTURA - Igual que asesor.js
+      // 1. PUNTOS COBERTURA
       const pdvsAsesor = await executeQueryForMultipleUsers(
         `SELECT id FROM puntos_venta WHERE user_id = ?`, [asesor.id]
       );
       const totalAsignados = pdvsAsesor.length;
-
       const implementados = await executeQueryForMultipleUsers(
         `SELECT DISTINCT pdv_id FROM registro_servicios
          WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2 AND fecha_registro <= ?`, [asesor.id, '2025-09-06']
       );
       const totalImplementados = implementados.length;
-      const puntosCobertura = totalAsignados > 0 ? Math.round((totalImplementados / totalAsignados) * 150) : 0;
+      const puntosCobertura = totalAsignados > 0 ? Math.round((totalImplementados / totalAsignados) * MAX_PUNTOS.cobertura) : 0;
 
-      // 2. PUNTOS VOLUMEN - MISMA LÓGICA EXACTA que asesor.js (fórmula directa)
+      // 2. PUNTOS VOLUMEN
       const metaVolumenResult = await executeQueryForMultipleUsers(
         `SELECT SUM(meta_volumen) as totalMeta 
          FROM puntos_venta 
          WHERE user_id = ?`, [asesor.id]
       );
       const totalMetaVolumen = metaVolumenResult[0]?.totalMeta || 0;
-
       const realVolumenResult = await executeQueryForMultipleUsers(
         `SELECT COALESCE(SUM(vol.total_volumen), 0) as totalReal
          FROM puntos_venta pv
@@ -2144,50 +2146,35 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
          WHERE pv.user_id = ?`, [asesor.id, asesor.id]
       );
       const totalRealVolumen = realVolumenResult[0]?.totalReal || 0;
+      const puntosVolumen = totalMetaVolumen > 0 ? Math.round((totalRealVolumen / totalMetaVolumen) * MAX_PUNTOS.volumen) : 0;
 
-      // Calcular puntos GLOBALES de volumen (máximo 350) - IGUAL QUE ASESOR.JS
-      const puntosVolumen = totalMetaVolumen > 0 ? 
-        Math.round((totalRealVolumen / totalMetaVolumen) * 350) : 0;
-
-      // 3. PUNTOS VISITAS - Igual que cobertura pero con meta de 20 visitas por PDV
+      // 3. PUNTOS VISITAS
       const totalPdvs = pdvsAsesor.length;
-      const metaVisitas = totalPdvs * 20; // 20 visitas por cada PDV
-      
+      const metaVisitas = totalPdvs * 20;
       const realVisitas = await executeQueryForMultipleUsers(
         `SELECT COUNT(id) as totalVisitas FROM registro_servicios
          WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [asesor.id]
       );
       const totalVisitas = realVisitas[0]?.totalVisitas || 0;
+      const puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * MAX_PUNTOS.visitas) : 0;
 
-      // Calcular puntos como porcentaje de cumplimiento * 150 puntos (igual que cobertura)
-      const puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 150) : 0;
-
-      // 4. PUNTOS PRECIOS - Igual que asesor.js
+      // 4. PUNTOS PRECIOS
       const reportadosPrecios = await executeQueryForMultipleUsers(
         `SELECT DISTINCT pdv_id FROM registro_servicios
          LEFT JOIN registros_mistery_shopper ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
          WHERE user_id = ? AND kpi_precio = 1 AND registros_mistery_shopper.id IS NOT NULL`, [asesor.id]
       );
       const totalReportados = reportadosPrecios.length;
-      const puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * 150) : 0;
+      const puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * MAX_PUNTOS.precios) : 0;
 
-      // TOTAL DE PUNTOS - Igual que asesor.js
-      const totalGeneral = puntosCobertura + puntosVolumen + puntosVisitas + puntosPrecios;
+      // 5. PUNTOS BONIFICACIÓN
+      const bonificaciones = await executeQueryForMultipleUsers(
+        `SELECT SUM(puntos) as totalBonificacion FROM retos_bonificadores WHERE id_asesor = ?`, [asesor.id]
+      );
+      const puntosBonificacion = 0;
 
-      // DEBUG: Log para comparar con ranking individual
-      console.log(`=== RANKING MERCADEO - ASESOR ${asesor.name} (ID: ${asesor.id}) ===`);
-      console.log(`PDVs asignados: ${totalAsignados}`);
-      console.log(`PDVs implementados: ${totalImplementados}`);
-      console.log(`Puntos cobertura: ${puntosCobertura}`);
-      console.log(`Meta volumen total: ${totalMetaVolumen}, Real volumen total: ${totalRealVolumen}`);
-      console.log(`Puntos volumen (GLOBAL, max 350): ${puntosVolumen}`);
-      console.log(`Fórmula volumen: (${totalRealVolumen}/${totalMetaVolumen}) * 350 = ${puntosVolumen}`);
-      console.log(`Meta visitas: ${metaVisitas}, Real visitas: ${totalVisitas}`);
-      console.log(`Puntos visitas: ${puntosVisitas}`);
-      console.log(`PDVs con precios: ${totalReportados}`);
-      console.log(`Puntos precios: ${puntosPrecios}`);
-      console.log(`TOTAL PUNTOS: ${totalGeneral}`);
-      console.log('===============================================');
+      // TOTAL DE PUNTOS
+      const totalGeneral = puntosCobertura + puntosVolumen + puntosVisitas + puntosPrecios + puntosBonificacion;
 
       rankingDetallado.push({
         id: asesor.id,
@@ -2197,19 +2184,18 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
         ciudad: asesor.ciudad,
         departamento_id: asesor.departamento_id,
         ciudad_id: asesor.ciudad_id,
-        // Desglose de puntos por KPI (igual que asesor.js)
         puntos_cobertura: puntosCobertura,
         puntos_volumen: puntosVolumen,
         puntos_visitas: puntosVisitas,
         puntos_precios: puntosPrecios,
+        puntos_bonificacion: puntosBonificacion,
         total_puntos: totalGeneral,
-        // Información adicional para debugging (igual que asesor.js)
         pdvs_asignados: totalAsignados,
         pdvs_implementados: totalImplementados,
         meta_visitas: metaVisitas,
         real_visitas: totalVisitas,
         pdvs_con_precios: totalReportados,
-        es_usuario_actual: false // Para mercadeo, ningún asesor es el usuario actual
+        es_usuario_actual: false
       });
     }
 
@@ -2667,7 +2653,7 @@ router.get('/implementaciones/excel', authenticateToken, requireMercadeo, logAcc
         INNER JOIN agente ON agente.id = puntos_venta.id_agente
         LEFT JOIN productos_agrupados pa ON pa.registro_id = registro_servicios.id
         LEFT JOIN fotos_agrupadas fa ON fa.id_registro = registro_servicios.id
-        WHERE puntos_venta.id_agente = ?  -- ✅ FILTRO TERRITORIAL POR AGENTE_ID
+        WHERE puntos_venta.id_agente = ? AND (registro_servicios.isImplementacion IS NULL OR registro_servicios.isImplementacion = 0)
         ORDER BY registro_servicios.id DESC;
     `;
     
