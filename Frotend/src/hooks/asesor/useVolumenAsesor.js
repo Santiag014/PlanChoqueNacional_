@@ -4,9 +4,10 @@ import { API_URL } from '../../config.js';
 /**
  * Hook para obtener los datos de volumen del asesor
  * @param {string|number} userId - ID del usuario asesor
+ * @param {string|number|null} pdvId - ID del PDV para filtrar (opcional)
  * @returns {object} { volumen, loading, error, refetch }
  */
-export function useVolumenAsesor(userId) {
+export function useVolumenAsesor(userId, pdvId = null) {
   const [volumen, setVolumen] = useState({
     pdvs: [],
     meta_volumen: 0,
@@ -45,10 +46,16 @@ export function useVolumenAsesor(userId) {
     setError(null);
     
     try {
-      //console.log(`useVolumenAsesor: Consultando volumen para usuario ${userId}`);
+      console.log(`useVolumenAsesor: Consultando volumen para usuario ${userId}${pdvId ? ` filtrado por PDV ${pdvId}` : ''}`);
+      
+      // Construir la URL con el filtro pdv_id si se proporciona
+      const baseUrl = `${API_URL}/api/asesor/volumen/${userId}`;
+      const urlWithFilter = pdvId ? `${baseUrl}?pdv_id=${pdvId}` : baseUrl;
+      
+      console.log('URL construida:', urlWithFilter);
       
       // Realizar la petición
-      const response = await fetch(`${API_URL}/api/asesor/volumen/${userId}`, {
+      const response = await fetch(urlWithFilter, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -140,12 +147,12 @@ export function useVolumenAsesor(userId) {
     }
   };
 
-  // Efecto para cargar datos cuando cambia el userId
+  // Efecto para cargar datos cuando cambia el userId o pdvId
   useEffect(() => {
-    //console.log(`useVolumenAsesor: useEffect activado para userId ${userId}`);
+    console.log(`useVolumenAsesor: useEffect activado para userId ${userId}, pdvId ${pdvId}`);
     fetchVolumen();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, pdvId]);
 
   return { volumen, loading, error, refetch: fetchVolumen };
 }

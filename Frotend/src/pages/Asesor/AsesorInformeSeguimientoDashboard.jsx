@@ -47,9 +47,9 @@ export default function AsesorInformeSeguimientoDashboard() {
   const { token } = useAuth();
 
   // Hooks para datos reales
-  const { cobertura, loading: loadingCobertura, error: errorCobertura } = useCoberturaAsesor(user?.id);
-  const { volumen, loading: loadingVolumen, error: errorVolumen } = useVolumenAsesor(user?.id);
-  const { visitas, loading: loadingVisitas, error: errorVisitas } = useVisitasAsesor(user?.id);
+  const { cobertura, loading: loadingCobertura, error: errorCobertura } = useCoberturaAsesor(user?.id, pdvSeleccionado?.id);
+  const { volumen, loading: loadingVolumen, error: errorVolumen } = useVolumenAsesor(user?.id, pdvSeleccionado?.id);
+  const { visitas, loading: loadingVisitas, error: errorVisitas } = useVisitasAsesor(user?.id, pdvSeleccionado?.id);
   const { precios, loading: loadingPrecios, error: errorPrecios } = usePreciosAsesor(user?.id);
   
   // Hook para descargas Excel

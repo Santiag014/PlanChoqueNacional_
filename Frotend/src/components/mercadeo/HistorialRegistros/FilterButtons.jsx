@@ -174,7 +174,7 @@ export default function FilterButtons({
               >
                 <option value="TODOS">Todos los Estados</option>
                 <option value="EN REVISIÓN">Pendiente</option>
-                <option value="APROBADO">Aprobado</option>
+                <option value="ACEPTADO">Aprobado</option>
                 <option value="RECHAZADO">Rechazado</option>
               </select>
               <div className="select-arrow">

@@ -33,7 +33,7 @@ import { API_URL } from '../../config.js';
  * @returns {string|null} returns.error - Mensaje de error si existe
  * @returns {function} returns.refetch - Función para recargar los datos
  */
-export function useCoberturaAsesor(userId) {
+export function useCoberturaAsesor(userId, pdvId = null) {
   // ============================================
   // ESTADOS DEL HOOK
   // ============================================
@@ -97,10 +97,16 @@ export function useCoberturaAsesor(userId) {
     setError(null);
     
     try {
-      //console.log(`useCoberturaAsesor: Consultando cobertura para usuario ${userId}`);
+      console.log(`useCoberturaAsesor: Consultando cobertura para usuario ${userId}${pdvId ? ` filtrado por PDV ${pdvId}` : ''}`);
+      
+      // Construir la URL con el filtro pdv_id si se proporciona
+      const baseUrl = `${API_URL}/api/asesor/cobertura/${userId}`;
+      const urlWithFilter = pdvId ? `${baseUrl}?pdv_id=${pdvId}` : baseUrl;
+      
+      console.log('URL construida:', urlWithFilter);
       
       // Realizar la petición
-      const response = await fetch(`${API_URL}/api/asesor/cobertura/${userId}`, {
+      const response = await fetch(urlWithFilter, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -172,12 +178,12 @@ export function useCoberturaAsesor(userId) {
     }
   };
 
-  // Efecto para cargar datos cuando cambia el userId
+  // Efecto para cargar datos cuando cambia el userId o pdvId
   useEffect(() => {
-    //.log(`useCoberturaAsesor: useEffect activado para userId ${userId}`);
+    console.log(`useCoberturaAsesor: useEffect activado para userId ${userId}, pdvId ${pdvId}`);
     fetchCobertura();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, pdvId]);
 
   return { cobertura, loading, error, refetch: fetchCobertura };
 }

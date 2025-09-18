@@ -543,16 +543,35 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
     
     const whereClause = whereConditions.join(' AND ');
 
-    // MÉTRICAS FILTRADAS: Para mostrar en UI (aplicar todos los filtros)
-    const totalesResult = await executeQueryForMultipleUsers(
+    // MÉTRICAS FILTRADAS: Para cálculo de puntos (CON filtro de fecha)
+    const totalesValidosResult = await executeQueryForMultipleUsers(
       `SELECT 
         COUNT(DISTINCT puntos_venta.id) as totalAsignados,
         COUNT(DISTINCT CASE 
           WHEN registro_servicios.id IS NOT NULL 
             AND registro_servicios.estado_id = 2 
             AND registro_servicios.estado_agente_id = 2 
+            AND registro_servicios.fecha_registro <= '2025-09-06'
           THEN puntos_venta.id 
-        END) as totalImpactados
+        END) as totalImpactadosValidos
+       FROM puntos_venta
+       INNER JOIN users ON users.id = puntos_venta.user_id
+       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id 
+         AND registro_servicios.estado_id = 2 
+         AND registro_servicios.estado_agente_id = 2
+         AND registro_servicios.fecha_registro <= '2025-09-06'
+       WHERE ${whereClause}`, queryParams
+    );
+    
+    // MÉTRICAS REALES: Para mostrar el REAL (SIN filtro de fecha)
+    const totalesRealesResult = await executeQueryForMultipleUsers(
+      `SELECT 
+        COUNT(DISTINCT CASE 
+          WHEN registro_servicios.id IS NOT NULL 
+            AND registro_servicios.estado_id = 2 
+            AND registro_servicios.estado_agente_id = 2 
+          THEN puntos_venta.id 
+        END) as totalImpactadosReales
        FROM puntos_venta
        INNER JOIN users ON users.id = puntos_venta.user_id
        LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id 
@@ -561,8 +580,9 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
        WHERE ${whereClause}`, queryParams
     );
     
-    const totalAsignados = totalesResult[0]?.totalAsignados || 0;
-    const totalImpactados = totalesResult[0]?.totalImpactados || 0;
+    const totalAsignados = totalesValidosResult[0]?.totalAsignados || 0;
+    const totalImpactadosValidos = totalesValidosResult[0]?.totalImpactadosValidos || 0; // Para puntos
+    const totalImpactadosReales = totalesRealesResult[0]?.totalImpactadosReales || 0; // Para mostrar en UI
 
     // MÉTRICAS BASE: Para cálculo de puntos (SIN filtros de PDV, solo agente/asesor)
     const whereConditionsBase = ['puntos_venta.id_agente = ?'];
@@ -582,6 +602,7 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
           WHEN registro_servicios.id IS NOT NULL 
             AND registro_servicios.estado_id = 2 
             AND registro_servicios.estado_agente_id = 2 
+            AND registro_servicios.fecha_registro <= '2025-09-06'
           THEN puntos_venta.id 
         END) as totalImpactadosBase
        FROM puntos_venta
@@ -589,13 +610,14 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
        LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id 
          AND registro_servicios.estado_id = 2 
          AND registro_servicios.estado_agente_id = 2
+         AND registro_servicios.fecha_registro <= '2025-09-06'
        WHERE ${whereClauseBase}`, queryParamsBase
     );
     
     const totalAsignadosBase = totalesBaseResult[0]?.totalAsignadosBase || 0;
     const totalImpactadosBase = totalesBaseResult[0]?.totalImpactadosBase || 0;
 
-    const porcentajeCobertura = totalAsignados > 0 ? (totalImpactados / totalAsignados) : 0;
+    const porcentajeCobertura = totalAsignados > 0 ? (totalImpactadosReales / totalAsignados) : 0; // USAR REALES para el %
     
     // PUNTOS BASE: Calculados con métricas base (sin filtros de PDV) - ESTÁTICOS
     const puntosBasePorPDV = totalAsignadosBase > 0 ? (150 / totalAsignadosBase) : 0;
@@ -616,7 +638,7 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
         END as estado,
         CASE 
           WHEN COUNT(CASE 
-            WHEN registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2 
+            WHEN registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2 AND registro_servicios.fecha_registro <= '2025-09-06'
             THEN registro_servicios.id 
           END) > 0 THEN ROUND(${puntosBasePorPDV}, 1)
           ELSE 0.0
@@ -635,12 +657,15 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
     const puntosCoberturaBase = totalAsignadosBase > 0 ? Math.round((totalImpactadosBase / totalAsignadosBase) * 150) : 0;
     
     // CORREGIDO: Si hay filtro PDV específico y ese PDV no tiene datos → 0 puntos
-    const puntosFinales = pdv_id && totalImpactados === 0 ? 0 : puntosCoberturaBase;
+    const puntosFinales = pdv_id && totalImpactadosValidos === 0 ? 0 : puntosCoberturaBase;
     
-    console.log('=== DEBUG COBERTURA BASE vs FILTRADA ===');
+    console.log('=== DEBUG COBERTURA MERCADEO CORREGIDO ===');
     console.log('BASE - Asignados:', totalAsignadosBase, 'Impactados:', totalImpactadosBase, 'Puntos:', puntosCoberturaBase);
-    console.log('FILTRADA - Asignados:', totalAsignados, 'Impactados:', totalImpactados);
+    console.log('FILTRADA - Asignados:', totalAsignados);
+    console.log('REALES (para UI) - Impactados:', totalImpactadosReales);
+    console.log('VÁLIDOS (para puntos) - Impactados:', totalImpactadosValidos);
     console.log('PDV filtro:', pdv_id, 'Puntos finales:', puntosFinales);
+    console.log('Porcentaje con reales:', Math.round(porcentajeCobertura * 100) + '%');
     console.log('Filtros aplicados:', { asesor_id, pdv_id, agente_id });
     console.log('===============================');
     
@@ -652,15 +677,15 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
       // Métricas principales para el dashboard
       puntos: puntosFinales, // Puntos ajustados (0 si PDV filtrado no tiene datos)
       meta: totalAsignados, // Meta filtrada (para UI)
-      real: totalImpactados, // Impactados filtrados (para UI)
+      real: totalImpactadosReales, // REAL: Todos los PDVs con registros (sin filtro de fecha)
       porcentajeCumplimiento: Math.round(porcentajeCobertura * 100),
       // Propiedades adicionales para compatibilidad
       totalAsignados: totalAsignados,
-      totalImplementados: totalImpactados,
+      totalImplementados: totalImpactadosReales, // REAL: Usar impactados reales
       puntosCobertura: puntosFinales, // Puntos ajustados
       estadisticas: {
         totalAsignados,
-        totalImpactados,
+        totalImpactados: totalImpactadosReales, // REAL: Usar impactados reales
         porcentajeCobertura: Math.round(porcentajeCobertura * 100),
         puntosTotal: puntosFinales, // Puntos ajustados
         puntosPorPDV: Number(puntosBasePorPDV.toFixed(2))
@@ -2093,7 +2118,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
 
       const implementados = await executeQueryForMultipleUsers(
         `SELECT DISTINCT pdv_id FROM registro_servicios
-         WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [asesor.id]
+         WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2 AND fecha_registro <= ?`, [asesor.id, '2025-09-06']
       );
       const totalImplementados = implementados.length;
       const puntosCobertura = totalAsignados > 0 ? Math.round((totalImplementados / totalAsignados) * 150) : 0;

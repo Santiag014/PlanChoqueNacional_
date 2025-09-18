@@ -4,9 +4,10 @@ import { API_URL } from '../../config.js';
 /**
  * Hook para obtener los datos de visitas del asesor
  * @param {string|number} userId - ID del usuario asesor
+ * @param {string|number|null} pdvId - ID del PDV para filtrar (opcional)
  * @returns {object} { visitas, loading, error, refetch }
  */
-export function useVisitasAsesor(userId) {
+export function useVisitasAsesor(userId, pdvId = null) {
   const [visitas, setVisitas] = useState({
     pdvs: [],
     meta_visitas: 0,
@@ -44,10 +45,16 @@ export function useVisitasAsesor(userId) {
     setError(null);
     
     try {
-      //console.log(`useVisitasAsesor: Consultando visitas para usuario ${userId}`);
+      console.log(`useVisitasAsesor: Consultando visitas para usuario ${userId}${pdvId ? ` filtrado por PDV ${pdvId}` : ''}`);
+      
+      // Construir la URL con el filtro pdv_id si se proporciona
+      const baseUrl = `${API_URL}/api/asesor/visitas/${userId}`;
+      const urlWithFilter = pdvId ? `${baseUrl}?pdv_id=${pdvId}` : baseUrl;
+      
+      console.log('URL construida:', urlWithFilter);
 
       // Realizar la petición
-      const response = await fetch(`${API_URL}/api/asesor/visitas/${userId}`, {
+      const response = await fetch(urlWithFilter, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -126,12 +133,12 @@ export function useVisitasAsesor(userId) {
     }
   };
 
-  // Efecto para cargar datos cuando cambia el userId
+  // Efecto para cargar datos cuando cambia el userId o pdvId
   useEffect(() => {
-    //  console.log(`useVisitasAsesor: useEffect activado para userId ${userId}`);
+    console.log(`useVisitasAsesor: useEffect activado para userId ${userId}, pdvId ${pdvId}`);
     fetchVisitas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, pdvId]);
 
   return { visitas, loading, error, refetch: fetchVisitas };
 }
