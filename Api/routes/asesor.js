@@ -17,71 +17,148 @@ const router = express.Router();
 // 📊 ENDPOINTS PARA DASHBOARD ASESOR - MÉTRICAS PRINCIPALES
 // ========================================================================
 
+// ENDPOINT DE BONIFICACIÓN PARA DASHBOARD ASESOR
+router.get('/bonificacion/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
+  const { user_id } = req.params;
+  const { pdv_id, agente_id, desde, hasta } = req.query;
+  try {
+    // Construir filtros dinámicos
+    let where = 'WHERE b.id_asesor = ?';
+    let params = [user_id];
+    if (pdv_id) {
+      where += ' AND b.pdv_id = ?';
+      params.push(pdv_id);
+    }
+    if (agente_id) {
+      where += ' AND b.id_agente = ?';
+      params.push(agente_id);
+    }
+
+    // Consulta principal (ajusta la tabla/columnas según tu modelo real)
+    const bonificaciones = await executeQueryForMultipleUsers(
+      `SELECT 
+         b.id_asesor,
+         b.id_agente,
+         b.descripcion,
+         b.pdv_id,
+         b.puntos,
+         b.created
+       FROM retos_bonificadores b
+       ${where}
+       ORDER BY b.created DESC`,
+      params
+    );
+
+    res.json({
+      success: true,
+      bonificaciones
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error al obtener bonificaciones', error: err.message });
+  }
+});
+
 // ENDPOINT DE COBERTURA REAL PARA DASHBOARD ASESOR
 router.get('/cobertura/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
   const { user_id } = req.params;
   const { pdv_id } = req.query; // AGREGADO: Soporte para filtro por PDV
   
+  console.log('🔍 === INICIO DEBUG ENDPOINT COBERTURA ===');
+  console.log('user_id recibido:', user_id);
+  console.log('pdv_id recibido:', pdv_id, 'tipo:', typeof pdv_id);
+  console.log('========================================');
+  
   try {
-    // ✅ USANDO POOL COMPARTIDO - NO crea conexión individual por usuario
-    // CORREGIDO: Aplicar filtro por PDV si se proporciona
-    let whereClause = 'WHERE user_id = ?';
-    let queryParams = [user_id];
-    
-    if (pdv_id) {
-      whereClause += ' AND id = ?';
-      queryParams.push(pdv_id);
-    }
-
-    // Total de PDVs asignados al asesor (filtrados si aplica) - USA POOL COMPARTIDO
-    const pdvs = await executeQueryForMultipleUsers(
+    // PASO 1: SIEMPRE obtener datos GLOBALES para calcular puntos consistentes
+    const todosLosPdvsGlobales = await executeQueryForMultipleUsers(
       `SELECT id, codigo, descripcion AS nombre, direccion
        FROM puntos_venta
-       ${whereClause}`, queryParams
+       WHERE user_id = ?`, [user_id]
     );
 
-    // PDVs con al menos un registro en registro_servicios (filtrados si aplica) - USA POOL COMPARTIDO
-    let registrosWhereClause = 'WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2';
-    let registrosParams = [user_id];
+    // PASO 2: PDVs con registros VÁLIDOS para puntos (GLOBAL - sin filtro)
+    const implementadosValidosGlobales = await executeQueryForMultipleUsers(
+      `SELECT DISTINCT pdv_id
+       FROM registro_servicios
+       WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2 AND fecha_registro <= ?`, 
+      [user_id, '2025-09-06']
+    );
+    const implementadosValidosGlobalesSet = new Set(implementadosValidosGlobales.map(r => r.pdv_id));
+
+    // PASO 3: PDVs con registros CUALQUIER FECHA (GLOBAL - para mostrar estado)
+    const implementadosTodosGlobales = await executeQueryForMultipleUsers(
+      `SELECT DISTINCT pdv_id
+       FROM registro_servicios
+       WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [user_id]
+    );
+    const implementadosTodosGlobalesSet = new Set(implementadosTodosGlobales.map(r => r.pdv_id));
+
+    // PASO 4: Calcular puntos GLOBALES (base para distribución individual)
+    const totalAsignadosGlobal = todosLosPdvsGlobales.length;
+    const totalImplementadosRealGlobal = implementadosTodosGlobalesSet.size;
+    const totalImplementadosPuntosGlobal = implementadosValidosGlobalesSet.size;
+    const puntosCoberturaGlobal = totalAsignadosGlobal > 0 ? 
+      // Bonificacion Aqui de 3000 Puntos por cobertura Mazimo
+      Math.round((totalImplementadosPuntosGlobal / totalAsignadosGlobal) * 3000) : 0;
+
+    // PASO 5: Asignar puntos GLOBALES a cada PDV (estos NO cambian nunca)
+    const puntosPorPDVGlobal = totalAsignadosGlobal > 0 ? Math.floor(3000 / totalAsignadosGlobal) : 0;
+    const pdvsConPuntosGlobales = todosLosPdvsGlobales.map(pdv => {
+      // Estado: REGISTRADO si tiene cualquier registro (sin importar fecha)
+      const estado = implementadosTodosGlobalesSet.has(pdv.id) ? 'REGISTRADO' : 'NO REGISTRADO';
+      
+      // Puntos: SOLO si tiene registros válidos (antes del 2025-09-06) - FIJOS
+      const puntos = implementadosValidosGlobalesSet.has(pdv.id) ? puntosPorPDVGlobal : 0;
+      
+      return {
+        ...pdv,
+        estado,
+        puntos
+      };
+    });
+
+    // PASO 6: Filtrar PDVs para mostrar (manteniendo sus puntos originales)
+    let pdvsParaMostrar = pdvsConPuntosGlobales;
+    if (pdv_id) {
+      pdvsParaMostrar = pdvsConPuntosGlobales.filter(pdv => pdv.id == pdv_id);
+    }
+
+    // PASO 7: Calcular totales para la UI (filtrados si hay filtro, globales si no)
+    let totalAsignadosUI, totalImplementadosUI, puntosCoberturaUI;
     
     if (pdv_id) {
-      registrosWhereClause += ' AND pdv_id = ?';
-      registrosParams.push(pdv_id);
+      // Si hay filtro, mostrar valores del PDV específico
+      totalAsignadosUI = pdvsParaMostrar.length;
+      totalImplementadosUI = pdvsParaMostrar.filter(pdv => pdv.estado === 'REGISTRADO').length;
+      puntosCoberturaUI = pdvsParaMostrar.reduce((sum, pdv) => sum + pdv.puntos, 0);
+    } else {
+      // Si no hay filtro, mostrar totales globales
+      totalAsignadosUI = totalAsignadosGlobal;
+      totalImplementadosUI = totalImplementadosRealGlobal;
+      puntosCoberturaUI = puntosCoberturaGlobal;
     }
-    
-    const implementados = await executeQueryForMultipleUsers(
-      `SELECT DISTINCT pdv_id
-         FROM registro_servicios
-         ${registrosWhereClause}`, registrosParams
-    );
-    const implementadosSet = new Set(implementados.map(r => r.pdv_id));
 
-    // Cálculo de puntos cobertura con filtros aplicados
-    const totalAsignados = pdvs.length;
-    const totalImplementados = implementadosSet.size;
-    const puntosCobertura = totalAsignados > 0 ? Math.round((totalImplementados / totalAsignados) * 150) : 0;
-
-    console.log('=== DEBUG COBERTURA ASESOR ===');
-    console.log('Filtro PDV aplicado:', pdv_id);
-    console.log('Total asignados:', totalAsignados);
-    console.log('Total implementados:', totalImplementados);
-    console.log('Puntos cobertura:', puntosCobertura);
-    console.log('==============================');
-
-    // Asignar puntos individuales por PDV (ejemplo: 150 puntos repartidos entre los implementados)
-    const puntosPorPDV = totalAsignados > 0 ? Math.floor(150 / totalAsignados) : 0;
-    const pdvsDetalle = pdvs.map(pdv => ({
-      ...pdv,
-      estado: implementadosSet.has(pdv.id) ? 'REGISTRADO' : 'NO REGISTRADO',
-      puntos: implementadosSet.has(pdv.id) ? puntosPorPDV : 0
-    }));
+    console.log('=== DEBUG COBERTURA ASESOR PUNTOS CONSISTENTES ===');
+    console.log('Filtro PDV aplicado:', pdv_id || 'NINGUNO');
+    console.log('--- VALORES GLOBALES ---');
+    console.log('Total asignados global:', totalAsignadosGlobal);
+    console.log('Total implementados real global:', totalImplementadosRealGlobal);
+    console.log('Total implementados válidos global:', totalImplementadosPuntosGlobal);
+    console.log('Puntos cobertura global:', puntosCoberturaGlobal);
+    console.log('Puntos por PDV global:', puntosPorPDVGlobal);
+    console.log('--- VALORES UI ---');
+    console.log('Total asignados UI:', totalAsignadosUI);
+    console.log('Total implementados UI:', totalImplementadosUI);
+    console.log('Puntos cobertura UI (CONSISTENTES):', puntosCoberturaUI);
+    console.log('PDVs a mostrar:', pdvsParaMostrar.length);
+    console.log('===================================================');
 
     res.json({
       success: true,
-      pdvs: pdvsDetalle,
-      totalAsignados,
-      totalImplementados,
-      puntosCobertura
+      pdvs: pdvsParaMostrar,                      // PDVs filtrados con puntos originales
+      totalAsignados: totalAsignadosUI,           // Total UI (filtrado o global)
+      totalImplementados: totalImplementadosUI,   // Total UI (filtrado o global)
+      puntosCobertura: puntosCoberturaUI          // Puntos UI CONSISTENTES
     });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error al obtener cobertura', error: err.message });
@@ -94,6 +171,13 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
   const { user_id } = req.params;
   const { pdv_id } = req.query; // AGREGADO: Soporte para filtro por PDV
   
+  console.log('🔍 === INICIO DEBUG ENDPOINT VOLUMEN ===');
+  console.log('user_id recibido:', user_id);
+  console.log('pdv_id recibido:', pdv_id, 'tipo:', typeof pdv_id);
+  console.log('URL completa:', req.originalUrl);
+  console.log('Query params completos:', req.query);
+  console.log('=======================================');
+  
   try {
 
     // CORREGIDO: Aplicar filtro por PDV si se proporciona
@@ -105,48 +189,29 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
       queryParamsPDV.push(pdv_id);
     }
 
-    // Obtener la meta total de volumen (suma de meta_volumen de los PDVs del usuario filtrados)
-    const metaResult = await executeQueryForMultipleUsers(
+    // PASO 1: SIEMPRE obtener la meta total GLOBAL (sin filtro) para mantener contexto
+    const metaGlobalResult = await executeQueryForMultipleUsers(
       `SELECT SUM(meta_volumen) as totalMeta 
-       FROM puntos_venta pv
-       ${whereClausePDV}`, queryParamsPDV
+       FROM puntos_venta 
+       WHERE user_id = ?`, [user_id]
     );
-    const totalMeta = metaResult[0]?.totalMeta || 0;
+    const totalMetaGlobal = metaGlobalResult[0]?.totalMeta || 0;
 
-    // Obtener el volumen real total usando la misma lógica que la consulta de PDVs
-    const realResult = await executeQueryForMultipleUsers(
-      `SELECT COALESCE(SUM(vol.total_volumen), 0) as totalReal
-       FROM puntos_venta pv
-       LEFT JOIN (
-         SELECT rs.pdv_id, SUM(rp.conversion_galonaje) as total_volumen
-         FROM registro_servicios rs
-         INNER JOIN registro_productos rp ON rp.registro_id = rs.id
-         WHERE rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
-         GROUP BY rs.pdv_id
-       ) vol ON vol.pdv_id = pv.id
-       ${whereClausePDV}`, [user_id, ...queryParamsPDV]
+    // PASO 2: SIEMPRE obtener el volumen real GLOBAL (sin filtro) para mantener contexto
+    const realGlobalResult = await executeQueryForMultipleUsers(
+      `SELECT COALESCE(SUM(rp.conversion_galonaje), 0) as totalReal
+       FROM registro_servicios rs
+       INNER JOIN registro_productos rp ON rp.registro_id = rs.id
+       WHERE rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)`, [user_id]
     );
-    const totalReal = realResult[0]?.totalReal || 0;
+    const totalRealGlobal = realGlobalResult[0]?.totalReal || 0;
 
-    // MODIFICADO: Cálculo GLOBAL de puntos de volumen (SIN límite máximo)
-    const puntosVolumen = totalMeta > 0 ? 
-      Math.round((totalReal / totalMeta) * 350) : 0;
+    // PASO 3: Calcular puntos GLOBALES (base para distribución individual)
+    const puntosVolumenGlobal = totalMetaGlobal > 0 ? 
+      Math.round((totalRealGlobal / totalMetaGlobal) * 6000) : 0;
 
-    // Calcular porcentaje de cumplimiento GLOBAL
-    const porcentajeCumplimiento = totalMeta > 0 ? 
-      Number(((totalReal / totalMeta) * 100).toFixed(1)) : 0;
-
-    console.log('=== DEBUG VOLUMEN ASESOR (GLOBAL) ===');
-    console.log('Filtro PDV aplicado:', pdv_id);
-    console.log('Total meta (global):', totalMeta);
-    console.log('Total real (global):', totalReal);
-    console.log('Porcentaje cumplimiento (global):', porcentajeCumplimiento);
-    console.log('Puntos volumen (global, SIN límite):', puntosVolumen);
-    console.log('Fórmula: (' + totalReal + '/' + totalMeta + ') * 350 =', puntosVolumen);
-    console.log('=====================================');
-
-    // MODIFICADO: Obtener detalle por PDV SIN calcular puntos individuales
-    const pdvsResult = await executeQueryForMultipleUsers(
+    // PASO 4: Obtener TODOS los PDVs con sus datos (sin filtro) para calcular puntos globales
+    const todosLosPdvsResult = await executeQueryForMultipleUsers(
       `SELECT 
          pv.id,
          pv.codigo,
@@ -162,59 +227,84 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
          WHERE rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
          GROUP BY rs.pdv_id
        ) vol ON vol.pdv_id = pv.id
-       ${whereClausePDV}`,
-      [user_id, ...queryParamsPDV]
+       WHERE pv.user_id = ?`, [user_id, user_id]
     );
 
-    // Verificar que pdvs sea un array válido
-    const pdvs = Array.isArray(pdvsResult) ? pdvsResult : [];
-
-    // CORREGIDO: Distribuir puntos totales proporcionalmente según % cumplimiento
-    // 1. Calcular el cumplimiento total ponderado de todos los PDVs
-    const cumplimientoTotal = pdvs.reduce((sum, pdv) => {
+    // PASO 5: Calcular distribución de puntos GLOBAL para cada PDV
+    const todosLosPdvs = Array.isArray(todosLosPdvsResult) ? todosLosPdvsResult : [];
+    const cumplimientoTotalGlobal = todosLosPdvs.reduce((sum, pdv) => {
       if (pdv.meta > 0) {
-        return sum + (pdv.real / pdv.meta); // Suma de ratios de cumplimiento
+        return sum + (pdv.real / pdv.meta);
       }
       return sum;
     }, 0);
-    
-    const pdvsConPuntos = pdvs.map(pdv => {
+
+    // Asignar puntos GLOBALES a cada PDV (estos NO cambian nunca)
+    const pdvsConPuntosGlobales = todosLosPdvs.map(pdv => {
       const cumplimiento = pdv.meta > 0 ? (pdv.real / pdv.meta) * 100 : 0;
       
-      // 2. Distribuir puntos totales proporcionalmente según cumplimiento
       let puntosPorPDV = 0;
-      if (pdv.meta > 0 && cumplimientoTotal > 0) {
-        const ratioCumplimiento = (pdv.real / pdv.meta); // Ratio individual
-        const proporcionCumplimiento = ratioCumplimiento / cumplimientoTotal; // % del total
-        puntosPorPDV = Math.round(puntosVolumen * proporcionCumplimiento); // SIN límite por PDV
+      if (pdv.meta > 0 && cumplimientoTotalGlobal > 0) {
+        const ratioCumplimiento = (pdv.real / pdv.meta);
+        const proporcionCumplimiento = ratioCumplimiento / cumplimientoTotalGlobal;
+        puntosPorPDV = Math.round(puntosVolumenGlobal * proporcionCumplimiento);
       }
       
       return {
         ...pdv,
-        puntos: puntosPorPDV, // Distribución proporcional por cumplimiento (SIN límite)
+        puntos: puntosPorPDV,
         cumplimiento: Number(cumplimiento.toFixed(2))
       };
     });
 
-    // Debug: Verificar distribución de puntos
-    const sumaPuntosPorPDV = pdvsConPuntos.reduce((sum, pdv) => sum + pdv.puntos, 0);
-    console.log('=== DEBUG DISTRIBUCIÓN POR CUMPLIMIENTO ASESOR ===');
-    console.log('Puntos totales calculados:', puntosVolumen);
-    console.log('Suma de puntos distribuidos por PDV:', sumaPuntosPorPDV);
-    console.log('Diferencia (debe ser mínima):', Math.abs(puntosVolumen - sumaPuntosPorPDV));
-    console.log('Cumplimiento total ponderado:', cumplimientoTotal);
-    console.log('PDVs con puntos:', pdvsConPuntos.filter(p => p.puntos > 0).map(p => ({
-      codigo: p.codigo,
-      nombre: p.nombre,
-      meta: p.meta,
-      real: p.real,
-      cumplimiento: p.cumplimiento + '%',
-      puntos: p.puntos,
-      proporcionCumplimiento: cumplimientoTotal > 0 ? ((p.real / p.meta) / cumplimientoTotal * 100).toFixed(2) + '%' : '0%'
-    })));
-    console.log('===============================================');
+    // PASO 6: Filtrar PDVs para mostrar (manteniendo sus puntos originales)
+    let pdvsParaMostrar = pdvsConPuntosGlobales;
+    if (pdv_id) {
+      pdvsParaMostrar = pdvsConPuntosGlobales.filter(pdv => pdv.id == pdv_id);
+    }
 
-    // Obtener resumen por segmento
+    // PASO 7: Calcular totales para la UI (filtrados si hay filtro, globales si no)
+    let totalMetaUI, totalRealUI, puntosUI, porcentajeUI;
+    
+    if (pdv_id) {
+      // Si hay filtro, mostrar valores del PDV específico
+      const pdvFiltrado = pdvsParaMostrar[0];
+      totalMetaUI = pdvFiltrado ? pdvFiltrado.meta : 0;
+      totalRealUI = pdvFiltrado ? pdvFiltrado.real : 0;
+      puntosUI = pdvFiltrado ? pdvFiltrado.puntos : 0;
+      porcentajeUI = totalMetaUI > 0 ? Number(((totalRealUI / totalMetaUI) * 100).toFixed(1)) : 0;
+    } else {
+      // Si no hay filtro, mostrar totales globales
+      totalMetaUI = totalMetaGlobal;
+      totalRealUI = totalRealGlobal;
+      puntosUI = puntosVolumenGlobal;
+      porcentajeUI = totalMetaGlobal > 0 ? Number(((totalRealGlobal / totalMetaGlobal) * 100).toFixed(1)) : 0;
+    }
+
+    console.log('=== DEBUG VOLUMEN ASESOR PUNTOS CONSISTENTES ===');
+    console.log('Filtro PDV aplicado:', pdv_id || 'NINGUNO');
+    console.log('Meta global:', totalMetaGlobal);
+    console.log('Real global:', totalRealGlobal);
+    console.log('Puntos globales:', puntosVolumenGlobal);
+    console.log('--- VALORES UI ---');
+    console.log('Meta UI:', totalMetaUI);
+    console.log('Real UI:', totalRealUI);
+    console.log('Puntos UI:', puntosUI);
+    console.log('Porcentaje UI:', porcentajeUI);
+    console.log('PDVs a mostrar:', pdvsParaMostrar.length);
+    console.log('================================================');
+
+    // PASO 8: Obtener resumen por segmento (filtrado si hay pdv_id)
+    let whereClauseSegmentos = 'WHERE pv.user_id = ?';
+    let queryParamsSegmentos = [user_id];
+    let subqueryParamsSegmentos = [user_id];
+    
+    if (pdv_id) {
+      whereClauseSegmentos += ' AND pv.id = ?';
+      queryParamsSegmentos.push(pdv_id);
+      subqueryParamsSegmentos.push(pdv_id);
+    }
+    
     const segmentosResult = await executeQueryForMultipleUsers(
       `SELECT 
          pv.segmento,
@@ -226,17 +316,48 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
          FROM registro_servicios rs
          INNER JOIN registro_productos rp ON rp.registro_id = rs.id
          WHERE rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
+         ${pdv_id ? 'AND rs.pdv_id = ?' : ''}
          GROUP BY rs.pdv_id
        ) vol_seg ON vol_seg.pdv_id = pv.id
-       WHERE pv.user_id = ? 
+       ${whereClauseSegmentos} 
        GROUP BY pv.segmento`,
-      [user_id, user_id]
+      [...subqueryParamsSegmentos, ...queryParamsSegmentos]
     );
 
     // Verificar que segmentos sea un array válido
     const segmentos = Array.isArray(segmentosResult) ? segmentosResult : [];
 
-    // Obtener detalle por producto (usando referencia_id)
+    console.log('=== DEBUG SEGMENTOS FILTRADO CORREGIDO ===');
+    console.log('¿Hay filtro PDV para segmentos?:', !!pdv_id);
+    console.log('PDV ID para filtro:', pdv_id);
+    console.log('WHERE clause segmentos:', whereClauseSegmentos);
+    console.log('Parámetros subquery:', subqueryParamsSegmentos);
+    console.log('Parámetros WHERE principal:', queryParamsSegmentos);
+    console.log('Segmentos encontrados:', segmentos);
+    console.log('SQL construido para segmentos:', 
+      `SELECT pv.segmento, COUNT(DISTINCT pv.id) AS cantidadPdvs, COALESCE(SUM(vol_seg.total_galones), 0) AS totalGalones
+       FROM puntos_venta pv
+       LEFT JOIN (
+         SELECT rs.pdv_id, SUM(rp.conversion_galonaje) as total_galones
+         FROM registro_servicios rs
+         INNER JOIN registro_productos rp ON rp.registro_id = rs.id
+         WHERE rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
+         ${pdv_id ? 'AND rs.pdv_id = ?' : ''}
+         GROUP BY rs.pdv_id
+       ) vol_seg ON vol_seg.pdv_id = pv.id
+       ${whereClauseSegmentos} 
+       GROUP BY pv.segmento`);
+    console.log('===========================================');
+
+    // PASO 9: Obtener detalle por producto (filtrado si hay pdv_id)
+    let whereClauseProductos = 'WHERE rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)';
+    let queryParamsProductos = [user_id];
+    
+    if (pdv_id) {
+      whereClauseProductos += ' AND rs.pdv_id = ?';
+      queryParamsProductos.push(pdv_id);
+    }
+    
     const productosResult = await executeQueryForMultipleUsers(
       `SELECT 
          rp.referencia_id AS nombre,
@@ -244,33 +365,59 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
          SUM(rp.conversion_galonaje) AS galonaje
        FROM registro_servicios rs
        INNER JOIN registro_productos rp ON rp.registro_id = rs.id
-       WHERE rs.user_id = ? AND(rs.estado_id = 2 AND rs.estado_agente_id = 2)
+       ${whereClauseProductos}
        GROUP BY rp.referencia_id
        ORDER BY galonaje DESC`,
        
-      [user_id]
+      queryParamsProductos
     );
 
     // Verificar que productos sea un array válido
     const productos = Array.isArray(productosResult) ? productosResult : [];
 
-    // Calcular porcentajes para productos
+    console.log('=== DEBUG PRODUCTOS FILTRADO CORREGIDO ===');
+    console.log('¿Hay filtro PDV para productos?:', !!pdv_id);
+    console.log('PDV ID para filtro productos:', pdv_id);
+    console.log('WHERE clause productos:', whereClauseProductos);
+    console.log('Parámetros productos:', queryParamsProductos);
+    console.log('Productos encontrados:', productos.length);
+    console.log('Detalle productos:', productos);
+    console.log('SQL construido para productos:', 
+      `SELECT rp.referencia_id AS nombre, COUNT(rp.id) AS numeroCajas, SUM(rp.conversion_galonaje) AS galonaje
+       FROM registro_servicios rs
+       INNER JOIN registro_productos rp ON rp.registro_id = rs.id
+       ${whereClauseProductos}
+       GROUP BY rp.referencia_id
+       ORDER BY galonaje DESC`);
+    console.log('===========================================');
+
+    // Calcular porcentajes para productos basados en el galonaje filtrado
     const totalGalonaje = productos.reduce((sum, p) => sum + (p.galonaje || 0), 0);
     productos.forEach(p => {
       p.porcentaje = totalGalonaje > 0 ? 
         Number(((p.galonaje / totalGalonaje) * 100).toFixed(1)) : 0;
     });
-
-    // MODIFICADO: Respuesta JSON con cálculo GLOBAL de puntos y puntos por PDV
+    
+    console.log('=== DEBUG RESPUESTA FINAL VOLUMEN PUNTOS CONSISTENTES ===');
+    console.log('¿Hay filtro PDV?:', !!pdv_id);
+    console.log('Meta UI final:', totalMetaUI);
+    console.log('Real UI final:', totalRealUI);
+    console.log('Puntos UI final (CONSISTENTES):', puntosUI);
+    console.log('Porcentaje UI final:', porcentajeUI);
+    console.log('Total segmentos filtrados:', segmentos.length);
+    console.log('Total productos filtrados:', productos.length);
+    console.log('Total PDVs mostrados:', pdvsParaMostrar.length);
+    console.log('==========================================================');
+    
     res.json({
       success: true,
-      pdvs: pdvsConPuntos, // Usar pdvs con puntos calculados
-      meta_volumen: totalMeta,
-      real_volumen: totalReal,
-      porcentaje_cumplimiento: porcentajeCumplimiento,
-      puntos: puntosVolumen,
-      segmentos,
-      productos
+      pdvs: pdvsParaMostrar,                      // PDVs filtrados con puntos originales
+      meta_volumen: totalMetaUI,                  // Meta UI (filtrada o global)
+      real_volumen: totalRealUI,                  // Real UI (filtrado o global)
+      porcentaje_cumplimiento: porcentajeUI,     // Porcentaje UI (filtrado o global)
+      puntos: puntosUI,                          // Puntos UI CONSISTENTES
+      segmentos,                                 // Resumen por segmento (filtrado si aplica)
+      productos                                  // Resumen por producto (filtrado si aplica)
     });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error al obtener datos de volumen', error: err.message });
@@ -282,126 +429,106 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
   const { user_id } = req.params;
   const { pdv_id } = req.query; // AGREGADO: Soporte para filtro por PDV
   
+  console.log('🔍 === INICIO DEBUG ENDPOINT VISITAS ===');
+  console.log('user_id recibido:', user_id);
+  console.log('pdv_id recibido:', pdv_id, 'tipo:', typeof pdv_id);
+  console.log('=======================================');
+  
   try {
-
-    // CORREGIDO: Aplicar filtro por PDV si se proporciona
-    let whereClausePDV = 'WHERE puntos_venta.user_id = ?'; // Para consulta sin alias
-    let queryParamsPDV = [user_id];
-    
-    if (pdv_id) {
-      whereClausePDV += ' AND puntos_venta.id = ?'; // Para consulta sin alias
-      queryParamsPDV.push(pdv_id);
-    }
-
-    // Obtener todos los PDVs asignados al asesor (filtrados si aplica)
-    const pdvsResult = await executeQueryForMultipleUsers(
+    // PASO 1: SIEMPRE obtener datos GLOBALES para calcular puntos consistentes
+    const todosLosPdvsGlobales = await executeQueryForMultipleUsers(
       `SELECT id, codigo, descripcion AS nombre, direccion
        FROM puntos_venta
-       ${whereClausePDV}`, queryParamsPDV
+       WHERE user_id = ?`, [user_id]
     );
-    const totalPdvs = pdvsResult.length;
+    const totalPdvsGlobal = todosLosPdvsGlobales.length;
+    const metaVisitasGlobal = totalPdvsGlobal * 20; // Meta global: 20 visitas por PDV
     
-    // Meta de visitas: 20 por cada PDV (filtrado)
-    const metaVisitas = totalPdvs * 20;
-    
-    // CORREGIDO: Aplicar filtro por PDV en consulta de visitas reales
-    let whereClauseVisitas = 'WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2';
-    let queryParamsVisitas = [user_id];
-    
-    if (pdv_id) {
-      whereClauseVisitas += ' AND pdv_id = ?';
-      queryParamsVisitas.push(pdv_id);
-    }
-    
-    // Obtener el número real de visitas (registro_servicios filtrado)
-    const realResult = await executeQueryForMultipleUsers(
+    // PASO 2: Obtener visitas reales GLOBALES (sin filtro)
+    const realGlobalResult = await executeQueryForMultipleUsers(
       `SELECT COUNT(id) as totalVisitas
        FROM registro_servicios
-       ${whereClauseVisitas}`, queryParamsVisitas
+       WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [user_id]
     );
-    const totalVisitas = realResult[0]?.totalVisitas || 0;
+    const totalVisitasGlobal = realGlobalResult[0]?.totalVisitas || 0;
     
-    // CORRECTO: Mantener cálculo sobre el total filtrado
-    const puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 150) : 0;
+    // PASO 3: Calcular puntos GLOBALES (base para distribución individual)
+    const puntosVisitasGlobal = metaVisitasGlobal > 0 ? 
+      Math.round((totalVisitasGlobal / metaVisitasGlobal) * 1000) : 0;
     
-    console.log('=== DEBUG VISITAS ASESOR CORREGIDO ===');
-    console.log('Filtro PDV aplicado:', pdv_id);
-    console.log('Total PDVs (filtrado):', totalPdvs);
-    console.log('Meta visitas total (filtrado):', metaVisitas);
-    console.log('Total visitas reales (filtrado):', totalVisitas);
-    console.log('Puntos calculados (correcto):', puntosVisitas);
-    console.log('Fórmula: (' + totalVisitas + '/' + metaVisitas + ') * 150 =', puntosVisitas);
-    console.log('==========================================');
-    
-    // Crear cláusula WHERE separada para consulta con alias 'pv'
-    let whereClausePVAlias = 'WHERE pv.user_id = ?';
-    let queryParamsPVAlias = [user_id];
-    
-    if (pdv_id) {
-      whereClausePVAlias += ' AND pv.id = ?';
-      queryParamsPVAlias.push(pdv_id);
-    }
-    
-    // Obtener detalle de visitas por PDV (aplicar filtro si existe)
-    const pdvsVisitasResult = await executeQueryForMultipleUsers(
+    // PASO 4: Obtener detalle de visitas GLOBAL para cada PDV (sin filtro)
+    const pdvsVisitasGlobalesResult = await executeQueryForMultipleUsers(
       `SELECT 
          pv.id,
          pv.codigo,
          pv.descripcion AS nombre,
          COUNT(rs.id) AS cantidadVisitas,
-         20 AS meta,
-         COALESCE(SUM(rpt.puntos), 0) AS puntos
+         20 AS meta
        FROM puntos_venta pv
        LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
-       LEFT JOIN registro_puntos rpt ON rpt.id_visita = rs.id AND rpt.id_kpi = 3
-       ${whereClausePVAlias} 
+       WHERE pv.user_id = ?
        GROUP BY pv.id, pv.codigo, pv.descripcion`,
-      [user_id, ...queryParamsPVAlias] // CORREGIDO: user_id primero para el JOIN
+      [user_id, user_id]
     );
     
-    // Verificar que pdvs sea un array válido
-    const pdvs = Array.isArray(pdvsVisitasResult) ? pdvsVisitasResult : [];
-    
-    // Calcular porcentaje y puntos de cumplimiento para cada PDV
-    const puntosBasePorVisita = metaVisitas > 0 ? (150 / metaVisitas) : 0; // Puntos por cada visita (sin redondear)
-    const pdvsDetalle = pdvs.map(pdv => {
-      const porcentaje = pdv.meta > 0 ? Math.round((pdv.cantidadVisitas / pdv.meta) * 100) : 0;
-      // CORREGIDO: Calcular puntos proporcionalmente al total (sin redondear individualmente)
-      const puntosProporcionados = pdv.cantidadVisitas * puntosBasePorVisita;
-      
-      return {
-        ...pdv,
-        porcentaje,
-        puntos: puntosProporcionados // Sin redondear individualmente
-      };
-    });
-    
-    // CORREGIDO: Los puntos totales deben coincidir exactamente
-    const sumaPuntosCalculados = pdvsDetalle.reduce((sum, pdv) => sum + pdv.puntos, 0);
-    const puntosVisitasReal = Math.round(sumaPuntosCalculados); // Redondear solo el total final
-    
-    // Ajustar los puntos individuales para que sumen exactamente el total redondeado
-    if (sumaPuntosCalculados > 0) {
-      const factorAjuste = puntosVisitasReal / sumaPuntosCalculados;
-      pdvsDetalle.forEach(pdv => {
-        pdv.puntos = Math.round((pdv.puntos * factorAjuste) * 100) / 100; // Ajustar y redondear a 2 decimales
-      });
+    // PASO 5: Asignar puntos GLOBALES a cada PDV (estos NO cambian nunca)
+    const pdvsConPuntosGlobales = Array.isArray(pdvsVisitasGlobalesResult) ? 
+      pdvsVisitasGlobalesResult.map(pdv => {
+        const porcentaje = pdv.meta > 0 ? Math.round((pdv.cantidadVisitas / pdv.meta) * 1000 ) : 0;
+        
+        // Calcular puntos proporcionales: (visitas_del_pdv / total_visitas_global) * puntos_globales
+        let puntosIndividuales = 0;
+        if (pdv.cantidadVisitas > 0 && totalVisitasGlobal > 0) {
+          puntosIndividuales = Math.round((pdv.cantidadVisitas / totalVisitasGlobal) * puntosVisitasGlobal);
+        }
+        
+        return {
+          ...pdv,
+          porcentaje,
+          puntos: puntosIndividuales // Puntos FIJOS basados en contexto global
+        };
+      }) : [];
+
+    // PASO 6: Filtrar PDVs para mostrar (manteniendo sus puntos originales)
+    let pdvsParaMostrar = pdvsConPuntosGlobales;
+    if (pdv_id) {
+      pdvsParaMostrar = pdvsConPuntosGlobales.filter(pdv => pdv.id == pdv_id);
     }
+
+    // PASO 7: Calcular totales para la UI (filtrados si hay filtro, globales si no)
+    let metaVisitasUI, totalVisitasUI, puntosVisitasUI, porcentajeUI;
     
-    console.log('=== DEBUG PUNTOS POR PDV AJUSTADOS ===');
-    console.log('Puntos base por visita:', puntosBasePorVisita);
-    console.log('Suma calculada antes del ajuste:', sumaPuntosCalculados);
-    console.log('Puntos totales finales (redondeados):', puntosVisitasReal);
-    console.log('PDVs con puntos:', pdvsDetalle.filter(p => p.puntos > 0).map(p => ({
-      codigo: p.codigo,
-      cantidadVisitas: p.cantidadVisitas,
-      puntos: p.puntos
-    })));
-    console.log('Suma final de puntos por PDV:', pdvsDetalle.reduce((sum, pdv) => sum + pdv.puntos, 0));
-    console.log('¿Coinciden exactamente?', Math.abs(pdvsDetalle.reduce((sum, pdv) => sum + pdv.puntos, 0) - puntosVisitasReal) < 0.01);
-    console.log('=====================================');
+    if (pdv_id) {
+      // Si hay filtro, mostrar valores del PDV específico
+      const pdvFiltrado = pdvsParaMostrar[0];
+      metaVisitasUI = pdvFiltrado ? pdvFiltrado.meta : 0;
+      totalVisitasUI = pdvFiltrado ? pdvFiltrado.cantidadVisitas : 0;
+      puntosVisitasUI = pdvFiltrado ? pdvFiltrado.puntos : 0;
+      porcentajeUI = pdvFiltrado ? pdvFiltrado.porcentaje : 0;
+    } else {
+      // Si no hay filtro, mostrar totales globales
+      metaVisitasUI = metaVisitasGlobal;
+      totalVisitasUI = totalVisitasGlobal;
+      puntosVisitasUI = puntosVisitasGlobal;
+      porcentajeUI = metaVisitasGlobal > 0 ? Math.round((totalVisitasGlobal / metaVisitasGlobal) * 100) : 0;
+    }
+
+    console.log('=== DEBUG VISITAS ASESOR PUNTOS CONSISTENTES ===');
+    console.log('Filtro PDV aplicado:', pdv_id || 'NINGUNO');
+    console.log('--- VALORES GLOBALES ---');
+    console.log('Total PDVs global:', totalPdvsGlobal);
+    console.log('Meta visitas global:', metaVisitasGlobal);
+    console.log('Total visitas global:', totalVisitasGlobal);
+    console.log('Puntos visitas global:', puntosVisitasGlobal);
+    console.log('--- VALORES UI ---');
+    console.log('Meta visitas UI:', metaVisitasUI);
+    console.log('Total visitas UI:', totalVisitasUI);
+    console.log('Puntos visitas UI (CONSISTENTES):', puntosVisitasUI);
+    console.log('Porcentaje UI:', porcentajeUI);
+    console.log('PDVs a mostrar:', pdvsParaMostrar.length);
+    console.log('================================================');
     
-    // Obtener tipos de visita
+    // PASO 8: Obtener tipos de visita (se mantiene global siempre)
     const tiposVisitaResult = await executeQueryForMultipleUsers(
       `SELECT 
          CASE
@@ -414,8 +541,9 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
          COUNT(*) AS cantidad
        FROM registro_servicios
        WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2
+       ${pdv_id ? 'AND pdv_id = ?' : ''}
        GROUP BY tipo`,
-      [user_id]
+      pdv_id ? [user_id, pdv_id] : [user_id]
     );
 
     // Verificar que tiposVisita sea un array válido
@@ -423,12 +551,12 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
 
     res.json({
       success: true,
-      pdvs: pdvsDetalle,
-      meta_visitas: metaVisitas,
-      real_visitas: totalVisitas,
-      puntos: puntosVisitasReal, // CORREGIDO: Usar suma real de puntos individuales
-      porcentajeCumplimiento: metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 100) : 0,
-      tiposVisita
+      pdvs: pdvsParaMostrar,                      // PDVs filtrados con puntos originales
+      meta_visitas: metaVisitasUI,                // Meta UI (filtrada o global)
+      real_visitas: totalVisitasUI,               // Visitas UI (filtradas o globales)
+      puntos: puntosVisitasUI,                    // Puntos UI CONSISTENTES
+      porcentajeCumplimiento: porcentajeUI,       // Porcentaje UI (filtrado o global)
+      tiposVisita                                 // Tipos de visita (filtrados si aplica)
     });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error al obtener datos de visitas', error: err.message });
@@ -469,10 +597,10 @@ router.get('/precios/:user_id', authenticateToken, requireAsesor, logAccess, asy
     // 3. Cálculo de puntos por precios (similar a cobertura)
     const totalAsignados = pdvs.length;
     const totalReportados = reportadosSet.size;
-    const puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * 150) : 0;
+    const puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * 2000) : 0;
 
     // 4. Asignar puntos individuales por PDV
-    const puntosPorPDV = totalReportados > 0 ? Math.floor(150 / totalAsignados) : 0;
+    const puntosPorPDV = totalReportados > 0 ? Math.floor(2000 / totalAsignados) : 0;
     const pdvsDetalle = pdvs.map(pdv => ({
       ...pdv,
       estado: reportadosSet.has(pdv.id) ? 'REPORTADOS' : 'NO REPORTADOS',
@@ -1082,10 +1210,10 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
 
       const implementados = await executeQueryForMultipleUsers(
         `SELECT DISTINCT pdv_id FROM registro_servicios
-         WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [asesor.id]
+         WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2 AND fecha_registro <= ?`, [asesor.id, '2025-09-06']
       );
       const totalImplementados = implementados.length;
-      const puntosCobertura = totalAsignados > 0 ? Math.round((totalImplementados / totalAsignados) * 150) : 0;
+      const puntosCobertura = totalAsignados > 0 ? Math.round((totalImplementados / totalAsignados) * 3000) : 0;
 
       // 2. PUNTOS VOLUMEN - MISMA LÓGICA GLOBAL que endpoint /volumen (máximo 200 puntos)
       // Obtener meta total de volumen del asesor
@@ -1111,9 +1239,9 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
       );
       const totalRealVolumen = realVolumenResult[0]?.totalReal || 0;
 
-      // Calcular puntos GLOBALES de volumen (máximo 350)
+      // Calcular puntos GLOBALES de volumen (máximo 6000)
       const puntosVolumen = totalMetaVolumen > 0 ? 
-        Math.round((totalRealVolumen / totalMetaVolumen) * 350) : 0;
+        Math.round((totalRealVolumen / totalMetaVolumen) * 6000) : 0;
 
       // 3. PUNTOS VISITAS - Igual que cobertura pero con meta de 20 visitas por PDV
       const totalPdvs = pdvsAsesor.length;
@@ -1126,7 +1254,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
       const totalVisitas = realVisitasResult[0]?.totalVisitas || 0;
 
       // Calcular puntos como porcentaje de cumplimiento * 150 puntos (igual que cobertura)
-      const puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 150) : 0;
+      const puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 1000) : 0;
 
       // 4. PUNTOS PRECIOS - Misma lógica que endpoint /precios
       const reportadosPrecios = await executeQueryForMultipleUsers(
@@ -1135,10 +1263,16 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
          WHERE user_id = ? AND kpi_precio = 1 AND registros_mistery_shopper.id IS NOT NULL`, [asesor.id]
       );
       const totalReportados = reportadosPrecios.length;
-      const puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * 150) : 0;
+      const puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * 2000) : 0;
 
-      // Calcular total general usando la misma lógica que los endpoints individuales
-      const totalGeneral = puntosCobertura + puntosVolumen + puntosVisitas + puntosPrecios;
+      // 5. PUNTOS BONIFICACIONES (retos)
+      const bonificaciones = await executeQueryForMultipleUsers(
+        `SELECT COALESCE(SUM(puntos),0) as totalBonificacion FROM retos_bonificadores WHERE id_asesor = ?`, [asesor.id]
+      );
+      const puntosBonificacion = 0;
+
+      // Calcular total general usando la misma lógica que los endpoints individuales + bonificaciones
+      const totalGeneral = puntosCobertura + puntosVolumen + puntosVisitas + puntosPrecios + puntosBonificacion;
 
       // DEBUG: Log para comparar con ranking de mercadeo
       console.log(`=== RANKING ASESOR - ASESOR ${asesor.name} (ID: ${asesor.id}) ===`);
@@ -1146,12 +1280,13 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
       console.log(`PDVs implementados: ${totalImplementados}`);
       console.log(`Puntos cobertura: ${puntosCobertura}`);
       console.log(`Meta volumen total: ${totalMetaVolumen}, Real volumen total: ${totalRealVolumen}`);
-      console.log(`Puntos volumen (GLOBAL, max 350): ${puntosVolumen}`);
-      console.log(`Fórmula volumen: (${totalRealVolumen}/${totalMetaVolumen}) * 350 = ${puntosVolumen}`);
+      console.log(`Puntos volumen (GLOBAL, max 6000): ${puntosVolumen}`);
+      console.log(`Fórmula volumen: (${totalRealVolumen}/${totalMetaVolumen}) * 6000 = ${puntosVolumen}`);
       console.log(`Meta visitas: ${metaVisitas}, Real visitas: ${totalVisitas}`);
       console.log(`Puntos visitas: ${puntosVisitas}`);
       console.log(`PDVs con precios: ${totalReportados}`);
       console.log(`Puntos precios: ${puntosPrecios}`);
+      console.log(`Puntos bonificación (retos): ${puntosBonificacion}`);
       console.log(`TOTAL PUNTOS: ${totalGeneral}`);
       console.log('===============================================');
 
@@ -1168,6 +1303,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
         puntos_volumen: puntosVolumen,
         puntos_visitas: puntosVisitas,
         puntos_precios: puntosPrecios,
+        puntos_bonificacion: puntosBonificacion,
         total_puntos: totalGeneral,
         // Información adicional para debugging
         total_pdvs_asignados: totalAsignados,

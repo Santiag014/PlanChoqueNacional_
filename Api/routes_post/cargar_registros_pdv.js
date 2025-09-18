@@ -75,7 +75,9 @@ router.post('/cargar-registro-pdv', upload.any(), async (req, res) => {
     const facturaNombres = [];
     const implementacionNombres = [];
     
-    if (Array.isArray(req.files)) {
+    // PRIORIZAR archivos reales de req.files para evitar duplicación
+    if (Array.isArray(req.files) && req.files.length > 0) {
+      console.log('📸 Procesando archivos reales de req.files:', req.files.length);
       for (const file of req.files) {
         if (file.fieldname.startsWith('factura')) {
           facturaNombres.push(file.filename);
@@ -85,27 +87,28 @@ router.post('/cargar-registro-pdv', upload.any(), async (req, res) => {
           console.log(`📸 Foto implementación guardada: ${file.path}`);
         }
       }
-    }
-
-    // Si no llegaron archivos, usar los nombres que vengan en fotos (por compatibilidad)
-    if (fotos && fotos.factura && Array.isArray(fotos.factura)) {
-      for (const nombre of fotos.factura) {
-        if (typeof nombre === 'string' && nombre.trim() !== '') {
-          facturaNombres.push(nombre);
-        } else if (nombre && typeof nombre === 'object' && typeof nombre.filename === 'string' && nombre.filename.trim() !== '') {
-          facturaNombres.push(nombre.filename);
+    } else {
+      // SOLO si NO hay archivos reales, usar los nombres que vengan en fotos (por compatibilidad con versiones anteriores)
+      console.log('📸 No hay archivos reales, usando nombres del objeto fotos como fallback');
+      if (fotos && fotos.factura && Array.isArray(fotos.factura)) {
+        for (const nombre of fotos.factura) {
+          if (typeof nombre === 'string' && nombre.trim() !== '') {
+            facturaNombres.push(nombre);
+          } else if (nombre && typeof nombre === 'object' && typeof nombre.filename === 'string' && nombre.filename.trim() !== '') {
+            facturaNombres.push(nombre.filename);
+          }
+          // Si es un objeto vacío o no tiene filename, lo ignora
         }
-        // Si es un objeto vacío o no tiene filename, lo ignora
       }
-    }
-    if (fotos && fotos.implementacion && Array.isArray(fotos.implementacion)) {
-      for (const nombre of fotos.implementacion) {
-        if (typeof nombre === 'string' && nombre.trim() !== '') {
-          implementacionNombres.push(nombre);
-        } else if (nombre && typeof nombre === 'object' && typeof nombre.filename === 'string' && nombre.filename.trim() !== '') {
-          implementacionNombres.push(nombre.filename);
+      if (fotos && fotos.implementacion && Array.isArray(fotos.implementacion)) {
+        for (const nombre of fotos.implementacion) {
+          if (typeof nombre === 'string' && nombre.trim() !== '') {
+            implementacionNombres.push(nombre);
+          } else if (nombre && typeof nombre === 'object' && typeof nombre.filename === 'string' && nombre.filename.trim() !== '') {
+            implementacionNombres.push(nombre.filename);
+          }
+          // Si es un objeto vacío o no tiene filename, lo ignora
         }
-        // Si es un objeto vacío o no tiene filename, lo ignora
       }
     }
 
@@ -113,7 +116,10 @@ router.post('/cargar-registro-pdv', upload.any(), async (req, res) => {
     const facturaUrls = facturaNombres.map(nombre => `/uploads/${folder}/${nombre}`);
     const implementacionUrls = implementacionNombres.map(nombre => `/uploads/${folder}/${nombre}`);
 
-    console.log(`💾 Rutas factura en BD:`, facturaUrls);
+    console.log(`� DEBUG DUPLICACIÓN:`);
+    console.log(`📁 Fotos factura detectadas: ${facturaNombres.length}`, facturaNombres);
+    console.log(`📁 Fotos implementación detectadas: ${implementacionNombres.length}`, implementacionNombres);
+    console.log(`�💾 Rutas factura en BD:`, facturaUrls);
     console.log(`💾 Rutas implementación en BD:`, implementacionUrls);
     console.log(`🌐 URLs públicas factura:`, facturaUrls.map(ruta => buildFileUrl(ruta.replace('/uploads/', ''))));
     console.log(`🌐 URLs públicas implementación:`, implementacionUrls.map(ruta => buildFileUrl(ruta.replace('/uploads/', ''))));
