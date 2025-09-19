@@ -3,19 +3,19 @@ import logger from './utils/logger.js';
 
 const dbConfig = {
   // Ambiente de Pruebas
-  // host: '82.197.82.139',
-  // user: 'u716541625_terpel_dev2',
-  // password: '$2eW[J[1F;>?',
-  // database: 'u716541625_terpel_dev2',
-  // port: 3306,
-  // waitForConnections: true,
-  
   host: '82.197.82.139',
-  user: 'u716541625_terpel_prod_2',
-  password: 'N5p@rBKOM1l@',
-  database: 'u716541625_terpel_prod_2',
+  user: 'u716541625_terpel_dev2',
+  password: '$2eW[J[1F;>?',
+  database: 'u716541625_terpel_dev2',
   port: 3306,
   waitForConnections: true,
+  
+  // host: '82.197.82.139',
+  // user: 'u716541625_terpel_prod_2',
+  // password: 'N5p@rBKOM1l@',
+  // database: 'u716541625_terpel_prod_2',
+  // port: 3306,
+  // waitForConnections: true,
   
   // Configuración ALTA CONCURRENCIA: 100 conexiones para 600+ requests simultáneos
   connectionLimit: 75,        // Pool grande para alta concurrencia

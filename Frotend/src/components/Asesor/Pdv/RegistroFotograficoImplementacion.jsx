@@ -13,14 +13,39 @@ const RegistroFotograficoImplementacion = ({
   setFotoRemision
 }) => {
 
+  // Función para calcular hash de archivo
+  const getFileHash = async (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        if (window.crypto && window.crypto.subtle) {
+          window.crypto.subtle.digest('SHA-1', e.target.result)
+            .then(hashBuffer => {
+              const hashArray = Array.from(new Uint8Array(hashBuffer));
+              const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+              resolve(hashHex);
+            });
+        } else {
+          // Fallback: solo por nombre y tamaño
+          resolve(file.name + '_' + file.size);
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
   // Manejadores de fotos
-  const handleFotoImplementacionChange = (file) => {
-    // VALIDACIÓN: Verificar si es la misma foto que la remisión
-    if (fotoRemision && file.name === fotoRemision.name && file.size === fotoRemision.size) {
-      alert('⚠️ ADVERTENCIA: Esta foto ya está seleccionada como foto de remisión. Por favor, selecciona una foto diferente para la implementación.');
-      return;
+  const handleFotoImplementacionChange = async (file) => {
+    // VALIDACIÓN: Verificar si es la misma foto que la remisión (por hash)
+    if (fotoRemision) {
+      const hashImplementacion = await getFileHash(file);
+      const hashRemision = await getFileHash(fotoRemision);
+      if (hashImplementacion === hashRemision) {
+        alert('⚠️ ADVERTENCIA: Esta foto ya está seleccionada como foto de remisión (mismo archivo). Por favor, selecciona una foto diferente para la implementación.');
+        return;
+      }
     }
-    
     setFotosImplementacion(prev => ({
       ...prev,
       [`implementacion_${implementacionSeleccionada.numero}`]: file
@@ -36,20 +61,20 @@ const RegistroFotograficoImplementacion = ({
     });
   };
 
-  const handleFotoRemisionChange = (file) => {
+  const handleFotoRemisionChange = async (file) => {
     // 🚨 RESTRICCIÓN 1: Verificar que primero se haya seleccionado foto de implementación
     const fotoImplementacion = fotosImplementacion[`implementacion_${implementacionSeleccionada.numero}`];
     if (!fotoImplementacion) {
       alert('⚠️ RESTRICCIÓN: Debes seleccionar primero la foto de implementación antes de cargar la foto de remisión.');
       return;
     }
-    
-    // VALIDACIÓN: Verificar si es la misma foto que la implementación
-    if (fotoImplementacion && file.name === fotoImplementacion.name && file.size === fotoImplementacion.size) {
-      alert('⚠️ ADVERTENCIA: Esta foto ya está seleccionada como foto de implementación. Por favor, selecciona una foto diferente para la remisión.');
+    // VALIDACIÓN: Verificar si es la misma foto que la implementación (por hash)
+    const hashImplementacion = await getFileHash(fotoImplementacion);
+    const hashRemision = await getFileHash(file);
+    if (hashImplementacion === hashRemision) {
+      alert('⚠️ ADVERTENCIA: Esta foto ya está seleccionada como foto de implementación (mismo archivo). Por favor, selecciona una foto diferente para la remisión.');
       return;
     }
-    
     setFotoRemision(file);
     console.log(`📄 Foto de remisión seleccionada: ${file.name}`);
   };

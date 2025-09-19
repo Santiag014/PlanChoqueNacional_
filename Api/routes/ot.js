@@ -1126,10 +1126,19 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     // Si el usuario tiene restricciones, agregar filtro WHERE
     if (userRestrictions && userRestrictions.hasRestrictions) {
       const agenteFilter = `pv.id_agente IN (${userRestrictions.agenteIds.map(() => '?').join(',')})`;
-      finalQueryImplementaciones = baseQueryImplementaciones.replace(
-        'GROUP BY pv.codigo\n      ORDER BY MAX(a.descripcion), MAX(pv.descripcion);',
-        `WHERE ${agenteFilter}\n      GROUP BY pv.codigo\n      ORDER BY MAX(a.descripcion), MAX(pv.descripcion);`
-      );
+      if (baseQueryImplementaciones.includes('WHERE')) {
+        // Ya existe WHERE, agregamos el filtro con AND antes del GROUP BY
+        finalQueryImplementaciones = baseQueryImplementaciones.replace(
+          'GROUP BY pv.codigo',
+          `AND ${agenteFilter}\n      GROUP BY pv.codigo`
+        );
+      } else {
+        // No existe WHERE, lo agregamos antes del GROUP BY
+        finalQueryImplementaciones = baseQueryImplementaciones.replace(
+          'GROUP BY pv.codigo',
+          `WHERE ${agenteFilter}\n      GROUP BY pv.codigo`
+        );
+      }
       queryParamsImplementaciones = userRestrictions.agenteIds;
     }
     
@@ -1144,11 +1153,21 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     // Si el usuario tiene restricciones, agregar filtro WHERE
     if (userRestrictions && userRestrictions.hasRestrictions) {
       const agenteFilter = `puntos_venta.id_agente IN (${userRestrictions.agenteIds.map(() => '?').join(',')})`;
-      finalQueryVisitas = baseQueryVisitas.replace(
-        'ORDER BY registro_servicios.id DESC',
-        `WHERE ${agenteFilter}\n        ORDER BY registro_servicios.id DESC`
-      );
-      queryParamsVisitas = userRestrictions.agenteIds;
+        // Detectar si ya existe WHERE en la consulta base
+        if (/WHERE[\s\S]+ORDER BY/.test(baseQueryVisitas)) {
+          // Ya existe WHERE, agregamos el filtro con AND antes del ORDER BY
+          finalQueryVisitas = baseQueryVisitas.replace(
+            'ORDER BY registro_servicios.id DESC',
+            `AND ${agenteFilter}\n        ORDER BY registro_servicios.id DESC`
+          );
+        } else {
+          // No existe WHERE, lo agregamos antes del ORDER BY
+          finalQueryVisitas = baseQueryVisitas.replace(
+            'ORDER BY registro_servicios.id DESC',
+            `WHERE ${agenteFilter}\n        ORDER BY registro_servicios.id DESC`
+          );
+        }
+        queryParamsVisitas = userRestrictions.agenteIds;
     }
     
     // Ejecutar query de visitas
