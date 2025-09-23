@@ -170,9 +170,10 @@ export default function OrganizacionTerpelDashboard() {
     const volumenMeta = volumenPdvsFiltrados.reduce((sum, p) => sum + (p.meta || 0), 0);
     const volumenReal = volumenPdvsFiltrados.reduce((sum, p) => sum + (p.real || 0), 0);
     
-    const visitasMeta = visitasPdvsFiltrados.reduce((sum, p) => sum + (p.meta || 0), 0);
-    const visitasReal = visitasPdvsFiltrados.reduce((sum, p) => sum + (p.cantidadVisitas || 0), 0);
-    
+  // Usar la meta global de visitas que viene del backend
+  const visitasMeta = visitas.meta_visitas;
+  const visitasReal = visitas.real_visitas;
+
     const preciosTotal = preciosPdvsFiltrados.length;
     const preciosReportados = preciosPdvsFiltrados.filter(p => p.estado === 'REPORTADOS').length;
     

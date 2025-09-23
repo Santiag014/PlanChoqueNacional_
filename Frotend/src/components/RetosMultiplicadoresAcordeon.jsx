@@ -67,7 +67,7 @@ export default function RetosMultiplicadoresAcordeon({ retos, mostrarPDV, modoPo
         paddingBottom: '2px',
         borderRadius: '28px 28px 0 0',
         background: 'linear-gradient(90deg, #e30613 80%, #f7941d 100%)',
-        color: '#fff',
+        // color: '#fff',
         boxShadow: '0 2px 12px rgba(227,6,19,0.10)'
       }}>Detalle • Bonificaciones</h3>
       <div style={{

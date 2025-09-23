@@ -486,8 +486,8 @@ router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAcc
     const pdvsResult = await executeQueryForMultipleUsers(pdvsQuery, pdvsParams);
     const totalPdvs = pdvsResult.length;
     
-    // Meta de visitas: 20 por cada PDV filtrado
-    const metaVisitas = totalPdvs * 20;
+    // Meta de visitas: 10 por cada PDV filtrado
+    const metaVisitas = totalPdvs * 10;
     
     // Consulta base para el número real de visitas con filtros de usuario
     const baseRealQuery = `

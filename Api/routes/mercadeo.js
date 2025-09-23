@@ -1074,7 +1074,7 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
 
     // MÉTRICAS FILTRADAS: Para mostrar en UI (aplicar todos los filtros)
     const metaResult = await executeQueryForMultipleUsers(
-      `SELECT COUNT(*) * 20 as metaVisitas
+      `SELECT COUNT(*) * 10 as metaVisitas
        FROM puntos_venta
        WHERE ${whereClause}`, queryParams
     );
@@ -2150,7 +2150,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
 
       // 3. PUNTOS VISITAS
       const totalPdvs = pdvsAsesor.length;
-      const metaVisitas = totalPdvs * 20;
+      const metaVisitas = totalPdvs * 10;
       const realVisitas = await executeQueryForMultipleUsers(
         `SELECT COUNT(id) as totalVisitas FROM registro_servicios
          WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [asesor.id]

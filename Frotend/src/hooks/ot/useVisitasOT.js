@@ -94,8 +94,8 @@ export function useVisitasOT(filtros = {}) {
         return;
       }
 
-      //console.log('useVisitasOT: Datos recibidos correctamente', 
-      //  `${data.pdvs.length} PDVs, Meta: ${data.meta_visitas}, Real: ${data.real_visitas}`);
+      console.log('useVisitasOT: Datos recibidos correctamente', 
+        `${data.pdvs.length} PDVs, Meta: ${data.meta_visitas}, Real: ${data.real_visitas}`);
 
       // Asegurarnos de que todos los campos tengan valores válidos
       const cleanPdvs = Array.isArray(data.pdvs) ? data.pdvs.map(pdv => ({
@@ -103,7 +103,7 @@ export function useVisitasOT(filtros = {}) {
         codigo: pdv.codigo || '',
         nombre: pdv.nombre || '',
         cantidadVisitas: pdv.cantidadVisitas || 0,
-        meta: pdv.meta || 20,
+        meta: pdv.meta,
         puntos: pdv.puntos || 0,
         porcentaje: pdv.porcentaje || 0,
         asesor_nombre: pdv.asesor_nombre || '',
@@ -112,18 +112,14 @@ export function useVisitasOT(filtros = {}) {
 
       // Los datos ya vienen filtrados desde el backend según permisos del usuario
 
-      // Recalcular totales con datos filtrados
-      const filteredMetaVisitas = cleanPdvs.reduce((sum, pdv) => sum + (pdv.meta || 0), 0);
-      const filteredRealVisitas = cleanPdvs.reduce((sum, pdv) => sum + (pdv.cantidadVisitas || 0), 0);
+      // Usar los valores globales que vienen del backend
       const filteredPuntos = cleanPdvs.reduce((sum, pdv) => sum + (pdv.puntos || 0), 0);
-      const filteredPorcentaje = filteredMetaVisitas > 0 ? (filteredRealVisitas / filteredMetaVisitas) * 100 : 0;
-
       const cleanData = {
         pdvs: cleanPdvs,
-        meta_visitas: filteredMetaVisitas,
-        real_visitas: filteredRealVisitas,
+        meta_visitas: data.meta_visitas,
+        real_visitas: data.real_visitas,
         puntos: filteredPuntos,
-        porcentajeCumplimiento: filteredPorcentaje,
+        porcentajeCumplimiento: data.meta_visitas > 0 ? (data.real_visitas / data.meta_visitas) * 100 : 0,
         tiposVisita: Array.isArray(data.tiposVisita) ? data.tiposVisita.map(tipo => ({
           ...tipo,
           tipo: tipo.tipo || '',
