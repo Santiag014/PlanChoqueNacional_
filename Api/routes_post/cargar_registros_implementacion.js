@@ -116,11 +116,14 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
 
     // 3. Procesar foto de remisión si existe
     let fotoRemisionUrl = null;
+    let fotoRemisionHash = null;
+    const md5File = (await import('md5-file')).default;
     if (req.files && req.files.length > 0) {
       const fotoRemisionFile = req.files.find(f => f.fieldname === 'fotoRemision');
       if (fotoRemisionFile) {
         const folder = new Date().toISOString().slice(0, 10);
         fotoRemisionUrl = `/uploads/${folder}/${fotoRemisionFile.filename}`;
+        fotoRemisionHash = await md5File(fotoRemisionFile.path);
         console.log(`📸 Foto de remisión guardada: ${fotoRemisionFile.path}`);
         console.log(`🗃️ Ruta en BD: ${fotoRemisionUrl}`);
       }
@@ -149,6 +152,7 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
     if (productos && productos.length > 0) {
       // PASO 1: Buscar la foto de implementación UNA SOLA VEZ
       let fotoImplementacionUrl = null;
+      let fotoImplementacionHash = null;
       if (req.files && req.files.length > 0) {
         // Buscar foto de implementación con patrón principal
         const fotoImplementacionFile = req.files.find(f => {
@@ -168,20 +172,19 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
         if (fotoImplementacionFile) {
           const folder = new Date().toISOString().slice(0, 10);
           fotoImplementacionUrl = `/uploads/${folder}/${fotoImplementacionFile.filename}`;
+          fotoImplementacionHash = await md5File(fotoImplementacionFile.path);
           console.log(`📸 Foto de implementación encontrada: ${fotoImplementacionFile.path}`);
           console.log(`🗃️ Ruta en BD: ${fotoImplementacionUrl}`);
-          
-          // 🚨 VALIDACIÓN BACKEND: Verificar si es la misma foto que la remisión
-          if (fotoRemisionUrl && fotoImplementacionUrl === fotoRemisionUrl) {
-            console.warn('⚠️⚠️⚠️ BACKEND DETECTÓ DUPLICACIÓN: La misma foto se está usando para implementación y remisión!');
+          // 🚨 VALIDACIÓN BACKEND: Verificar si es la misma foto que la remisión (por hash)
+          if (fotoRemisionUrl && fotoImplementacionHash && fotoRemisionHash && fotoImplementacionHash === fotoRemisionHash) {
+            console.warn('⚠️⚠️⚠️ BACKEND DETECTÓ DUPLICACIÓN: La misma foto (contenido) se está usando para implementación y remisión!');
             console.warn(`Archivo duplicado: ${fotoImplementacionUrl}`);
-            console.warn('Archivos recibidos:', req.files.map(f => ({ fieldname: f.fieldname, filename: f.filename })));
-            
+            console.warn('Archivos recibidos:', req.files.map(f => ({ fieldname: f.fieldname, filename: f.filename }))); 
             // 🛑 RECHAZAR el registro con duplicación
             await conn.rollback();
             return res.status(400).json({ 
               success: false, 
-              message: 'Error: No puedes usar la misma foto para la implementación y la remisión. Por favor selecciona fotos diferentes.',
+              message: 'Error: No puedes usar la misma foto para la implementación y la remisión (mismo archivo). Por favor selecciona fotos diferentes.',
               error_type: 'FOTO_DUPLICADA'
             });
           }

@@ -486,8 +486,8 @@ router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAcc
     const pdvsResult = await executeQueryForMultipleUsers(pdvsQuery, pdvsParams);
     const totalPdvs = pdvsResult.length;
     
-    // Meta de visitas: 20 por cada PDV filtrado
-    const metaVisitas = totalPdvs * 20;
+    // Meta de visitas: 10 por cada PDV filtrado
+    const metaVisitas = totalPdvs * 10;
     
     // Consulta base para el número real de visitas con filtros de usuario
     const baseRealQuery = `
@@ -1083,11 +1083,12 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
             registro_servicios.fecha_registro,
             registro_servicios.created_at AS FechaCreacion,
             CASE
-                WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Galonaje/Precios'
-                WHEN kpi_volumen = 1 THEN 'Galonaje'
-                WHEN kpi_precio = 1 THEN 'Precios'
-                WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Visita'
-                ELSE 'Otro'
+              WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Galonaje/Precios'
+              WHEN kpi_volumen = 1 THEN 'Galonaje'
+              WHEN kpi_precio = 1 THEN 'Precios'
+              WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 AND IsImplementacion IS NULL THEN 'Visita'
+              WHEN IsImplementacion = 1 THEN 'Implementación'
+              ELSE 'Otro'
             END AS tipo_accion,
             e1.descripcion AS estado_backoffice,
             e2.descripcion AS estado_agente,
@@ -1112,7 +1113,6 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
         INNER JOIN agente ON agente.id = puntos_venta.id_agente
         LEFT JOIN productos_agrupados pa ON pa.registro_id = registro_servicios.id
         LEFT JOIN fotos_agrupadas fa ON fa.id_registro = registro_servicios.id
-        WHERE registro_servicios.isImplementacion IS NULL OR registro_servicios.isImplementacion = 0
         ORDER BY registro_servicios.id DESC;
     `;
 

@@ -442,7 +442,7 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
        WHERE user_id = ?`, [user_id]
     );
     const totalPdvsGlobal = todosLosPdvsGlobales.length;
-    const metaVisitasGlobal = totalPdvsGlobal * 20; // Meta global: 20 visitas por PDV
+    const metaVisitasGlobal = totalPdvsGlobal * 10; // Meta global: 20 visitas por PDV
     
     // PASO 2: Obtener visitas reales GLOBALES (sin filtro)
     const realGlobalResult = await executeQueryForMultipleUsers(
@@ -463,7 +463,7 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
          pv.codigo,
          pv.descripcion AS nombre,
          COUNT(rs.id) AS cantidadVisitas,
-         20 AS meta
+         10 AS meta
        FROM puntos_venta pv
        LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
        WHERE pv.user_id = ?
@@ -1245,7 +1245,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
 
       // 3. PUNTOS VISITAS - Igual que cobertura pero con meta de 20 visitas por PDV
       const totalPdvs = pdvsAsesor.length;
-      const metaVisitas = totalPdvs * 20; // 20 visitas por cada PDV
+      const metaVisitas = totalPdvs * 10; // 20 visitas por cada PDV
       
       const realVisitasResult = await executeQueryForMultipleUsers(
         `SELECT COUNT(id) as totalVisitas FROM registro_servicios

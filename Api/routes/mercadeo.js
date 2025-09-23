@@ -1074,7 +1074,7 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
 
     // MÉTRICAS FILTRADAS: Para mostrar en UI (aplicar todos los filtros)
     const metaResult = await executeQueryForMultipleUsers(
-      `SELECT COUNT(*) * 20 as metaVisitas
+      `SELECT COUNT(*) * 10 as metaVisitas
        FROM puntos_venta
        WHERE ${whereClause}`, queryParams
     );
@@ -2150,7 +2150,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
 
       // 3. PUNTOS VISITAS
       const totalPdvs = pdvsAsesor.length;
-      const metaVisitas = totalPdvs * 20;
+      const metaVisitas = totalPdvs * 10;
       const realVisitas = await executeQueryForMultipleUsers(
         `SELECT COUNT(id) as totalVisitas FROM registro_servicios
          WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [asesor.id]
@@ -2624,11 +2624,12 @@ router.get('/implementaciones/excel', authenticateToken, requireMercadeo, logAcc
             registro_servicios.fecha_registro,
             registro_servicios.created_at AS FechaCreacion,
             CASE
-                WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Galonaje/Precios'
-                WHEN kpi_volumen = 1 THEN 'Galonaje'
-                WHEN kpi_precio = 1 THEN 'Precios'
-                WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Visita'
-                ELSE 'Otro'
+              WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Galonaje/Precios'
+              WHEN kpi_volumen = 1 THEN 'Galonaje'
+              WHEN kpi_precio = 1 THEN 'Precios'
+              WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 AND IsImplementacion IS NULL THEN 'Visita'
+              WHEN IsImplementacion = 1 THEN 'Implementación'
+              ELSE 'Otro'
             END AS tipo_accion,
             e1.descripcion AS estado_backoffice,
             e2.descripcion AS estado_agente,
