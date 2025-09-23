@@ -2624,11 +2624,12 @@ router.get('/implementaciones/excel', authenticateToken, requireMercadeo, logAcc
             registro_servicios.fecha_registro,
             registro_servicios.created_at AS FechaCreacion,
             CASE
-                WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Galonaje/Precios'
-                WHEN kpi_volumen = 1 THEN 'Galonaje'
-                WHEN kpi_precio = 1 THEN 'Precios'
-                WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Visita'
-                ELSE 'Otro'
+              WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Galonaje/Precios'
+              WHEN kpi_volumen = 1 THEN 'Galonaje'
+              WHEN kpi_precio = 1 THEN 'Precios'
+              WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 AND IsImplementacion IS NULL THEN 'Visita'
+              WHEN IsImplementacion = 1 THEN 'Implementación'
+              ELSE 'Otro'
             END AS tipo_accion,
             e1.descripcion AS estado_backoffice,
             e2.descripcion AS estado_agente,

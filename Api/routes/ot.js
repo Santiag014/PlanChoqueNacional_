@@ -1083,11 +1083,12 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
             registro_servicios.fecha_registro,
             registro_servicios.created_at AS FechaCreacion,
             CASE
-                WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Galonaje/Precios'
-                WHEN kpi_volumen = 1 THEN 'Galonaje'
-                WHEN kpi_precio = 1 THEN 'Precios'
-                WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Visita'
-                ELSE 'Otro'
+              WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Galonaje/Precios'
+              WHEN kpi_volumen = 1 THEN 'Galonaje'
+              WHEN kpi_precio = 1 THEN 'Precios'
+              WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 AND IsImplementacion IS NULL THEN 'Visita'
+              WHEN IsImplementacion = 1 THEN 'Implementación'
+              ELSE 'Otro'
             END AS tipo_accion,
             e1.descripcion AS estado_backoffice,
             e2.descripcion AS estado_agente,
@@ -1112,7 +1113,6 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
         INNER JOIN agente ON agente.id = puntos_venta.id_agente
         LEFT JOIN productos_agrupados pa ON pa.registro_id = registro_servicios.id
         LEFT JOIN fotos_agrupadas fa ON fa.id_registro = registro_servicios.id
-        WHERE registro_servicios.isImplementacion IS NULL OR registro_servicios.isImplementacion = 0
         ORDER BY registro_servicios.id DESC;
     `;
 
@@ -1126,19 +1126,10 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     // Si el usuario tiene restricciones, agregar filtro WHERE
     if (userRestrictions && userRestrictions.hasRestrictions) {
       const agenteFilter = `pv.id_agente IN (${userRestrictions.agenteIds.map(() => '?').join(',')})`;
-      if (baseQueryImplementaciones.includes('WHERE')) {
-        // Ya existe WHERE, agregamos el filtro con AND antes del GROUP BY
-        finalQueryImplementaciones = baseQueryImplementaciones.replace(
-          'GROUP BY pv.codigo',
-          `AND ${agenteFilter}\n      GROUP BY pv.codigo`
-        );
-      } else {
-        // No existe WHERE, lo agregamos antes del GROUP BY
-        finalQueryImplementaciones = baseQueryImplementaciones.replace(
-          'GROUP BY pv.codigo',
-          `WHERE ${agenteFilter}\n      GROUP BY pv.codigo`
-        );
-      }
+      finalQueryImplementaciones = baseQueryImplementaciones.replace(
+        'GROUP BY pv.codigo\n      ORDER BY MAX(a.descripcion), MAX(pv.descripcion);',
+        `WHERE ${agenteFilter}\n      GROUP BY pv.codigo\n      ORDER BY MAX(a.descripcion), MAX(pv.descripcion);`
+      );
       queryParamsImplementaciones = userRestrictions.agenteIds;
     }
     
@@ -1153,21 +1144,11 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     // Si el usuario tiene restricciones, agregar filtro WHERE
     if (userRestrictions && userRestrictions.hasRestrictions) {
       const agenteFilter = `puntos_venta.id_agente IN (${userRestrictions.agenteIds.map(() => '?').join(',')})`;
-        // Detectar si ya existe WHERE en la consulta base
-        if (/WHERE[\s\S]+ORDER BY/.test(baseQueryVisitas)) {
-          // Ya existe WHERE, agregamos el filtro con AND antes del ORDER BY
-          finalQueryVisitas = baseQueryVisitas.replace(
-            'ORDER BY registro_servicios.id DESC',
-            `AND ${agenteFilter}\n        ORDER BY registro_servicios.id DESC`
-          );
-        } else {
-          // No existe WHERE, lo agregamos antes del ORDER BY
-          finalQueryVisitas = baseQueryVisitas.replace(
-            'ORDER BY registro_servicios.id DESC',
-            `WHERE ${agenteFilter}\n        ORDER BY registro_servicios.id DESC`
-          );
-        }
-        queryParamsVisitas = userRestrictions.agenteIds;
+      finalQueryVisitas = baseQueryVisitas.replace(
+        'ORDER BY registro_servicios.id DESC',
+        `WHERE ${agenteFilter}\n        ORDER BY registro_servicios.id DESC`
+      );
+      queryParamsVisitas = userRestrictions.agenteIds;
     }
     
     // Ejecutar query de visitas
