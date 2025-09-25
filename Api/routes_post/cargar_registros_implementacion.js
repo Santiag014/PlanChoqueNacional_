@@ -24,6 +24,8 @@ const parseJSONSafely = (data) => {
 // ENDPOINT: Cargar registros de implementación
 router.post('/cargar-registros-implementacion', upload.any(), async (req, res) => {
   console.log('LLEGA A LA RUTA /cargar-registros-implementacion');
+  let conn; // Mover la declaración de conn aquí para que sea accesible en el finally
+  const uploadedFilePaths = []; // Array para rastrear archivos subidos
   try {
     // Cuando se usa FormData, los campos complejos llegan como string, hay que parsearlos
     let registro = req.body;
@@ -81,17 +83,63 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
       });
     }
 
-    const conn = await getConnection();
+    conn = await getConnection();
 
-    // 1. Buscar el id real del PDV usando el código
+    // --- PASO 1: INICIAR TRANSACCIÓN ---
+    await conn.beginTransaction();
+
+    // --- PASO 2: PROCESAR FOTOS Y VALIDAR DUPLICADOS (ANTES DE CUALQUIER INSERT) ---
+    const md5File = (await import('md5-file')).default;
+    let fotoRemisionUrl = null;
+    let fotoRemisionHash = null;
+    let fotoImplementacionUrl = null;
+    let fotoImplementacionHash = null;
+
+    if (req.files && req.files.length > 0) {
+      const folder = new Date().toISOString().slice(0, 10);
+
+      // Procesar foto de remisión (si existe)
+      const fotoRemisionFile = req.files.find(f => f.fieldname === 'fotoRemision');
+      if (fotoRemisionFile) {
+        fotoRemisionUrl = `/uploads/${folder}/${fotoRemisionFile.filename}`;
+        uploadedFilePaths.push(fotoRemisionFile.path); // Rastrear archivo
+        fotoRemisionHash = await md5File(fotoRemisionFile.path);
+        console.log(`[VALIDACIÓN] Foto de remisión encontrada: ${fotoRemisionUrl}`);
+      }
+
+      // Procesar foto de implementación (si existe)
+      const fieldnameImplementacion = `foto_implementacion_${nro_implementacion}`;
+      const fotoImplementacionFile = req.files.find(f => f.fieldname === fieldnameImplementacion);
+      if (fotoImplementacionFile) {
+        fotoImplementacionUrl = `/uploads/${folder}/${fotoImplementacionFile.filename}`;
+        uploadedFilePaths.push(fotoImplementacionFile.path); // Rastrear archivo
+        fotoImplementacionHash = await md5File(fotoImplementacionFile.path);
+        console.log(`[VALIDACIÓN] Foto de implementación encontrada: ${fotoImplementacionUrl}`);
+      }
+
+      // 🚨 VALIDACIÓN DE DUPLICADOS (AHORA ES EL MOMENTO CORRECTO)
+      if (fotoRemisionHash && fotoImplementacionHash && fotoRemisionHash === fotoImplementacionHash) {
+        console.warn('⚠️⚠️⚠️ BACKEND DETECTÓ DUPLICACIÓN ANTES DE INSERTAR!');
+        await conn.rollback(); // Revertir transacción (aunque esté vacía, es buena práctica)
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Error: No puedes usar la misma foto para la implementación y la remisión (mismo archivo). Por favor selecciona fotos diferentes.',
+          error_type: 'FOTO_DUPLICADA'
+        });
+      }
+    }
+
+    // --- PASO 3: VALIDAR Y OBTENER DATOS DE LA BASE DE DATOS ---
     const codigo_pdv = pdv_id;
     const [rows] = await conn.execute('SELECT id FROM puntos_venta WHERE codigo = ?', [codigo_pdv]);
     if (!rows.length) {
+      await conn.rollback();
       return res.status(400).json({ success: false, message: 'El código o id de PDV no existe' });
     }
     const pdv_id_real = rows[0].id;
 
     // 2. Crear registro en registro_servicios
+    // 2. Crear registro en registro_servicios (dentro de la transacción)
     const [servicioResult] = await conn.execute(
       `INSERT INTO registro_servicios (
         pdv_id, 
@@ -113,28 +161,7 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
     );
     const registro_id = servicioResult.insertId;
 
-    // 3. Procesar foto de remisión si existe
-    let fotoRemisionUrl = null;
-    let fotoRemisionHash = null;
-    const md5File = (await import('md5-file')).default;
-    if (req.files && req.files.length > 0) {
-      const fotoRemisionFile = req.files.find(f => f.fieldname === 'fotoRemision');
-      if (fotoRemisionFile) {
-        const folder = new Date().toISOString().slice(0, 10);
-        fotoRemisionUrl = `/uploads/${folder}/${fotoRemisionFile.filename}`;
-        fotoRemisionHash = await md5File(fotoRemisionFile.path);
-        
-        // Desactivar la caché del navegador para la foto de remisión
-        res.setHeader('Cache-Control', 'no-store');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
-        
-        console.log(`📸 Foto de remisión guardada: ${fotoRemisionFile.path}`);
-        console.log(`🗃️ Ruta en BD: ${fotoRemisionUrl}`);
-      }
-    }
-
-    // 4. Crear registro en registros_implementacion
+    // --- PASO 4: INSERTAR REGISTRO DE IMPLEMENTACIÓN (YA VALIDADO) ---
     const [implementacionResult] = await conn.execute(
       `INSERT INTO registros_implementacion (
         id_registro, 
@@ -153,49 +180,8 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
     );
     const implementacion_id = implementacionResult.insertId;
 
-    // 5. Procesar productos con sus fotos - FIX: Evitar duplicación de imágenes
+    // --- PASO 5: INSERTAR PRODUCTOS Y FOTO DE IMPLEMENTACIÓN (YA VALIDADA) ---
     if (productos && productos.length > 0) {
-      // PASO 1: Buscar la foto de implementación UNA SOLA VEZ
-      let fotoImplementacionUrl = null;
-      let fotoImplementacionHash = null;
-      if (req.files && req.files.length > 0) {
-        // FIX: Búsqueda estricta y sin ambigüedades para evitar "race conditions".
-        // Se busca el nombre de campo exacto que envía el frontend.
-        const fieldnameImplementacion = `foto_implementacion_${nro_implementacion}`;
-        const fotoImplementacionFile = req.files.find(f => f.fieldname === fieldnameImplementacion);
-        
-        if (fotoImplementacionFile) {
-          const folder = new Date().toISOString().slice(0, 10);
-          fotoImplementacionUrl = `/uploads/${folder}/${fotoImplementacionFile.filename}`;
-          fotoImplementacionHash = await md5File(fotoImplementacionFile.path);
-          
-          // Desactivar la caché del navegador para la foto de implementación
-          res.setHeader('Cache-Control', 'no-store');
-          res.setHeader('Pragma', 'no-cache');
-          res.setHeader('Expires', '0');
-          
-          console.log(`📸 Foto de implementación encontrada: ${fotoImplementacionFile.path}`);
-          console.log(`🗃️ Ruta en BD: ${fotoImplementacionUrl}`);
-          // 🚨 VALIDACIÓN BACKEND: Verificar si es la misma foto que la remisión (por hash)
-          if (fotoRemisionUrl && fotoImplementacionHash && fotoRemisionHash && fotoImplementacionHash === fotoRemisionHash) {
-            console.warn('⚠️⚠️⚠️ BACKEND DETECTÓ DUPLICACIÓN: La misma foto (contenido) se está usando para implementación y remisión!');
-            console.warn(`Archivo duplicado: ${fotoImplementacionUrl}`);
-            console.warn('Archivos recibidos:', req.files.map(f => ({ fieldname: f.fieldname, filename: f.filename }))); 
-            // 🛑 RECHAZAR el registro con duplicación
-            await conn.rollback();
-            return res.status(400).json({ 
-              success: false, 
-              message: 'Error: No puedes usar la misma foto para la implementación y la remisión (mismo archivo). Por favor selecciona fotos diferentes.',
-              error_type: 'FOTO_DUPLICADA'
-            });
-          }
-        } else {
-          console.log(`⚠️ No se encontró foto de implementación para número: ${nro_implementacion}`);
-          console.log(`📋 Se esperaba el campo '${fieldnameImplementacion}'. Archivos disponibles:`, req.files.map(f => f.fieldname));
-        }
-      }
-
-      // PASO 2: Insertar cada producto con la MISMA foto (evita duplicación)
       for (const producto of productos) {
         await conn.execute(
           `INSERT INTO registros_implementacion_productos (
@@ -216,6 +202,9 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
       }
     }
 
+    // --- PASO 6: SI TODO FUE BIEN, CONFIRMAR LA TRANSACCIÓN ---
+    await conn.commit();
+
     res.json({
       success: true,
       message: 'Registro de implementación guardado correctamente',
@@ -233,6 +222,23 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
       // Agrega más detalles si es necesario para depurar
     });
     
+    // Si hay un error, revertir la transacción
+    if (conn) {
+      await conn.rollback();
+    }
+
+    // Limpiar archivos subidos si hubo un error en la transacción
+    if (uploadedFilePaths.length > 0) {
+      console.log(`🧹 Limpiando ${uploadedFilePaths.length} archivos por error en transacción...`);
+      for (const filePath of uploadedFilePaths) {
+        try {
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        } catch (unlinkErr) {
+          console.error(`❌ Error al eliminar archivo ${filePath}:`, unlinkErr);
+        }
+      }
+    }
+
     // Mensajes de error más específicos para implementaciones
     let errorMessage = 'Error al guardar la implementación';
     if (err.code === 'ECONNREFUSED') {
@@ -255,7 +261,7 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
       // Solo en desarrollo
       ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
     });
-   } finally {
+  } finally {
     if (conn) conn.release();
   }
 });
