@@ -9,7 +9,7 @@ const dbConfig = {
   // database: 'u716541625_terpel_dev2',
   // port: 3306,
   // waitForConnections: true,
-  
+
   host: '82.197.82.139',
   user: 'u716541625_terpel_prod_2',
   password: 'N5p@rBKOM1l@',
