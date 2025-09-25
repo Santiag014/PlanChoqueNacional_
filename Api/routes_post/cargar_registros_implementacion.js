@@ -24,7 +24,6 @@ const parseJSONSafely = (data) => {
 // ENDPOINT: Cargar registros de implementación
 router.post('/cargar-registros-implementacion', upload.any(), async (req, res) => {
   console.log('LLEGA A LA RUTA /cargar-registros-implementacion');
-  let conn;
   try {
     // Cuando se usa FormData, los campos complejos llegan como string, hay que parsearlos
     let registro = req.body;
@@ -82,7 +81,7 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
       });
     }
 
-    conn = await getConnection();
+    const conn = await getConnection();
 
     // 1. Buscar el id real del PDV usando el código
     const codigo_pdv = pdv_id;
@@ -124,6 +123,12 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
         const folder = new Date().toISOString().slice(0, 10);
         fotoRemisionUrl = `/uploads/${folder}/${fotoRemisionFile.filename}`;
         fotoRemisionHash = await md5File(fotoRemisionFile.path);
+        
+        // Desactivar la caché del navegador para la foto de remisión
+        res.setHeader('Cache-Control', 'no-store');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        
         console.log(`📸 Foto de remisión guardada: ${fotoRemisionFile.path}`);
         console.log(`🗃️ Ruta en BD: ${fotoRemisionUrl}`);
       }
@@ -154,25 +159,21 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
       let fotoImplementacionUrl = null;
       let fotoImplementacionHash = null;
       if (req.files && req.files.length > 0) {
-        // Buscar foto de implementación con patrón principal
-        const fotoImplementacionFile = req.files.find(f => {
-          console.log(`🔍 Buscando foto de implementación, checking fieldname: "${f.fieldname}"`);
-          return (
-            // Patrón principal del frontend
-            f.fieldname === `foto_implementacion_${nro_implementacion}` ||
-            // Patrones alternativos seguros
-            f.fieldname === `implementacion_${nro_implementacion}` ||
-            // Solo si no es fotoRemision y contiene implementacion + numero
-            (f.fieldname !== 'fotoRemision' && 
-             f.fieldname.includes('implementacion') && 
-             f.fieldname.includes(nro_implementacion))
-          );
-        });
+        // FIX: Búsqueda estricta y sin ambigüedades para evitar "race conditions".
+        // Se busca el nombre de campo exacto que envía el frontend.
+        const fieldnameImplementacion = `foto_implementacion_${nro_implementacion}`;
+        const fotoImplementacionFile = req.files.find(f => f.fieldname === fieldnameImplementacion);
         
         if (fotoImplementacionFile) {
           const folder = new Date().toISOString().slice(0, 10);
           fotoImplementacionUrl = `/uploads/${folder}/${fotoImplementacionFile.filename}`;
           fotoImplementacionHash = await md5File(fotoImplementacionFile.path);
+          
+          // Desactivar la caché del navegador para la foto de implementación
+          res.setHeader('Cache-Control', 'no-store');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+          
           console.log(`📸 Foto de implementación encontrada: ${fotoImplementacionFile.path}`);
           console.log(`🗃️ Ruta en BD: ${fotoImplementacionUrl}`);
           // 🚨 VALIDACIÓN BACKEND: Verificar si es la misma foto que la remisión (por hash)
@@ -190,7 +191,7 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
           }
         } else {
           console.log(`⚠️ No se encontró foto de implementación para número: ${nro_implementacion}`);
-          console.log(`📋 Archivos disponibles:`, req.files.map(f => f.fieldname));
+          console.log(`📋 Se esperaba el campo '${fieldnameImplementacion}'. Archivos disponibles:`, req.files.map(f => f.fieldname));
         }
       }
 
@@ -224,12 +225,12 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
 
   } catch (err) {
     console.error('Error en cargar-registros-implementacion:', err);
-    console.error('Stack trace:', err.stack);
-    console.error('Request details:', {
-      body: req.body,
-      files: req.files?.map(f => ({ fieldname: f.fieldname, filename: f.filename, size: f.size })),
-      userAgent: req.headers['user-agent'],
-      contentType: req.headers['content-type']
+    console.error('Detalles del error:', {
+      message: err.message,
+      name: err.name,
+      code: err.code,
+      stack: err.stack,
+      // Agrega más detalles si es necesario para depurar
     });
     
     // Mensajes de error más específicos para implementaciones
@@ -245,6 +246,7 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
     } else if (err.code === 'ER_BAD_FIELD_ERROR') {
       errorMessage = 'Error en los campos de la base de datos';
     }
+
     
     res.status(500).json({ 
       success: false, 
@@ -253,7 +255,7 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
       // Solo en desarrollo
       ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
     });
-  } finally {
+   } finally {
     if (conn) conn.release();
   }
 });

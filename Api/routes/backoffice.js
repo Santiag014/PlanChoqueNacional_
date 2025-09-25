@@ -508,47 +508,57 @@ router.put('/registro/:registro_id/estado', authenticateToken, requireBackOffice
       });
     }
 
-    // // Obtener información completa del registro para el email
-    // const [registroInfo] = await connection.execute(`
-    //   SELECT 
-    //     rs.id,
-    //     rs.fecha_registro,
-    //     rs.created,
-    //     pv.codigo as codigo_pdv,
-    //     pv.descripcion as nombre_pdv,
-    //     ag.email as asesor_email,
-    //     ag.descripcion as asesor_nombre,
-    //     es.descripcion as estado_descripcion
-    //   FROM registro_servicios rs
-    //   LEFT JOIN puntos_venta pv ON rs.pdv_id = pv.id
-    //   LEFT JOIN agente ag ON rs.agente_id = ag.id
-    //   LEFT JOIN estados es ON rs.estado_id = es.id
-    //   WHERE rs.id = ?
-    // `, [registro_id]);
+    // Obtener información completa del registro para el email
+    const registroInfo = await executeQueryForMultipleUsers(`
+      SELECT 
+        rs.id,
+        rs.fecha_registro,
+        rs.created_at,
+        pv.codigo as codigo_pdv,
+        pv.descripcion as nombre_pdv,
+        users.name as nombreCoordinador,
+        users.email as correoCoordinador
+      FROM registro_servicios rs
+      LEFT JOIN puntos_venta pv ON rs.pdv_id = pv.id
+      LEFT JOIN agente ag ON pv.id_agente = ag.id
+      LEFT JOIN users_agente ON users_agente.agente_id = ag.id
+      LEFT JOIN users ON users.id = users_agente.user_id
+      WHERE rs.id = ? AND users_agente.rol_terpel NOT IN ('JEFE DE ZONA','DIRECTOR COMERCIAL')
+    `, [registro_id]);
 
-    // const registro = registroInfo[0];
+    // FIX: La consulta puede devolver varios coordinadores. Debemos recopilarlos todos.
+    if (registroInfo && registroInfo.length > 0) {
+      // Extraer datos comunes del primer registro
+      const registroBase = registroInfo[0];
+      
+      // Crear listas de correos y nombres de todos los coordinadores encontrados
+      const coordinadorEmails = registroInfo.map(r => r.correoCoordinador).filter(Boolean);
+      const coordinadorNombres = registroInfo.map(r => r.nombreCoordinador).filter(Boolean);
 
-    // Enviar notificación por email si hay información del asesor
-    // if (registro && registro.asesor_email) {
-    //   try {
-    //     await enviarNotificacionCambioEstado({
-    //       registroId: registro_id,
-    //       codigoPdv: registro.codigo_pdv || 'No asignado',
-    //       nombrePdv: registro.nombre_pdv || 'Punto de venta no definido',
-    //       nuevoEstado: registro.estado_descripcion || estadoTexto,
-    //       fechaRegistro: registro.fecha_registro,
-    //       fechaSubida: registro.created,
-    //       comentarios: comentarios || '',
-    //       asesorEmail: registro.asesor_email,
-    //       asesorNombre: registro.asesor_nombre || 'Asesor',
-    //       validadoPor: 'BackOffice'
-    //     });
-    //     console.log(`✅ Email enviado correctamente para el registro ${registro_id}`);
-    //   } catch (emailError) {
-    //     console.error(`❌ Error al enviar email para el registro ${registro_id}:`, emailError.message);
-    //     // No fallar la respuesta por error de email, solo loguearlo
-    //   }
-    // }
+      // Enviar notificación por email si se encontraron coordinadores
+      if (coordinadorEmails.length > 0) {
+        try {
+          await enviarNotificacionCambioEstado({
+            registroId: registro_id,
+            codigoPdv: registroBase.codigo_pdv || 'No asignado',
+            nombrePdv: registroBase.nombre_pdv || 'Punto de venta no definido',
+            nuevoEstado: parseInt(estado), // Asegurarse que sea un número (2 o 3)
+            fechaRegistro: registroBase.fecha_registro,
+            fechaCreacion: registroBase.created_at,
+            comentario: comentarios || '',
+            coordinadorEmails: coordinadorEmails, // Enviar la lista de correos
+            coordinadorNombres: coordinadorNombres, // Enviar la lista de nombres
+            nombreMercadeo: name || 'BackOffice' // Usar el nombre del validador
+          });
+          console.log(`✅ Email enviado correctamente a los coordinadores para el registro ${registro_id}`);
+        } catch (emailError) {
+          console.error(`❌ Error al enviar email a los coordinadores para el registro ${registro_id}:`, emailError.message);
+          // No fallar la respuesta por error de email, solo loguearlo
+        }
+      }
+    } else {
+      console.warn(`⚠️ No se encontró coordinador o email para notificar sobre el registro ${registro_id}`);
+    }
 
     const estadoTexto = estado == 2 ? 'aprobado' : estado == 3 ? 'rechazado' : 'pendiente';
 

@@ -71,58 +71,10 @@ router.post('/cargar-registro-pdv', upload.any(), async (req, res) => {
     const today = new Date();
     const folder = today.toISOString().slice(0, 10); // YYYY-MM-DD
 
-    // Ajuste: Mapear los archivos subidos a los arrays correctos de nombres, aceptando fieldnames con índice (ej: factura_0, implementacion_0)
-    const facturaNombres = [];
-    const implementacionNombres = [];
-    
-    // PRIORIZAR archivos reales de req.files para evitar duplicación
-    if (Array.isArray(req.files) && req.files.length > 0) {
-      console.log('📸 Procesando archivos reales de req.files:', req.files.length);
-      for (const file of req.files) {
-        if (file.fieldname.startsWith('factura')) {
-          facturaNombres.push(file.filename);
-          console.log(`📸 Foto factura guardada: ${file.path}`);
-        } else if (file.fieldname.startsWith('implementacion')) {
-          implementacionNombres.push(file.filename);
-          console.log(`📸 Foto implementación guardada: ${file.path}`);
-        }
-      }
-    } else {
-      // SOLO si NO hay archivos reales, usar los nombres que vengan en fotos (por compatibilidad con versiones anteriores)
-      console.log('📸 No hay archivos reales, usando nombres del objeto fotos como fallback');
-      if (fotos && fotos.factura && Array.isArray(fotos.factura)) {
-        for (const nombre of fotos.factura) {
-          if (typeof nombre === 'string' && nombre.trim() !== '') {
-            facturaNombres.push(nombre);
-          } else if (nombre && typeof nombre === 'object' && typeof nombre.filename === 'string' && nombre.filename.trim() !== '') {
-            facturaNombres.push(nombre.filename);
-          }
-          // Si es un objeto vacío o no tiene filename, lo ignora
-        }
-      }
-      if (fotos && fotos.implementacion && Array.isArray(fotos.implementacion)) {
-        for (const nombre of fotos.implementacion) {
-          if (typeof nombre === 'string' && nombre.trim() !== '') {
-            implementacionNombres.push(nombre);
-          } else if (nombre && typeof nombre === 'object' && typeof nombre.filename === 'string' && nombre.filename.trim() !== '') {
-            implementacionNombres.push(nombre.filename);
-          }
-          // Si es un objeto vacío o no tiene filename, lo ignora
-        }
-      }
-    }
-
-    // Armar arrays de rutas relativas para guardar en BD (no URLs completas)
-    const facturaUrls = facturaNombres.map(nombre => `/uploads/${folder}/${nombre}`);
-    const implementacionUrls = implementacionNombres.map(nombre => `/uploads/${folder}/${nombre}`);
-
-    console.log(`� DEBUG DUPLICACIÓN:`);
-    console.log(`📁 Fotos factura detectadas: ${facturaNombres.length}`, facturaNombres);
-    console.log(`📁 Fotos implementación detectadas: ${implementacionNombres.length}`, implementacionNombres);
-    console.log(`�💾 Rutas factura en BD:`, facturaUrls);
-    console.log(`💾 Rutas implementación en BD:`, implementacionUrls);
-    console.log(`🌐 URLs públicas factura:`, facturaUrls.map(ruta => buildFileUrl(ruta.replace('/uploads/', ''))));
-    console.log(`🌐 URLs públicas implementación:`, implementacionUrls.map(ruta => buildFileUrl(ruta.replace('/uploads/', ''))));
+    // Obtener URLs de las fotos de factura para la respuesta final
+    const facturaUrls = req.files
+      .filter(file => file.fieldname.startsWith('factura'))
+      .map(file => `/uploads/${folder}/${file.filename}`);
 
     // 2. Insertar en registro_servicios
     // Determinar los KPIs
@@ -186,18 +138,21 @@ router.post('/cargar-registro-pdv', upload.any(), async (req, res) => {
       );
     }
 
-    // 4. Insertar fotos en registro_fotografico_servicios
-    for (const url of facturaUrls) {
-      await conn.execute(
-        `INSERT INTO registro_fotografico_servicios (id_registro, foto_factura) VALUES (?, ?)`,
-        [registro_id, url]
-      );
-    }
-    for (const url of implementacionUrls) {
-      await conn.execute(
-        `INSERT INTO registro_fotografico_servicios (id_registro, foto_pop) VALUES (?, ?)`,
-        [registro_id, url]
-      );
+    // 4. FIX: Insertar fotos de factura de forma robusta y sin duplicación.
+    // Se elimina por completo la lógica de fotos de implementación.
+    if (req.files && req.files.length > 0) {
+      console.log(`💾 Iniciando guardado de ${req.files.length} fotos en BD...`);
+      for (const file of req.files) {
+        const url = `/uploads/${folder}/${file.filename}`;
+        // Solo procesar archivos que sean de factura
+        if (file.fieldname.startsWith('factura')) {
+          await conn.execute(
+            `INSERT INTO registro_fotografico_servicios (id_registro, foto_factura) VALUES (?, ?)`,
+            [registro_id, url]
+          );
+          console.log(`✅ Foto de factura insertada en BD: ${url}`);
+        }
+      }
     }
 
     // 5. Calcular puntos y guardar en la tabla registro_puntos
@@ -266,8 +221,8 @@ router.post('/cargar-registro-pdv', upload.any(), async (req, res) => {
       success: true,
       message: 'Registro guardado correctamente',
       registro_id,
-      facturaUrls,
-      implementacionUrls,
+      facturaUrls: facturaUrls, // Devolver las URLs de las facturas guardadas
+      implementacionUrls: [], // Devolver array vacío para mantener consistencia
       comentarios_detectados: productosConComentarios.length > 0 ? productosConComentarios.length : 0
     });
   } catch (err) {

@@ -147,15 +147,44 @@ export async function enviarNotificacionCambioEstado(datos) {
     nombrePdv,
     fechaRegistro,
     fechaCreacion,
-    nuevoEstado,
+    nuevoEstado, // 2: aprobado, 3: rechazado
     comentario,
-    nombreMercadeo
+    nombreMercadeo,
+    // Campos adicionales para notificar a otros roles (ej. Coordinador desde Backoffice)
+    coordinadorEmail,
+    coordinadorNombre
   } = datos;
 
-  // Determinar el estado en texto
-  const estadoTexto = nuevoEstado === 2 ? 'APROBADO' : 'RECHAZADO';
-  const colorEstado = nuevoEstado === 2 ? '#28a745' : '#dc3545';
-  const iconoEstado = nuevoEstado === 2 ? '✅' : '❌';
+  // Determinar el destinatario y su nombre dinámicamente
+    // Determinar el estado en texto
+    const estadoTexto = nuevoEstado === 2 ? 'APROBADO' : 'RECHAZADO';
+    const colorEstado = nuevoEstado === 2 ? '#28a745' : '#dc3545';
+    const iconoEstado = nuevoEstado === 2 ? '✅' : '❌';
+
+    // Obtener lista de correos y nombres de coordinadores
+    const {
+      coordinadorEmails = [], // lista de correos coordinadores
+      coordinadorNombres = [] // lista de nombres coordinadores
+    } = datos;
+
+    // Si se provee lista de correos, usar máximo dos
+    let destinatarioEmails = [];
+    let destinatarioNombres = [];
+    if (Array.isArray(coordinadorEmails) && coordinadorEmails.length > 0) {
+      destinatarioEmails = coordinadorEmails.slice(0, 2);
+      destinatarioNombres = coordinadorNombres.slice(0, 2);
+    } else if (coordinadorEmail) {
+      destinatarioEmails = [coordinadorEmail];
+      destinatarioNombres = [coordinadorNombre];
+    }
+
+    // Determinar el nombre para el saludo (si hay dos, usar el primero y poner "y equipo")
+    const destinatarioNombre = destinatarioNombres.length === 2
+      ? `${destinatarioNombres[0]} y equipo`
+      : destinatarioNombres[0] || 'Coordinador';
+
+  // Si no hay un destinatario, no se puede enviar el correo.
+      if (!destinatarioEmails || destinatarioEmails.length === 0) throw new Error('No se proporcionó un email de destinatario (emailAsesor o coordinadorEmail).');
 
   // Formatear fechas
   const fechaRegistroFormateada = fechaRegistro ? 
@@ -182,113 +211,110 @@ export async function enviarNotificacionCambioEstado(datos) {
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notificación de Estado de Propuesta</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        .container {
-            background-color: #ffffff;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            background-color: ${colorEstado};
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .content {
-            padding: 20px 0;
-        }
-        .info-box {
-            background-color: #f8f9fa;
-            padding: 20px;
-            border-left: 4px solid ${colorEstado};
-            margin: 20px 0;
-            border-radius: 5px;
-        }
-        .info-box h3 {
-            margin-top: 0;
-            color: #333;
-            font-size: 16px;
-        }
-        .footer {
-            text-align: center;
-            color: #666;
-            font-size: 12px;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 8px 16px;
-            background-color: ${colorEstado};
-            color: white;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 14px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notificación de Estado de Propuesta</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .container {
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .header {
+      background-color: ${colorEstado};
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .content {
+      padding: 20px 0;
+    }
+    .info-box {
+      background-color: #f8f9fa;
+      padding: 20px;
+      border-left: 4px solid ${colorEstado};
+      margin: 20px 0;
+      border-radius: 5px;
+    }
+    .info-box h3 {
+      margin-top: 0;
+      color: #333;
+      font-size: 16px;
+    }
+    .footer {
+      text-align: center;
+      color: #666;
+      font-size: 12px;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 8px 16px;
+      background-color: ${colorEstado};
+      color: white;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>${iconoEstado} Notificación de Evaluación de Propuesta</h1>
-            <div class="status-badge">${estadoTexto}</div>
-        </div>
-        
-        <div class="content">
-            <h2>Estimado/a ${nombreAsesor},</h2>
-            
-            <p>Nos dirigimos a usted para informarle que su propuesta comercial ha sido evaluada por nuestro equipo de Mercadeo.</p>
-            
-            <div class="info-box">
-                <h3>📋 Detalles de la Propuesta</h3>
-                <p><strong>Código PDV:</strong> ${codigoPdv || 'No especificado'}</p>
-                <p><strong>Punto de Venta:</strong> ${nombrePdv || 'No especificado'}</p>
-                <p><strong>Fecha de la factura:</strong> ${fechaRegistroFormateada}</p>
-                <p><strong>Fecha de Creación:</strong> ${fechaCreacionFormateada}</p>
-                <p><strong>Estado de Evaluación:</strong> <span style="color: ${colorEstado}; font-weight: bold;">${estadoTexto}</span></p>
-            </div>
-            
-            ${comentario ? `
-            <div class="info-box">
-                <h3>💬 Observaciones del Equipo de Mercadeo</h3>
-                <p style="font-style: italic; background-color: #f8f9fa; padding: 10px; border-radius: 5px; border-left: 3px solid ${colorEstado};">"${comentario}"</p>
-            </div>
-            ` : ''}
-            
-            ${nuevoEstado === 2 ? 
-              '<div style="background-color: #d4edda; padding: 15px; border-radius: 5px; border-left: 4px solid #28a745; margin: 20px 0;"><p style="color: #155724; margin: 0;"><strong>🎉 ¡Felicitaciones!</strong> Su propuesta ha sido aprobada. Le felicitamos por el excelente trabajo realizado y le animamos a continuar con esta calidad en sus futuros registros.</p></div>' :
-              '<div style="background-color: #f8d7da; padding: 15px; border-radius: 5px; border-left: 4px solid #dc3545; margin: 20px 0;"><p style="color: #721c24; margin: 0;"><strong>📝 Propuesta requiere ajustes:</strong> Su propuesta necesita algunas mejoras para cumplir con nuestros estándares. Por favor, revise las observaciones mencionadas y realice las correcciones necesarias.</p></div>'
-            }
-            
-            <p>Para cualquier consulta o aclaración sobre esta evaluación, no dude en contactar a nuestro equipo de Mercadeo, quienes estarán disponibles para brindarle el apoyo necesario.</p>
-            
-            <p style="margin-top: 30px;">Cordialmente,</p>
-            <p style="margin: 0;"><strong>Equipo de Mercadeo</strong><br>
-            <em>Plan de la Mejor Energía - Terpel</em></p>
-        </div>
-        
-        <div class="footer">
-            <p><strong>Plan de la Mejor Energía - Terpel</strong></p>
-            <p>Este es un mensaje automático del sistema. Por favor, no responda a este correo electrónico.</p>
-            <p>Para consultas, contacte a su supervisor o al equipo de Mercadeo.</p>
-        </div>
+  <div class="container">
+    <div class="header">
+      <h1>Notificación de Evaluación de Propuesta</h1>
+      <div class="status-badge">${estadoTexto}</div>
     </div>
+        
+    <div class="content">
+      <h2>Estimado/a ${destinatarioNombre},</h2>
+            
+      <p>Nos dirigimos a usted para informarle que su registro en plataforma ha sido rechazado por nuestro equipo de Backoffice.</p>
+            
+      <div class="info-box">
+        <h3>📋 Detalles de la Propuesta</h3>
+        <p><strong>ID de Registro:</strong> ${registroId}</p>
+        <p><strong>Código PDV:</strong> ${codigoPdv || 'No especificado'}</p>
+        <p><strong>Punto de Venta:</strong> ${nombrePdv || 'No especificado'}</p>
+        <p><strong>Fecha de la factura:</strong> ${fechaRegistroFormateada}</p>
+        <p><strong>Fecha de Creación:</strong> ${fechaCreacionFormateada}</p>
+        <p><strong>Estado de Evaluación:</strong> <span style="color: ${colorEstado}; font-weight: bold;">${estadoTexto}</span></p>
+      </div>
+            
+      ${comentario ? `
+      <div class="info-box">
+        <h3>💬 Observaciones del Equipo de BackOffice</h3>
+        <p style="font-style: italic; background-color: #f8f9fa; padding: 10px; border-radius: 5px; border-left: 3px solid ${colorEstado};">"${comentario}"</p>
+      </div>
+      ` : ''}
+            
+      ${nuevoEstado === 2 ? 
+        '<div style="background-color: #d4edda; padding: 15px; border-radius: 5px; border-left: 4px solid #28a745; margin: 20px 0;"><p style="color: #155724; margin: 0;"><strong>🎉 ¡Felicitaciones!</strong> Su propuesta ha sido aprobada. Le felicitamos por el excelente trabajo realizado y le animamos a continuar con esta calidad en sus futuros registros.</p></div>' :
+        '<div style="background-color: #f8d7da; padding: 15px; border-radius: 5px; border-left: 4px solid #dc3545; margin: 20px 0;"><p style="color: #721c24; margin: 0;"><strong>📝 Propuesta requiere ajustes:</strong> Su propuesta necesita algunas mejoras para cumplir con nuestros estándares. Por favor, revise las observaciones mencionadas y realice las correcciones necesarias.</p></div>'
+      }
+            
+      <p style="margin-top: 30px;">Cordialmente,</p>
+      <p style="margin: 0;"><strong>Equipo de Mercadeo</strong><br>
+      <em>Plan de la Mejor Energía - Terpel</em></p>
+    </div>
+        
+    <div class="footer">
+      <p><strong>Plan de la Mejor Energía - Terpel</strong></p>
+      <p>Este es un mensaje automático del sistema. Por favor, no responda a este correo electrónico.</p>
+      <p>Para consultas, contacte a su supervisor o al equipo de Mercadeo.</p>
+    </div>
+  </div>
 </body>
 </html>`;
 
@@ -297,11 +323,12 @@ export async function enviarNotificacionCambioEstado(datos) {
 PLAN DE LA MEJOR ENERGÍA - TERPEL
 Notificación de Evaluación de Propuesta
 
-Estimado/a ${nombreAsesor},
+Estimado/a ${destinatarioNombre},
 
 Nos dirigimos a usted para informarle que su propuesta comercial ha sido evaluada por nuestro equipo de Mercadeo.
 
 DETALLES DE LA PROPUESTA:
+- ID de Registro: ${registroId}
 - Código PDV: ${codigoPdv || 'No especificado'}
 - Punto de Venta: ${nombrePdv || 'No especificado'}
 - Fecha de Registro del Servicio: ${fechaRegistroFormateada}
@@ -332,7 +359,7 @@ Este es un mensaje automático del sistema. No responda a este correo.
         name: 'Plan de la Mejor Energía - Terpel',
         address: 'consultas@plandelamejorenergia.com'
       },
-      to: emailAsesor,
+      to: destinatarioEmails,
       cc: ['Santiago.Parraga@bullmarketing.com.co','Juan.Adarme@bullmarketing.com.co'], 
       subject: asunto,
       text: textoPlano,
@@ -347,8 +374,8 @@ Este es un mensaje automático del sistema. No responda a este correo.
     // Enviar el email con reintentos automáticos
     const resultado = await enviarEmailConReintentos(mailOptions);
     
-    console.log('✅ Email de notificación enviado exitosamente:', resultado.messageId);
-    console.log('📧 Destinatarios:', emailAsesor, '+ CC:', 'Santiago.Parraga@bulmarketing.com.co');
+    console.log(`✅ Email de notificación enviado exitosamente a ${destinatarioEmails}:`, resultado.messageId);
+    console.log('📧 Destinatarios:', destinatarioEmails, '+ CC:', 'Santiago.Parraga@bullmarketing.com.co, Juan.Adarme@bullmarketing.com.co');
     console.log(`🔄 Email enviado en intento número: ${resultado.intento}`);
     
     return {
@@ -356,7 +383,7 @@ Este es un mensaje automático del sistema. No responda a este correo.
       messageId: resultado.messageId,
       intento: resultado.intento,
       destinatarios: {
-        principal: emailAsesor,
+        principal: destinatarioEmails,
         copia: 'Santiago.Parraga@bulmarketing.com.co'
       }
     };

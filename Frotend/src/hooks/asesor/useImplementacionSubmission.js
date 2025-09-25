@@ -149,17 +149,21 @@ export const useImplementacionSubmission = (userId) => {
       // Agregar productos como JSON
       formData.append('productos', JSON.stringify(productos));
 
-      //   console.log('📤 Enviando implementación:', {
-      //     pdv_id: params.pdv_id,
-      //     user_id: userId,
-      //     fecha: params.fecha,
-      //     nro_implementacion: params.tipo_implementacion,
-      //     acepto_implementacion: acepto,
-      //     tiene_observaciones: params.observaciones ? 'Si' : 'No',
-      //     tiene_foto_remision: params.foto_remision ? 'Si' : 'No',
-      //     productos_count: productos.length,
-      //     endpoint: `${CONFIG.API_URL}/api/cargar-registros-implementacion`
-      // });
+      // --- NUEVO BLOQUE DE LOGGING DETALLADO ---
+      console.log('🔵======= DEBUG FRONTEND: DATOS A ENVIAR =======🔵');
+      console.log('Enviando al endpoint:', `${CONFIG.API_URL}/api/cargar-registros-implementacion`);
+      
+      // Iterar y mostrar todos los campos del FormData
+      for (const [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          // Si es un archivo, mostrar detalles del archivo
+          console.log(`📄 Campo (Archivo): "${key}" | Nombre: "${value.name}" | Tipo: ${value.type} | Tamaño: ${(value.size / 1024).toFixed(2)} KB`);
+        } else {
+          // Si es texto, mostrar el valor
+          console.log(`📝 Campo (Texto): "${key}" | Valor: "${value}"`);
+        }
+      }
+      console.log('🔵==============================================🔵');
 
       // Realizar petición al nuevo endpoint
       const response = await fetch(`${CONFIG.API_URL}/api/cargar-registros-implementacion`, {
@@ -187,6 +191,9 @@ export const useImplementacionSubmission = (userId) => {
     } catch (error) {
       //console.error('❌ Error al enviar implementación:', error);
       setSubmitError(error.message);
+      if (error.message) {
+        alert(error.message);
+      }
       return false;
     } finally {
       setIsSubmitting(false);

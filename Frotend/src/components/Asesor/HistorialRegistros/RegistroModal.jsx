@@ -100,25 +100,15 @@ export default function RegistroModal({ isOpen, onClose, registro, loading, isMo
       const galones = (datos.galonajes || '').split(',').map(g => g.trim());
       const marcas = (datos.marcas || '').split(',').map(m => m.trim());
       
-      // Crear un Set para evitar duplicados basados en referencia_id
-      const productosUnicos = new Map();
-      
-      refs.forEach((ref, idx) => {
-        if (ref && !productosUnicos.has(ref)) {
-          productosUnicos.set(ref, {
-            referencia_id: ref,
-            presentacion: presentaciones[idx] || '',
-            precio_real: preciosReales[idx] || '',
-            precio_sugerido: preciosSugeridos[idx] || '',
-            cantidad_cajas: cantidades[idx] || '',
-            conversion_galonaje: galones[idx] || '',
-            marca: marcas[idx] || '',
-          });
-        }
-      });
-      
-      const productos = Array.from(productosUnicos.values());
-      console.log("Productos reconstruidos sin duplicados:", productos);
+      const productos = refs.map((ref, idx) => ({
+        referencia_id: ref,
+        presentacion: presentaciones[idx] || '',
+        precio_real: preciosReales[idx] || '',
+        precio_sugerido: preciosSugeridos[idx] || '',
+        cantidad_cajas: cantidades[idx] || '',
+        conversion_galonaje: galones[idx] || '',
+        marca: marcas[idx] || '',
+      }));
       return productos;
     }
     

@@ -735,7 +735,8 @@ router.get('/historial-registros-asesor/:user_id', authenticateToken, requireAse
     LEFT JOIN fotos_agrupadas fa ON fa.id_registro = registro_servicios.id
     LEFT JOIN implementacion_agrupada ia ON ia.id_registro = registro_servicios.id
 
-    WHERE registro_servicios.user_id = ?;
+    WHERE registro_servicios.user_id = ?
+    ORDER BY registro_servicios.id DESC;
     `;
     const rows = await executeQueryForMultipleUsers(query, [user_id]);
 
