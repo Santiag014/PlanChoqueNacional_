@@ -501,7 +501,7 @@ body {
   cursor: pointer;
   /* Asegurar tamaño mínimo para evitar desbordamiento */
   min-width: 200px;
-  min-height: 120px;
+  min-height: 100px;
   /* Prevenir que las tarjetas se compriman demasiado */
   flex-shrink: 0;
 }

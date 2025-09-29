@@ -505,9 +505,6 @@ export default function OrganizacionTerpelDashboard() {
                       <span className="dato-label-small">Cumplimiento</span>
                     </div>
                   </div>
-                  <div className="puntos-obtenidos-label">
-                    <span className="puntos-label-text">{metrica.puntosLabel}</span>
-                  </div>
                 </div>
               </div>
             ))}

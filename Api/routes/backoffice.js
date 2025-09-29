@@ -523,7 +523,7 @@ router.put('/registro/:registro_id/estado', authenticateToken, requireBackOffice
       LEFT JOIN agente ag ON pv.id_agente = ag.id
       LEFT JOIN users_agente ON users_agente.agente_id = ag.id
       LEFT JOIN users ON users.id = users_agente.user_id
-      WHERE rs.id = ? AND users_agente.rol_terpel NOT IN ('JEFE DE ZONA','DIRECTOR COMERCIAL')
+      WHERE rs.id = ? AND users_agente.rol_terpel NOT IN ('JEFE DE ZONA','DIRECTOR COMERCIAL') AND rs.estado_id = 3;
     `, [registro_id]);
 
     // FIX: La consulta puede devolver varios coordinadores. Debemos recopilarlos todos.

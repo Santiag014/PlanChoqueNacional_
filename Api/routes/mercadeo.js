@@ -1100,7 +1100,7 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
     const whereClauseBase = whereConditionsBase.join(' AND ');
 
     const metaBaseResult = await executeQueryForMultipleUsers(
-      `SELECT COUNT(*) * 20 as metaBase
+      `SELECT COUNT(*) * 10 as metaBase
        FROM puntos_venta
        WHERE ${whereClauseBase}`, queryParamsBase
     );
