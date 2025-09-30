@@ -421,8 +421,45 @@ router.get('/volumen', authenticateToken, requireOT, addUserRestrictions, logAcc
     const { query: segmentosQuery, params: segmentosParams } = await applyUserFilters(baseSegmentosQuery, req.user.id, 'pv');
     const segmentos = await executeQueryForMultipleUsers(segmentosQuery, segmentosParams);
 
-    // Consulta base para detalle por producto con filtros de usuario
-    const baseProductosQuery = `
+    // Leer filtros de la UI
+    const { compania, asesor_id, pdv_id } = req.query;
+
+    // Construir condiciones y parámetros para el filtro
+    let whereConditions = ['rs.estado_id = 2', 'rs.estado_agente_id = 2'];
+    let queryParams = [];
+
+    // Filtros por compañía
+    if (compania) {
+      const agenteInfo = await executeQueryForMultipleUsers('SELECT id FROM agente WHERE descripcion = ?', [compania]);
+      if (agenteInfo.length > 0) {
+        whereConditions.push('pv.id_agente = ?');
+        queryParams.push(agenteInfo[0].id);
+      }
+    }
+    // Filtro por asesor
+    if (asesor_id) {
+      whereConditions.push('u.id = ?');
+      queryParams.push(asesor_id);
+    }
+    // Filtro por punto de venta
+    if (pdv_id) {
+      whereConditions.push('pv.id = ?');
+      queryParams.push(pdv_id);
+    }
+
+    // Filtros de usuario (restricciones)
+    const userRestrictions = req.userRestrictions;
+    if (userRestrictions && userRestrictions.hasRestrictions && userRestrictions.agenteIds.length > 0) {
+      const placeholders = userRestrictions.agenteIds.map(() => '?').join(',');
+      whereConditions.push(`pv.id_agente IN (${placeholders})`);
+      queryParams.push(...userRestrictions.agenteIds);
+    }
+
+    // Unir condiciones
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    // Consulta base para detalle por producto con filtros
+    const productosQuery = `
       SELECT 
          rp.referencia_id AS nombre,
          COUNT(rp.id) AS numeroCajas,
@@ -430,12 +467,12 @@ router.get('/volumen', authenticateToken, requireOT, addUserRestrictions, logAcc
        FROM registro_servicios rs
        INNER JOIN registro_productos rp ON rp.registro_id = rs.id
        INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
-       WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2
+       INNER JOIN users u ON u.id = pv.user_id
+       ${whereClause}
        GROUP BY rp.referencia_id
        ORDER BY galonaje DESC
     `;
-    const { query: productosQuery, params: productosParams } = await applyUserFilters(baseProductosQuery, req.user.id, 'pv');
-    const productos = await executeQueryForMultipleUsers(productosQuery, productosParams);
+    const productos = await executeQueryForMultipleUsers(productosQuery, queryParams);
 
     // Calcular porcentajes para productos
     const totalGalonaje = productos.reduce((sum, p) => sum + p.galonaje, 0);
@@ -463,9 +500,48 @@ router.get('/volumen', authenticateToken, requireOT, addUserRestrictions, logAcc
 router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAccess, async (req, res) => {
   
   try {
+    // 1. Leer filtros de la UI
+    const { compania, asesor_id, pdv_id } = req.query;
 
-    // Consulta base para todos los PDVs del sistema con filtros de usuario
-    const basePdvsQuery = `
+    // 2. Obtener restricciones del usuario (si las tiene)
+    const userRestrictions = req.userRestrictions;
+
+    // 3. Construir condiciones y parámetros de forma centralizada
+    let whereConditions = [];
+    let queryParams = [];
+
+    // Aplicar restricciones de usuario primero (si existen)
+    if (userRestrictions && userRestrictions.hasRestrictions && userRestrictions.agenteIds.length > 0) {
+      const placeholders = userRestrictions.agenteIds.map(() => '?').join(',');
+      whereConditions.push(`pv.id_agente IN (${placeholders})`);
+      queryParams.push(...userRestrictions.agenteIds);
+    }
+
+    // Aplicar filtros de la UI
+    if (compania) {
+      // NOTA: El filtro de compañía ahora se maneja por id_agente para mayor precisión
+      const agenteInfo = await executeQueryForMultipleUsers('SELECT id FROM agente WHERE descripcion = ?', [compania]);
+      if (agenteInfo.length > 0) {
+        whereConditions.push('pv.id_agente = ?');
+        queryParams.push(agenteInfo[0].id);
+      }
+    }
+    if (asesor_id) {
+      whereConditions.push('u.id = ?');
+      queryParams.push(asesor_id);
+    }
+    if (pdv_id) {
+      whereConditions.push('pv.id = ?');
+      queryParams.push(pdv_id);
+    }
+
+    // Unir todas las condiciones con 'AND'
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    // 4. Ejecutar consultas con la cláusula WHERE unificada
+
+    // Consulta para PDVs (meta)
+    const pdvsQuery = `
       SELECT 
         pv.id, 
         pv.codigo, 
@@ -476,63 +552,53 @@ router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAcc
         u.id as asesor_id,
         ag.descripcion as compania,
         ag.id as agente_id
-       FROM puntos_venta pv
-       INNER JOIN users u ON u.id = pv.user_id
-       LEFT JOIN agente ag ON ag.id = pv.id_agente
+      FROM puntos_venta pv
+      INNER JOIN users u ON u.id = pv.user_id
+      LEFT JOIN agente ag ON ag.id = pv.id_agente
+      ${whereClause}
     `;
+    const pdvs = await executeQueryForMultipleUsers(pdvsQuery, queryParams);
+    const totalPdvs = pdvs.length;
 
-    // Aplicar filtros de usuario según permisos
-    const { query: pdvsQuery, params: pdvsParams } = await applyUserFilters(basePdvsQuery, req.user.id, 'pv');
-    const pdvsResult = await executeQueryForMultipleUsers(pdvsQuery, pdvsParams);
-    const totalPdvs = pdvsResult.length;
-    
-    // Meta de visitas: 10 por cada PDV filtrado
     const metaVisitas = totalPdvs * 10;
-    
-    // Consulta base para el número real de visitas con filtros de usuario
-    const baseRealQuery = `
+
+    // Consulta para visitas reales
+    const realQuery = `
       SELECT COUNT(rs.id) as totalVisitas
-       FROM registro_servicios rs
-       INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
-       LEFT JOIN agente ag ON ag.id = pv.id_agente
-       WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2
+      FROM registro_servicios rs
+      INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
+      INNER JOIN users u ON u.id = pv.user_id
+      LEFT JOIN agente ag ON ag.id = pv.id_agente
+      ${whereClause.replace('WHERE', 'WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2 AND')}
     `;
-    
-    // Aplicar filtros de usuario a las visitas
-    const { query: realQuery, params: realParams } = await applyUserFilters(baseRealQuery, req.user.id, 'pv');
-    const realResult = await executeQueryForMultipleUsers(realQuery, realParams);
+    const realResult = await executeQueryForMultipleUsers(realQuery, queryParams);
     const totalVisitas = realResult[0]?.totalVisitas || 0;
-    
-  // Matriz máxima de puntos para visitas/frecuencia: 1.000
-  const puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 1000) : 0;
-    
-    // Consulta base para detalle de visitas por PDV con filtros de usuario
-    const basePdvsDetalleQuery = `
+
+    const puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 1000) : 0;
+
+    // Consulta para detalle por PDV
+    const pdvsDetalleQuery = `
       SELECT 
          pv.id,
          pv.codigo,
          pv.descripcion AS nombre,
          u.name as asesor_nombre,
-         u.email as asesor_email,
          u.id as asesor_id,
          ag.descripcion as compania,
          ag.id as agente_id,
          COUNT(rs.id) AS cantidadVisitas,
-         20 AS meta
-       FROM puntos_venta pv
-       INNER JOIN users u ON u.id = pv.user_id
-       LEFT JOIN agente ag ON ag.id = pv.id_agente
-       LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.estado_id = 2 AND rs.estado_agente_id = 2
-       GROUP BY pv.id, pv.codigo, pv.descripcion, u.name, u.email, u.id, ag.descripcion, ag.id
+         10 AS meta
+      FROM puntos_venta pv
+      INNER JOIN users u ON u.id = pv.user_id
+      LEFT JOIN agente ag ON ag.id = pv.id_agente
+      LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.estado_id = 2 AND rs.estado_agente_id = 2
+      ${whereClause}
+      GROUP BY pv.id, pv.codigo, pv.descripcion, u.name, u.id, ag.descripcion, ag.id
     `;
-    
-    // Aplicar filtros de usuario al detalle
-    const { query: pdvsDetalleQuery, params: pdvsDetalleParams } = await applyUserFilters(basePdvsDetalleQuery, req.user.id, 'pv');
-    const pdvs = await executeQueryForMultipleUsers(pdvsDetalleQuery, pdvsDetalleParams);
-    
-    // Calcular puntos proporcionales por PDV (igual que asesor.js)
-    const puntosPorPDVGlobal = pdvs.length > 0 ? Math.floor(1000 / pdvs.length) : 0;
-    const pdvsDetalle = pdvs.map(pdv => {
+    const pdvsDetalleRaw = await executeQueryForMultipleUsers(pdvsDetalleQuery, queryParams);
+
+    const puntosPorPDVGlobal = pdvsDetalleRaw.length > 0 ? Math.floor(1000 / pdvsDetalleRaw.length) : 0;
+    const pdvsDetalle = pdvsDetalleRaw.map(pdv => {
       const meta = pdv.meta || 0;
       const real = pdv.cantidadVisitas || 0;
       const porcentaje = meta > 0 ? Math.round((real / meta) * 100) : 0;
@@ -548,9 +614,8 @@ router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAcc
         puntos
       };
     });
-    
-    // Consulta base para tipos de visita con filtros de usuario
-    const baseTiposQuery = `
+
+    const tiposQuery = `
       SELECT 
          CASE
             WHEN kpi_volumen = 1 AND kpi_precio = 1 THEN 'Volumen/Precio'
@@ -560,16 +625,14 @@ router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAcc
             ELSE 'Otro'
          END AS tipo,
          COUNT(*) AS cantidad
-       FROM registro_servicios rs
-       INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
-       LEFT JOIN agente ag ON ag.id = pv.id_agente
-       WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2
-       GROUP BY tipo
+      FROM registro_servicios rs
+      INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
+      INNER JOIN users u ON u.id = pv.user_id
+      LEFT JOIN agente ag ON ag.id = pv.id_agente
+      ${whereClause.replace('WHERE', 'WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2 AND')}
+      GROUP BY tipo
     `;
-    
-    // Aplicar filtros de usuario a los tipos de visita
-    const { query: tiposQuery, params: tiposParams } = await applyUserFilters(baseTiposQuery, req.user.id, 'pv');
-    const tiposVisita = await executeQueryForMultipleUsers(tiposQuery, tiposParams);
+    const tiposVisita = await executeQueryForMultipleUsers(tiposQuery, queryParams);
 
     res.json({
       success: true,
