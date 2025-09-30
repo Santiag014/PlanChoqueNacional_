@@ -272,6 +272,7 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
       totalMetaUI = pdvFiltrado ? pdvFiltrado.meta : 0;
       totalRealUI = pdvFiltrado ? pdvFiltrado.real : 0;
       puntosUI = pdvFiltrado ? pdvFiltrado.puntos : 0;
+      porcentajeUI = pdvFiltrado ? pdvFiltrado.cumplimiento : 0;
       porcentajeUI = totalMetaUI > 0 ? Number(((totalRealUI / totalMetaUI) * 100).toFixed(1)) : 0;
     } else {
       // Si no hay filtro, mostrar totales globales
@@ -412,7 +413,7 @@ router.get('/volumen/:user_id', authenticateToken, requireAsesor, logAccess, asy
     res.json({
       success: true,
       pdvs: pdvsParaMostrar,                      // PDVs filtrados con puntos originales
-      meta_volumen: totalMetaUI,                  // Meta UI (filtrada o global)
+      meta_volumen: totalMetaUI,                  // Meta UI (filtrada o global) -> CORREGIDO
       real_volumen: totalRealUI,                  // Real UI (filtrado o global)
       porcentaje_cumplimiento: porcentajeUI,     // Porcentaje UI (filtrado o global)
       puntos: puntosUI,                          // Puntos UI CONSISTENTES
@@ -474,7 +475,7 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
     // PASO 5: Asignar puntos GLOBALES a cada PDV (estos NO cambian nunca)
     const pdvsConPuntosGlobales = Array.isArray(pdvsVisitasGlobalesResult) ? 
       pdvsVisitasGlobalesResult.map(pdv => {
-        const porcentaje = pdv.meta > 0 ? Math.round((pdv.cantidadVisitas / pdv.meta) * 1000 ) : 0;
+        const porcentaje = pdv.meta > 0 ? Math.round((pdv.cantidadVisitas / pdv.meta) * 100 ) : 0;
         
         // Calcular puntos proporcionales: (visitas_del_pdv / total_visitas_global) * puntos_globales
         let puntosIndividuales = 0;
@@ -504,6 +505,7 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
       metaVisitasUI = pdvFiltrado ? pdvFiltrado.meta : 0;
       totalVisitasUI = pdvFiltrado ? pdvFiltrado.cantidadVisitas : 0;
       puntosVisitasUI = pdvFiltrado ? pdvFiltrado.puntos : 0;
+      porcentajeUI = metaVisitasUI > 0 ? Math.round((totalVisitasUI / metaVisitasUI) * 100) : 0;
       porcentajeUI = pdvFiltrado ? pdvFiltrado.porcentaje : 0;
     } else {
       // Si no hay filtro, mostrar totales globales

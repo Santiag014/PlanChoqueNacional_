@@ -421,8 +421,45 @@ router.get('/volumen', authenticateToken, requireOT, addUserRestrictions, logAcc
     const { query: segmentosQuery, params: segmentosParams } = await applyUserFilters(baseSegmentosQuery, req.user.id, 'pv');
     const segmentos = await executeQueryForMultipleUsers(segmentosQuery, segmentosParams);
 
-    // Consulta base para detalle por producto con filtros de usuario
-    const baseProductosQuery = `
+    // Leer filtros de la UI
+    const { compania, asesor_id, pdv_id } = req.query;
+
+    // Construir condiciones y parámetros para el filtro
+    let whereConditions = ['rs.estado_id = 2', 'rs.estado_agente_id = 2'];
+    let queryParams = [];
+
+    // Filtros por compañía
+    if (compania) {
+      const agenteInfo = await executeQueryForMultipleUsers('SELECT id FROM agente WHERE descripcion = ?', [compania]);
+      if (agenteInfo.length > 0) {
+        whereConditions.push('pv.id_agente = ?');
+        queryParams.push(agenteInfo[0].id);
+      }
+    }
+    // Filtro por asesor
+    if (asesor_id) {
+      whereConditions.push('u.id = ?');
+      queryParams.push(asesor_id);
+    }
+    // Filtro por punto de venta
+    if (pdv_id) {
+      whereConditions.push('pv.id = ?');
+      queryParams.push(pdv_id);
+    }
+
+    // Filtros de usuario (restricciones)
+    const userRestrictions = req.userRestrictions;
+    if (userRestrictions && userRestrictions.hasRestrictions && userRestrictions.agenteIds.length > 0) {
+      const placeholders = userRestrictions.agenteIds.map(() => '?').join(',');
+      whereConditions.push(`pv.id_agente IN (${placeholders})`);
+      queryParams.push(...userRestrictions.agenteIds);
+    }
+
+    // Unir condiciones
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    // Consulta base para detalle por producto con filtros
+    const productosQuery = `
       SELECT 
          rp.referencia_id AS nombre,
          COUNT(rp.id) AS numeroCajas,
@@ -430,12 +467,12 @@ router.get('/volumen', authenticateToken, requireOT, addUserRestrictions, logAcc
        FROM registro_servicios rs
        INNER JOIN registro_productos rp ON rp.registro_id = rs.id
        INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
-       WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2
+       INNER JOIN users u ON u.id = pv.user_id
+       ${whereClause}
        GROUP BY rp.referencia_id
        ORDER BY galonaje DESC
     `;
-    const { query: productosQuery, params: productosParams } = await applyUserFilters(baseProductosQuery, req.user.id, 'pv');
-    const productos = await executeQueryForMultipleUsers(productosQuery, productosParams);
+    const productos = await executeQueryForMultipleUsers(productosQuery, queryParams);
 
     // Calcular porcentajes para productos
     const totalGalonaje = productos.reduce((sum, p) => sum + p.galonaje, 0);

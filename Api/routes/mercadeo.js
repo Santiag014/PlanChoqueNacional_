@@ -968,7 +968,10 @@ router.get('/volumen', authenticateToken, requireMercadeo, logAccess, async (req
        FROM registro_servicios
        INNER JOIN registro_productos ON registro_productos.registro_id = registro_servicios.id
        INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
-       WHERE ${whereClause} AND registro_productos.referencia_id IS NOT NULL
+       WHERE ${whereClause} 
+         AND registro_servicios.estado_id = 2 
+         AND registro_servicios.estado_agente_id = 2 
+         AND registro_productos.referencia_id IS NOT NULL
        GROUP BY registro_productos.referencia_id
        ORDER BY galonaje DESC`, queryParams
     );
