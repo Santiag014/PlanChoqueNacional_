@@ -9,7 +9,7 @@
   border-radius: 12px;
   box-sizing: border-box;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: scroll;
 }
 
 /* Contenedor de botones de filtro */
@@ -284,7 +284,7 @@
   border-radius: 10px;
   margin-top: 0;
   border: 2px solid #d3d3d3;
-  overflow: hidden;
+  overflow-y: auto ;
 }
 
 /* Encabezado de la tabla */
@@ -1110,11 +1110,7 @@
   /* Contenedor principal más compacto */
   .ranking-container {
     max-width: 600px;
-    padding: 30px 40px 50px 40px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    border-radius: 20px;
-    overflow-y: auto;
+    overflow-y: scroll
   }
 
   /* Botones de filtro más elegantes */
@@ -1304,9 +1300,6 @@
 @media (min-width: 1200px) {
   .ranking-container {
     max-width: 500px;
-    padding: 25px 30px 40px 30px;
-    box-shadow: none;
-    background: none;
     overflow-y: auto;
   }
 
@@ -1344,10 +1337,23 @@
   /* Tabla con efecto desplegable */
   .tabla-ranking {
     position: relative;
-    overflow: hidden;
+      overflow-y: auto;
+      max-height: 50vh;
     background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
     backdrop-filter: blur(10px);
     border: 3px solid rgba(222, 226, 230, 0.8);
+  }
+
+  /* Responsive para pantallas medianas y móviles */
+  @media (max-width: 1200px) {
+    .tabla-ranking {
+      max-height: 40vh;
+    }
+  }
+  @media (max-width: 768px) {
+    .tabla-ranking {
+      max-height: 35vh;
+    }
   }
 
   .tabla-ranking::before {
@@ -1390,10 +1396,6 @@
 @media (min-width: 1600px) {
   .ranking-container {
     max-width: 500px;
-    padding: 25px 30px 40px 30px;
-    /* background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 50%, #e9ecef 100%); */
-    box-shadow: none;
-    background: none;
     overflow-y: scroll;
   }
 

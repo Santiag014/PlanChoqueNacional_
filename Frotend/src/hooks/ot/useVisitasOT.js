@@ -110,16 +110,21 @@ export function useVisitasOT(filtros = {}) {
         asesor_email: pdv.asesor_email || ''
       })) : [];
 
-      // Los datos ya vienen filtrados desde el backend según permisos del usuario
+      // Filtrar PDVs que NO sean de la empresa Bull
+      const pdvsFiltrados = cleanPdvs.filter(pdv => !(pdv.compania && pdv.compania.toLowerCase().includes('bull')));
 
-      // Usar los valores globales que vienen del backend
-      const filteredPuntos = cleanPdvs.reduce((sum, pdv) => sum + (pdv.puntos || 0), 0);
+      // Calcular métricas globales solo con los PDVs filtrados
+      const meta_visitas = pdvsFiltrados.reduce((sum, pdv) => sum + (pdv.meta || 0), 0);
+      const real_visitas = pdvsFiltrados.reduce((sum, pdv) => sum + (pdv.cantidadVisitas || 0), 0);
+      const puntos = pdvsFiltrados.reduce((sum, pdv) => sum + (pdv.puntos || 0), 0);
+      const porcentajeCumplimiento = meta_visitas > 0 ? (real_visitas / meta_visitas) * 100 : 0;
+
       const cleanData = {
-        pdvs: cleanPdvs,
-        meta_visitas: data.meta_visitas,
-        real_visitas: data.real_visitas,
-        puntos: filteredPuntos,
-        porcentajeCumplimiento: data.meta_visitas > 0 ? (data.real_visitas / data.meta_visitas) * 100 : 0,
+        pdvs: pdvsFiltrados,
+        meta_visitas,
+        real_visitas,
+        puntos,
+        porcentajeCumplimiento,
         tiposVisita: Array.isArray(data.tiposVisita) ? data.tiposVisita.map(tipo => ({
           ...tipo,
           tipo: tipo.tipo || '',

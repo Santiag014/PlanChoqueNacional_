@@ -186,7 +186,7 @@ export default function OrganizacionTerpelDashboard() {
         implementado: coberturaImplementados,
         porcentaje: coberturaTotal > 0 ? Math.round((coberturaImplementados / coberturaTotal) * 100) : 0,
         color: '#e30613',
-        puntosLabel: `${coberturaPdvsFiltrados.reduce((sum, p) => sum + (p.puntos || 0), 0)} puntos obtenidos`
+        // puntosLabel: `${coberturaPdvsFiltrados.reduce((sum, p) => sum + (p.puntos || 0), 0)} puntos obtenidos`
       },
       {
         id: 'volumen',
@@ -196,7 +196,7 @@ export default function OrganizacionTerpelDashboard() {
         implementado: volumenReal,
         porcentaje: volumenMeta > 0 ? Math.round((volumenReal / volumenMeta) * 100) : 0,
         color: '#ff6b35',
-        puntosLabel: `${volumenPdvsFiltrados.reduce((sum, p) => sum + (p.puntos || 0), 0)} puntos obtenidos`
+        //puntosLabel: `${volumenPdvsFiltrados.reduce((sum, p) => sum + (p.puntos || 0), 0)} puntos obtenidos`
       },
       {
         id: 'visitas',
@@ -206,7 +206,7 @@ export default function OrganizacionTerpelDashboard() {
         implementado: visitasReal,
         porcentaje: visitasMeta > 0 ? Math.round((visitasReal / visitasMeta) * 100) : 0,
         color: '#f7931e',
-        puntosLabel: `${visitasPdvsFiltrados.reduce((sum, p) => sum + (p.puntos || 0), 0)} puntos obtenidos`
+        //puntosLabel: `${visitasPdvsFiltrados.reduce((sum, p) => sum + (p.puntos || 0), 0)} puntos obtenidos`
       },
       {
         id: 'precios',
@@ -216,7 +216,7 @@ export default function OrganizacionTerpelDashboard() {
         implementado: preciosReportados,
         porcentaje: preciosTotal > 0 ? Math.round((preciosReportados / preciosTotal) * 100) : 0,
         color: '#0066cc',
-        puntosLabel: `${preciosPdvsFiltrados.reduce((sum, p) => sum + (p.puntos || 0), 0)} puntos obtenidos`
+        //puntosLabel: `${preciosPdvsFiltrados.reduce((sum, p) => sum + (p.puntos || 0), 0)} puntos obtenidos`
       }
     ];
   };
@@ -631,7 +631,6 @@ function DetalleMetricaOT({ metricId, cobertura, volumen, volumenCompleto, volum
                     <th>Nombre</th>
                     <th>Asesor</th>
                     <th>Estado</th>
-                    <th>Puntos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -645,15 +644,8 @@ function DetalleMetricaOT({ metricId, cobertura, volumen, volumenCompleto, volum
                           {pdv.estado}
                         </span>
                       </td>
-                      <td>{pdv.puntos}</td>
                     </tr>
                   ))}
-                  {cobertura.length > 0 && (
-                    <tr style={{ backgroundColor: '#f5f5f5', fontWeight: 'bold', borderTop: '2px solid #ddd' }}>
-                      <td colSpan={4}>TOTAL PUNTOS</td>
-                      <td>{cobertura.reduce((sum, pdv) => sum + (pdv.puntos || 0), 0)}</td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
@@ -675,7 +667,6 @@ function DetalleMetricaOT({ metricId, cobertura, volumen, volumenCompleto, volum
                     <th>Meta</th>
                     <th>Real</th>
                     <th>%</th>
-                    <th>Puntos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -688,7 +679,6 @@ function DetalleMetricaOT({ metricId, cobertura, volumen, volumenCompleto, volum
                       <td>{pdv.meta}</td>
                       <td>{pdv.real}</td>
                       <td>{pdv.meta > 0 ? Math.round((pdv.real / pdv.meta) * 100) : 0}%</td>
-                      <td>{pdv.puntos}</td>
                     </tr>
                   ))}
                   {volumen.length > 0 && (
@@ -701,7 +691,6 @@ function DetalleMetricaOT({ metricId, cobertura, volumen, volumenCompleto, volum
                         const totalReal = volumen.reduce((sum, pdv) => sum + (pdv.real || 0), 0);
                         return totalMeta > 0 ? Math.round((totalReal / totalMeta) * 100) : 0;
                       })()}%</td>
-                      <td>{volumen.reduce((sum, pdv) => sum + (pdv.puntos || 0), 0)}</td>
                     </tr>
                   )}
                 </tbody>
@@ -722,10 +711,6 @@ function DetalleMetricaOT({ metricId, cobertura, volumen, volumenCompleto, volum
                 </thead>
                 <tbody>
                   {(() => {
-                    // console.log('🔍 DetalleMetricaOT - Recalculando segmentos desde PDVs filtrados:', {
-                    //   pdvsFiltrados: volumen.length,
-                    //   pdvsSample: volumen.slice(0, 2)
-                    // });
                     
                     // Recalcular segmentos desde los PDVs filtrados
                     const segmentosRecalculados = {};
@@ -875,7 +860,6 @@ function DetalleMetricaOT({ metricId, cobertura, volumen, volumenCompleto, volum
                     <th>Visitas</th>
                     <th>Meta</th>
                     <th>%</th>
-                    <th>Puntos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -887,7 +871,6 @@ function DetalleMetricaOT({ metricId, cobertura, volumen, volumenCompleto, volum
                       <td>{pdv.cantidadVisitas}</td>
                       <td>{pdv.meta}</td>
                       <td>{pdv.porcentaje}%</td>
-                      <td>{pdv.puntos}</td>
                     </tr>
                   ))}
                   {visitas.length > 0 && (
@@ -900,7 +883,6 @@ function DetalleMetricaOT({ metricId, cobertura, volumen, volumenCompleto, volum
                         const totalVisitas = visitas.reduce((sum, pdv) => sum + (pdv.cantidadVisitas || 0), 0);
                         return totalMeta > 0 ? Math.round((totalVisitas / totalMeta) * 100) : 0;
                       })()}%</td>
-                      <td>{visitas.reduce((sum, pdv) => sum + (pdv.puntos || 0), 0)}</td>
                     </tr>
                   )}
                 </tbody>
@@ -938,12 +920,6 @@ function DetalleMetricaOT({ metricId, cobertura, volumen, volumenCompleto, volum
                       <td>{pdv.puntos}</td>
                     </tr>
                   ))}
-                  {profundidad.length > 0 && (
-                    <tr style={{ backgroundColor: '#f5f5f5', fontWeight: 'bold', borderTop: '2px solid #ddd' }}>
-                      <td colSpan={4}>TOTAL PUNTOS</td>
-                      <td>{profundidad.reduce((sum, pdv) => sum + (pdv.puntos || 0), 0)}</td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
@@ -962,7 +938,6 @@ function DetalleMetricaOT({ metricId, cobertura, volumen, volumenCompleto, volum
                     <th>Nombre</th>
                     <th>Asesor</th>
                     <th>Estado</th>
-                    <th>Puntos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -976,15 +951,8 @@ function DetalleMetricaOT({ metricId, cobertura, volumen, volumenCompleto, volum
                           {pdv.estado}
                         </span>
                       </td>
-                      <td>{pdv.puntos}</td>
                     </tr>
                   ))}
-                  {precios.length > 0 && (
-                    <tr style={{ backgroundColor: '#f5f5f5', fontWeight: 'bold', borderTop: '2px solid #ddd' }}>
-                      <td colSpan={4}>TOTAL PUNTOS</td>
-                      <td>{precios.reduce((sum, pdv) => sum + (pdv.puntos || 0), 0)}</td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>

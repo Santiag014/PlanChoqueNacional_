@@ -108,14 +108,16 @@ export function useCoberturaOT(filtros = {}) {
         asesor_email: pdv.asesor_email || ''
       })) : [];
 
-      // Los datos ya vienen filtrados desde el backend según permisos del usuario
-      // Usar los totales que vienen del backend en lugar de recalcularlos
-      const totalAsignados = data.totalAsignados || cleanPdvs.length;
-      const totalImplementados = data.totalImplementados || cleanPdvs.filter(pdv => pdv.estado === 'REGISTRADO').length;
-      const puntosCobertura = data.puntosCobertura || cleanPdvs.reduce((sum, pdv) => sum + (pdv.puntos || 0), 0);
+      // Filtrar PDVs que NO sean de la empresa Bull
+      const pdvsFiltrados = cleanPdvs.filter(pdv => !(pdv.compania && pdv.compania.toLowerCase().includes('bull')));
+
+      // Usar los datos filtrados para los KPIs
+      const totalAsignados = pdvsFiltrados.length;
+      const totalImplementados = pdvsFiltrados.filter(pdv => pdv.estado === 'REGISTRADO').length;
+      const puntosCobertura = pdvsFiltrados.reduce((sum, pdv) => sum + (pdv.puntos || 0), 0);
 
       const cleanData = {
-        pdvs: cleanPdvs,
+        pdvs: pdvsFiltrados,
         totalAsignados,
         totalImplementados,
         puntosCobertura,
