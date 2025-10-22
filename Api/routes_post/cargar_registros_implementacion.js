@@ -89,11 +89,8 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
     await conn.beginTransaction();
 
     // --- PASO 2: PROCESAR FOTOS Y VALIDAR DUPLICADOS (ANTES DE CUALQUIER INSERT) ---
-    const md5File = (await import('md5-file')).default;
     let fotoRemisionUrl = null;
-    let fotoRemisionHash = null;
     let fotoImplementacionUrl = null;
-    let fotoImplementacionHash = null;
 
     if (req.files && req.files.length > 0) {
       const folder = new Date().toISOString().slice(0, 10);
@@ -103,8 +100,7 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
       if (fotoRemisionFile) {
         fotoRemisionUrl = `/uploads/${folder}/${fotoRemisionFile.filename}`;
         uploadedFilePaths.push(fotoRemisionFile.path); // Rastrear archivo
-        fotoRemisionHash = await md5File(fotoRemisionFile.path);
-        console.log(`[VALIDACIÓN] Foto de remisión encontrada: ${fotoRemisionUrl}`);
+        console.log(`[FOTO] Foto de remisión encontrada: ${fotoRemisionUrl}`);
       }
 
       // Procesar foto de implementación (si existe)
@@ -113,19 +109,7 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
       if (fotoImplementacionFile) {
         fotoImplementacionUrl = `/uploads/${folder}/${fotoImplementacionFile.filename}`;
         uploadedFilePaths.push(fotoImplementacionFile.path); // Rastrear archivo
-        fotoImplementacionHash = await md5File(fotoImplementacionFile.path);
-        console.log(`[VALIDACIÓN] Foto de implementación encontrada: ${fotoImplementacionUrl}`);
-      }
-
-      // 🚨 VALIDACIÓN DE DUPLICADOS (AHORA ES EL MOMENTO CORRECTO)
-      if (fotoRemisionHash && fotoImplementacionHash && fotoRemisionHash === fotoImplementacionHash) {
-        console.warn('⚠️⚠️⚠️ BACKEND DETECTÓ DUPLICACIÓN ANTES DE INSERTAR!');
-        await conn.rollback(); // Revertir transacción (aunque esté vacía, es buena práctica)
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Error: No puedes usar la misma foto para la implementación y la remisión (mismo archivo). Por favor selecciona fotos diferentes.',
-          error_type: 'FOTO_DUPLICADA'
-        });
+        console.log(`[FOTO] Foto de implementación encontrada: ${fotoImplementacionUrl}`);
       }
     }
 
