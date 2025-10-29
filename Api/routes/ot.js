@@ -1241,15 +1241,52 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
         }
       };
 
-      // Calcular estados de cada implementación
+      // --- Lógica especial para Implementación 5 (puede haber dos)
+      // Si hay dos implementaciones 5 realizadas, ambas columnas deben ser "Realizada"
+      // Si hay una, la primera "Realizada" y la segunda "Pendiente" o "No Habilitado"
+      // Si ninguna, ambas "Pendiente" o "No Habilitado" según galonaje
+      let impl5_1 = 'No Habilitado';
+      let impl5_2 = 'No Habilitado';
+      const galonaje = row.GalonajeVendido;
+      const compra5 = row.compra_5;
+      const impl5Realizadas = row.impl_5_realizada || 0;
+      const impl5NoAutorizadas = row.impl_5_no_autorizado || 0;
+
+      if (impl5Realizadas >= 2) {
+        impl5_1 = 'Realizada';
+        impl5_2 = 'Realizada';
+      } else if (impl5Realizadas === 1) {
+        impl5_1 = 'Realizada';
+        // Para la segunda, si hay no autorizada, poner "No Autorizo", si cumple galonaje, "Pendiente", si no, "No Habilitado"
+        if (impl5NoAutorizadas > 0) {
+          impl5_2 = 'No Autorizo';
+        } else if (galonaje >= compra5) {
+          impl5_2 = 'Pendiente';
+        } else {
+          impl5_2 = 'No Habilitado';
+        }
+      } else {
+        // Ninguna realizada
+        if (impl5NoAutorizadas > 0) {
+          impl5_1 = 'No Autorizo';
+          impl5_2 = 'No Habilitado';
+        } else if (galonaje >= compra5) {
+          impl5_1 = 'Pendiente';
+          impl5_2 = 'Pendiente';
+        } else {
+          impl5_1 = 'No Habilitado';
+          impl5_2 = 'No Habilitado';
+        }
+      }
+
+      // Calcular estados de las otras implementaciones
       const impl1Status = getImplementacionStatus(1, row.GalonajeVendido, row.compra_1, row.impl_1_realizada, row.impl_1_no_autorizado);
       const impl2Status = getImplementacionStatus(2, row.GalonajeVendido, row.compra_2, row.impl_2_realizada, row.impl_2_no_autorizado);
       const impl3Status = getImplementacionStatus(3, row.GalonajeVendido, row.compra_3, row.impl_3_realizada, row.impl_3_no_autorizado);
       const impl4Status = getImplementacionStatus(4, row.GalonajeVendido, row.compra_4, row.impl_4_realizada, row.impl_4_no_autorizado);
-      const impl5Status = getImplementacionStatus(5, row.GalonajeVendido, row.compra_5, row.impl_5_realizada, row.impl_5_no_autorizado);
 
       // Calcular total de implementaciones habilitadas (incluye Realizada, Pendiente y No Autorizo)
-      const totalHabilitadas = [impl1Status, impl2Status, impl3Status, impl4Status, impl5Status]
+      const totalHabilitadas = [impl1Status, impl2Status, impl3Status, impl4Status, impl5_1, impl5_2]
         .filter(status => status === 'Realizada' || status === 'Pendiente' || status === 'No Autorizo').length;
 
       return {
@@ -1259,7 +1296,8 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
         Implementacion_2: impl2Status,
         Implementacion_3: impl3Status,
         Implementacion_4: impl4Status,
-        Implementacion_5: impl5Status
+        Implementacion_5_1: impl5_1,
+        Implementacion_5_2: impl5_2
       };
     });
 
@@ -1283,7 +1321,11 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
         for (let i = 5; i <= maxRows; i++) {
           const row = worksheetImplementaciones.getRow(i);
           for (let j = 2; j <= 18; j++) { // Columnas B a R (expandido para más columnas)
-            row.getCell(j).value = null;
+            const cell = row.getCell(j);
+            cell.value = null;
+            cell.fill = undefined;
+            cell.font = undefined;
+            cell.border = undefined;
           }
         }
       } else {
@@ -1308,7 +1350,11 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       for (let i = 5; i <= maxRowsVisitas; i++) {
         const row = worksheetVisitas.getRow(i);
         for (let j = 2; j <= 25; j++) { // Columnas B a Y (expandido para visitas)
-          row.getCell(j).value = null;
+          const cell = row.getCell(j);
+          cell.value = null;
+          cell.fill = undefined;
+          cell.font = undefined;
+          cell.border = undefined;
         }
       }
     }
@@ -1320,7 +1366,7 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       'Empresa', 'Código', 'nit', 'Nombre P.D.V', 'Dirección', 'Segmento', 'Ciudad', 'Departamento', 'Asesor', 'Meta Volumen (TOTAL)',
       'Galones Comprado','Cuantas implementaciones puede tener',
       'Primera implementación', 'Segunda implementación', 'Tercera implementación', 
-      'Cuarta implementación', 'Quinta implementación'
+      'Cuarta implementación', 'Quinta implementación 1', 'Quinta implementación 2'
     ];
 
     // Configurar la fila de headers (fila 4) para implementaciones
@@ -1463,7 +1509,8 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
           row.Implementacion_2 || 'No Habilitado',
           row.Implementacion_3 || 'No Habilitado',
           row.Implementacion_4 || 'No Habilitado',
-          row.Implementacion_5 || 'No Habilitado'
+          row.Implementacion_5_1 || 'No Habilitado',
+          row.Implementacion_5_2 || 'No Habilitado'
         ];
 
         // Escribir cada celda con formato
@@ -1471,8 +1518,8 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
           const cell = dataRow.getCell(colIndex + 2); // Empezar en columna B
           cell.value = value;
           
-          // Aplicar color de fondo si es columna de implementación (índices 12-16, que corresponden a las 5 implementaciones)
-          if (colIndex >= 12 && colIndex <= 16) {
+          // Aplicar color de fondo si es columna de implementación (índices 12-17, que corresponden a las 6 implementaciones)
+          if (colIndex >= 12 && colIndex <= 17) {
             cell.fill = getImplementacionColorFill(value);
           }
           
@@ -1586,8 +1633,8 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     
     // Auto-ajustar anchos SOLO de las columnas con datos en la hoja de Implementaciones (B a R)
     
-    // Definir explícitamente las columnas que contienen datos para implementaciones
-    const columnasImplementaciones = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'];
+  // Definir explícitamente las columnas que contienen datos para implementaciones (ahora hasta S)
+  const columnasImplementaciones = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S'];
     
     // Función optimizada para calcular el ancho óptimo basado en el contenido
     const calculateColumnWidth = (worksheet, columnLetter, maxRow) => {
