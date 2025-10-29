@@ -757,14 +757,23 @@ const ejecutarCalculosDeBonos = async () => {
         );
         const pdvsConFase2y3 = pdvsCompletadosResult[0]?.pdvsCompletados || 0;
 
-        if (pdvsConFase2y3 >= totalPdvsAsignados) {
+        if (pdvsConFase2y3 > 0) {
           try {
-            const query = `INSERT INTO retos_bonificadores (id_asesor, puntos, descripcion, detalle, created) VALUES (?, 1000, ?, ?, NOW())`;
-            const params = [asesor_id, bonusDescriptionFases, 'PDV completó segunda y tercera fase de implementación.'];
+            // Si cumplió con todos, asigna 1000, si no, asigna proporcional
+            const puntos = pdvsConFase2y3 >= totalPdvsAsignados
+              ? 1000
+              : Math.round((1000 / totalPdvsAsignados) * pdvsConFase2y3);
+            const query = `INSERT INTO retos_bonificadores (id_asesor, puntos, descripcion, detalle, created) VALUES (?, ?, ?, ?, NOW())`;
+            const params = [
+              asesor_id,
+              puntos,
+              bonusDescriptionFases,
+              `PDV completó segunda y tercera fase de implementación (${pdvsConFase2y3} de ${totalPdvsAsignados} PDV).`
+            ];
             await executeQueryForMultipleUsers(query, params);
-            console.log(`Bono '${bonusDescriptionFases}' asignado a asesor ${asesor_id}.`);
+            console.log(`Bono '${bonusDescriptionFases}' asignado a asesor ${asesor_id} (${puntos} pts).`);
           } catch (err) {
-            console.error('[BONOS] Error al insertar bono para asesor:', asesor_id, '| Consulta:', `INSERT INTO retos_bonificadores (id_asesor, puntos, descripcion, detalle, created) VALUES (?, 1000, ?, ?, NOW())`, '| Params:', [asesor_id, bonusDescriptionFases, 'PDV completó segunda y tercera fase de implementación.'], '| Error:', err.message);
+            console.error('[BONOS] Error al insertar bono para asesor:', asesor_id, '| Consulta:', `INSERT INTO retos_bonificadores (id_asesor, puntos, descripcion, detalle, created) VALUES (?, ?, ?, ?, NOW())`, '| Params:', [asesor_id, puntos, bonusDescriptionFases, `PDV completó segunda y tercera fase de implementación (${pdvsConFase2y3} de ${totalPdvsAsignados} PDV).`], '| Error:', err.message);
           }
         }
       }
@@ -1646,7 +1655,6 @@ router.get('/galonaje-implementacion/:codigo_pdv', async (req, res) => {
   const { codigo_pdv } = req.params;
 
   try {
-
     // 1. Obtener el pdv_id y segmento a partir del codigo_pdv
     const pdvResult = await executeQueryForMultipleUsers(
       `SELECT id, segmento, descripcion
