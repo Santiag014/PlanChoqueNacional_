@@ -45,7 +45,25 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+
 const router = express.Router();
+
+// === FUNCIÓN GLOBAL DE FACTOR DE COMPLEJIDAD ===
+function calcularFactorComplejidad(totalAsignados) {
+  let factor = 1;
+  if (totalAsignados >= 1 && totalAsignados <= 3) {
+    factor = 1;
+  } else if (totalAsignados >= 4 && totalAsignados <= 6) {
+    factor = 1.12;
+  } else if (totalAsignados >= 7 && totalAsignados <= 9) {
+    factor = 1.18;
+  } else if (totalAsignados >= 10 && totalAsignados <= 12) {
+    factor = 1.3;
+  } else if (totalAsignados >= 13 && totalAsignados <= 15) {
+    factor = 1.4;
+  }
+  return factor;
+}
 
 // ============================================
 // ENDPOINTS DE DIAGNÓSTICO Y VERIFICACIÓN
@@ -655,43 +673,31 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
     const rows = await executeQueryForMultipleUsers(query, queryParams);
 
   // PUNTOS BASE: Calculados con métricas base (sin filtros de PDV) - ESTÁTICOS
-  const puntosCoberturaBase = totalAsignadosBase > 0 ? Math.round((totalImpactadosBase / totalAsignadosBase) * MAX_PUNTOS_COBERTURA) : 0;
-    
-    // CORREGIDO: Si hay filtro PDV específico y ese PDV no tiene datos → 0 puntos
-    const puntosFinales = pdv_id && totalImpactadosValidos === 0 ? 0 : puntosCoberturaBase;
-    
-    console.log('=== DEBUG COBERTURA MERCADEO CORREGIDO ===');
-    console.log('BASE - Asignados:', totalAsignadosBase, 'Impactados:', totalImpactadosBase, 'Puntos:', puntosCoberturaBase);
-    console.log('FILTRADA - Asignados:', totalAsignados);
-    console.log('REALES (para UI) - Impactados:', totalImpactadosReales);
-    console.log('VÁLIDOS (para puntos) - Impactados:', totalImpactadosValidos);
-    console.log('PDV filtro:', pdv_id, 'Puntos finales:', puntosFinales);
-    console.log('Porcentaje con reales:', Math.round(porcentajeCobertura * 100) + '%');
-    console.log('Filtros aplicados:', { asesor_id, pdv_id, agente_id });
-    console.log('===============================');
-    
-    res.json({
-      success: true,
-      pdvs: rows,
-      data: rows,
-      total: rows.length,
-      // Métricas principales para el dashboard
-      puntos: puntosFinales, // Puntos ajustados (0 si PDV filtrado no tiene datos)
-      meta: totalAsignados, // Meta filtrada (para UI)
-      real: totalImpactadosReales, // REAL: Todos los PDVs con registros (sin filtro de fecha)
-      porcentajeCumplimiento: Math.round(porcentajeCobertura * 100),
-      // Propiedades adicionales para compatibilidad
-      totalAsignados: totalAsignados,
-      totalImplementados: totalImpactadosReales, // REAL: Usar impactados reales
-      puntosCobertura: puntosFinales, // Puntos ajustados
-      estadisticas: {
-        totalAsignados,
-        totalImpactados: totalImpactadosReales, // REAL: Usar impactados reales
-        porcentajeCobertura: Math.round(porcentajeCobertura * 100),
-        puntosTotal: puntosFinales, // Puntos ajustados
-        puntosPorPDV: Number(puntosBasePorPDV.toFixed(2))
-      }
-    });
+  let puntosCoberturaBase = totalAsignadosBase > 0 ? Math.round((totalImpactadosBase / totalAsignadosBase) * MAX_PUNTOS_COBERTURA) : 0;
+  // Aplica el factor de complejidad
+  puntosCoberturaBase = Math.round(puntosCoberturaBase * calcularFactorComplejidad(totalAsignadosBase));
+  // CORREGIDO: Si hay filtro PDV específico y ese PDV no tiene datos → 0 puntos
+  const puntosFinales = pdv_id && totalImpactadosValidos === 0 ? 0 : puntosCoberturaBase;
+  res.json({
+    success: true,
+    pdvs: rows,
+    data: rows,
+    total: rows.length,
+    puntos: puntosFinales,
+    meta: totalAsignados,
+    real: totalImpactadosReales,
+    porcentajeCumplimiento: Math.round(porcentajeCobertura * 100),
+    totalAsignados: totalAsignados,
+    totalImplementados: totalImpactadosReales,
+    puntosCobertura: puntosFinales,
+    estadisticas: {
+      totalAsignados,
+      totalImpactados: totalImpactadosReales,
+      porcentajeCobertura: Math.round(porcentajeCobertura * 100),
+      puntosTotal: puntosFinales,
+      puntosPorPDV: Number(puntosBasePorPDV.toFixed(2))
+    }
+  });
 
   } catch (err) {
     console.error('Error obteniendo métricas de cobertura (Mercadeo):', err);
@@ -831,27 +837,10 @@ router.get('/volumen', authenticateToken, requireMercadeo, logAccess, async (req
     // NUEVA MATRIZ DE PUNTOS MÁXIMOS: Volumen = 6000
     const MAX_PUNTOS_VOLUMEN = 6000;
     let puntosVolumen = totalMeta > 0 ? Math.round((totalReal / totalMeta) * MAX_PUNTOS_VOLUMEN) : 0;
-
-    console.log('=== DEBUG VOLUMEN MERCADEO (DISTRIBUCIÓN PROPORCIONAL) ===');
-    console.log('Filtros aplicados:', { asesor_id, pdv_id, agente_id });
-    console.log('totalMeta:', totalMeta);
-    console.log('totalReal:', totalReal);
-    console.log('puntosVolumen (SIN límite):', puntosVolumen);
-    console.log('Fórmula: (' + totalReal + '/' + totalMeta + ') * 350 =', puntosVolumen);
-    
-    let logicaAplicada = 'CONSULTA POR AGENTE_ID';
-    if (asesor_id && pdv_id) {
-      logicaAplicada = 'FILTRO POR ASESOR Y PDV ESPECÍFICO';
-    } else if (asesor_id) {
-      logicaAplicada = 'FILTRO POR ASESOR - Fórmula idéntica a asesor.js';
-    } else if (pdv_id) {
-      logicaAplicada = 'FILTRO POR PDV ESPECÍFICO';
-    }
-    
-    console.log('Lógica aplicada:', logicaAplicada);
-    console.log('Parámetros meta:', metaParams);
-    console.log('Parámetros real:', realParams);
-    console.log('=======================================================');
+    // Aplica el factor de complejidad
+    const totalAsignados = await executeQueryForMultipleUsers(`SELECT COUNT(*) as total FROM puntos_venta WHERE ${whereClause}`, queryParams);
+    const totalAsignadosCount = totalAsignados[0]?.total || 0;
+    puntosVolumen = Math.round(puntosVolumen * calcularFactorComplejidad(totalAsignadosCount));
 
     // Obtener detalle por PDV incluyendo puntos reales de registro_puntos
     // CORREGIDO: Usar subconsultas para evitar duplicación de puntos cuando hay múltiples productos
@@ -1121,13 +1110,11 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
     
   // NUEVA MATRIZ DE PUNTOS MÁXIMOS: Frecuencia = 1000
   const MAX_PUNTOS_FRECUENCIA = 1000;
-  const puntosVisitasBase = metaBase > 0 ? Math.round((totalVisitasBase / metaBase) * MAX_PUNTOS_FRECUENCIA) : 0;
-    
-    console.log('=== DEBUG MÉTRICAS BASE vs FILTRADAS ===');
-    console.log('Meta BASE (puntos):', metaBase, 'Visitas BASE:', totalVisitasBase, 'Puntos BASE:', puntosVisitasBase);
-    console.log('Meta FILTRADA (UI):', metaVisitas, 'Visitas FILTRADAS:', totalVisitas);
-    console.log('Filtros aplicados:', { asesor_id, pdv_id, agente_id });
-    console.log('==========================================');
+  let puntosVisitasBase = metaBase > 0 ? Math.round((totalVisitasBase / metaBase) * MAX_PUNTOS_FRECUENCIA) : 0;
+  // Aplica el factor de complejidad
+  const totalAsignados = await executeQueryForMultipleUsers(`SELECT COUNT(*) as total FROM puntos_venta WHERE ${whereClauseBase}`, queryParamsBase);
+  const totalAsignadosCount = totalAsignados[0]?.total || 0;
+  puntosVisitasBase = Math.round(puntosVisitasBase * calcularFactorComplejidad(totalAsignadosCount));
 
     // Obtener detalle por PDV
     const pdvs = await executeQueryForMultipleUsers(
@@ -1341,41 +1328,44 @@ router.get('/precios', authenticateToken, requireMercadeo, logAccess, async (req
     const porcentajePrecios = totalAsignados > 0 ? (totalConPrecios / totalAsignados) : 0;
   // NUEVA MATRIZ DE PUNTOS MÁXIMOS: Precios = 2000
   const MAX_PUNTOS_PRECIOS = 2000;
-  const puntosPorPDV = totalAsignados > 0 ? Math.floor(MAX_PUNTOS_PRECIOS / totalAsignados) : 0;
 
-    const query = `
-      SELECT 
-        puntos_venta.id,
-        puntos_venta.codigo,
-        puntos_venta.descripcion as nombre,
-        users.name as nombre_asesor,
-        users.id as asesor_id,
-        CASE 
-          WHEN COUNT(CASE WHEN registro_servicios.kpi_precio = 1 AND registros_mistery_shopper.id_registro_pdv IS NOT NULL THEN 1 END) > 0 THEN 'REPORTADOS'
-          ELSE 'NO REPORTADOS'
-        END as estado,
-        CASE 
-          WHEN COUNT(
-            CASE 
-              WHEN registro_servicios.kpi_precio = 1 AND registros_mistery_shopper.id_registro_pdv IS NOT NULL THEN 1 
-            END
-          ) > 0 THEN ${puntosPorPDV}
-          ELSE 0
-        END AS puntos
-      FROM puntos_venta
-      INNER JOIN users ON users.id = puntos_venta.user_id
-      LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id
-      LEFT JOIN registros_mistery_shopper 
-          ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
-      WHERE ${whereClause} 
-      GROUP BY puntos_venta.id, puntos_venta.codigo, puntos_venta.descripcion, users.name, users.id
-      ORDER BY puntos_venta.codigo
-    `;
-    
-    const rows = await executeQueryForMultipleUsers(query, queryParams);
+  let puntosPorPDV = totalAsignados > 0 ? Math.floor(MAX_PUNTOS_PRECIOS / totalAsignados) : 0;
+  // Aplica el factor de complejidad
+  puntosPorPDV = Math.round(puntosPorPDV * calcularFactorComplejidad(totalAsignados));
+
+  const query = `
+    SELECT 
+      puntos_venta.id,
+      puntos_venta.codigo,
+      puntos_venta.descripcion as nombre,
+      users.name as nombre_asesor,
+      users.id as asesor_id,
+      CASE 
+        WHEN COUNT(CASE WHEN registro_servicios.kpi_precio = 1 AND registros_mistery_shopper.id_registro_pdv IS NOT NULL THEN 1 END) > 0 THEN 'REPORTADOS'
+        ELSE 'NO REPORTADOS'
+      END as estado,
+      CASE 
+        WHEN COUNT(
+          CASE 
+            WHEN registro_servicios.kpi_precio = 1 AND registros_mistery_shopper.id_registro_pdv IS NOT NULL THEN 1 
+          END
+        ) > 0 THEN ${puntosPorPDV}
+        ELSE 0
+      END AS puntos
+    FROM puntos_venta
+    INNER JOIN users ON users.id = puntos_venta.user_id
+    LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id
+    LEFT JOIN registros_mistery_shopper 
+        ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
+    WHERE ${whereClause} 
+    GROUP BY puntos_venta.id, puntos_venta.codigo, puntos_venta.descripcion, users.name, users.id
+    ORDER BY puntos_venta.codigo
+  `;
+  const rows = await executeQueryForMultipleUsers(query, queryParams);
 
   // Calcular puntos totales (IGUAL QUE ASESOR: 2000 puntos máximo)
-  const puntosPrecios = totalAsignados > 0 ? Math.round((totalConPrecios / totalAsignados) * MAX_PUNTOS_PRECIOS) : 0;
+  let puntosPrecios = totalAsignados > 0 ? Math.round((totalConPrecios / totalAsignados) * MAX_PUNTOS_PRECIOS) : 0;
+  puntosPrecios = Math.round(puntosPrecios * calcularFactorComplejidad(totalAsignados));
 
     res.json({
       success: true,
@@ -1408,6 +1398,45 @@ router.get('/precios', authenticateToken, requireMercadeo, logAccess, async (req
       message: 'Error al obtener métricas de precios',
       error: err.message
     });
+  }
+});
+
+/**
+ * @route GET /api/mercadeo/bonificaciones
+ * @description Obtiene bonificaciones (retos) de todos los asesores del agente logueado
+ * @access Private (requiere autenticación y rol MERCADEO)
+ * @returns {Object[]} Array de bonificaciones: asesor, descripcion, puntos
+ *
+ * Ejemplo de respuesta:
+ * [
+ *   { asesor_id: 1, asesor: 'Juan Pérez', descripcion: 'Reto X', puntos: 100 },
+ *   ...
+ * ]
+ */
+router.get('/bonificaciones', authenticateToken, requireMercadeo, logAccess, async (req, res) => {
+  try {
+    // Obtener agente_id del usuario logueado
+    const userId = req.user.id;
+    const agenteInfo = await executeQueryForMultipleUsers(
+      `SELECT agente_id FROM users WHERE id = ?`, [userId]
+    );
+    const agenteId = agenteInfo[0]?.agente_id;
+    if (!agenteId) {
+      return res.status(400).json({ success: false, message: 'No se encontró agente_id para el usuario.' });
+    }
+    // Traer bonificaciones de todos los asesores de este agente
+    const bonificaciones = await executeQueryForMultipleUsers(
+      `SELECT rb.id_asesor as asesor_id, u.name as asesor, rb.descripcion, rb.puntos
+       FROM retos_bonificadores rb
+       INNER JOIN users u ON u.id = rb.id_asesor
+       WHERE u.agente_id = ?
+       ORDER BY u.name, rb.descripcion`,
+      [agenteId]
+    );
+    res.json({ success: true, bonificaciones });
+  } catch (err) {
+    console.error('Error obteniendo bonificaciones de mercadeo:', err);
+    res.status(500).json({ success: false, message: 'Error al obtener bonificaciones', error: err.message });
   }
 });
 
@@ -2117,7 +2146,8 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
     };
 
     for (const asesor of asesores) {
-      // 1. PUNTOS COBERTURA
+
+      // 1. PUNTOS COBERTURA (con factor de complejidad)
       const pdvsAsesor = await executeQueryForMultipleUsers(
         `SELECT id FROM puntos_venta WHERE user_id = ?`, [asesor.id]
       );
@@ -2127,9 +2157,10 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
          WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2 AND fecha_registro <= ?`, [asesor.id, '2025-09-06']
       );
       const totalImplementados = implementados.length;
-      const puntosCobertura = totalAsignados > 0 ? Math.round((totalImplementados / totalAsignados) * MAX_PUNTOS.cobertura) : 0;
+      let puntosCobertura = totalAsignados > 0 ? Math.round((totalImplementados / totalAsignados) * MAX_PUNTOS.cobertura) : 0;
+      puntosCobertura = Math.round(puntosCobertura * calcularFactorComplejidad(totalAsignados));
 
-      // 2. PUNTOS VOLUMEN
+      // 2. PUNTOS VOLUMEN (con factor de complejidad)
       const metaVolumenResult = await executeQueryForMultipleUsers(
         `SELECT SUM(meta_volumen) as totalMeta 
          FROM puntos_venta 
@@ -2149,9 +2180,10 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
          WHERE pv.user_id = ?`, [asesor.id, asesor.id]
       );
       const totalRealVolumen = realVolumenResult[0]?.totalReal || 0;
-      const puntosVolumen = totalMetaVolumen > 0 ? Math.round((totalRealVolumen / totalMetaVolumen) * MAX_PUNTOS.volumen) : 0;
+      let puntosVolumen = totalMetaVolumen > 0 ? Math.round((totalRealVolumen / totalMetaVolumen) * MAX_PUNTOS.volumen) : 0;
+      puntosVolumen = Math.round(puntosVolumen * calcularFactorComplejidad(totalAsignados));
 
-      // 3. PUNTOS VISITAS
+      // 3. PUNTOS VISITAS (con factor de complejidad)
       const totalPdvs = pdvsAsesor.length;
       const metaVisitas = totalPdvs * 10;
       const realVisitas = await executeQueryForMultipleUsers(
@@ -2159,22 +2191,27 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
          WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [asesor.id]
       );
       const totalVisitas = realVisitas[0]?.totalVisitas || 0;
-      const puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * MAX_PUNTOS.visitas) : 0;
+      let puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * MAX_PUNTOS.visitas) : 0;
+      puntosVisitas = Math.round(puntosVisitas * calcularFactorComplejidad(totalAsignados));
 
-      // 4. PUNTOS PRECIOS
+      // 4. PUNTOS PRECIOS (con factor de complejidad)
       const reportadosPrecios = await executeQueryForMultipleUsers(
         `SELECT DISTINCT pdv_id FROM registro_servicios
          LEFT JOIN registros_mistery_shopper ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
          WHERE user_id = ? AND kpi_precio = 1 AND registros_mistery_shopper.id IS NOT NULL`, [asesor.id]
       );
       const totalReportados = reportadosPrecios.length;
-      const puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * MAX_PUNTOS.precios) : 0;
+      let puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * MAX_PUNTOS.precios) : 0;
+      puntosPrecios = Math.round(puntosPrecios * calcularFactorComplejidad(totalAsignados));
 
-      // 5. PUNTOS BONIFICACIÓN
+      // 5. PUNTOS BONIFICACIÓN (retos_bonificadores por agente)
+      // Sumar bonificaciones solo de los asesores de este agente
       const bonificaciones = await executeQueryForMultipleUsers(
-        `SELECT SUM(puntos) as totalBonificacion FROM retos_bonificadores WHERE id_asesor = ?`, [asesor.id]
+        `SELECT COALESCE(SUM(rb.puntos),0) as totalBonificacion FROM retos_bonificadores rb
+         INNER JOIN users u ON u.id = rb.id_asesor
+         WHERE u.agente_id = ? AND rb.id_asesor = ?`, [miAgenteId, asesor.id]
       );
-      const puntosBonificacion = 0;
+      const puntosBonificacion = Number(bonificaciones[0]?.totalBonificacion) || 0;
 
       // TOTAL DE PUNTOS
       const totalGeneral = puntosCobertura + puntosVolumen + puntosVisitas + puntosPrecios + puntosBonificacion;

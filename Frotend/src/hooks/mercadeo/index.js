@@ -54,6 +54,12 @@ export { useVisitasMercadeo } from './useVisitasMercadeo.js';
  */
 export { usePreciosMercadeo } from './usePreciosMercadeo.js';
 
+/**
+ * Hook para métricas de cobertura filtradas por agente comercial
+ * Calcula cobertura de PDVs por asesores bajo supervisión de mercadeo
+ */
+export { useBonificacionesMercadeo } from './useBonificacionesMercadeo.js';
+
 // ============================================
 // HOOKS DE HISTORIAL Y REPORTES
 // ============================================

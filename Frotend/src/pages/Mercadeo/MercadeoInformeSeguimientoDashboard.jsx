@@ -14,13 +14,15 @@ import {
   useVolumenMercadeo,
   useVisitasMercadeo,
   usePreciosMercadeo,
-  usePuntosVentaMercadeo
+  usePuntosVentaMercadeo,
+  useBonificacionesMercadeo
 } from '../../hooks/mercadeo';
 import { useExcelDownload } from '../../hooks/shared/useExcelDownload';
 
 // Importar componentes de filtros
 import FiltrosAvanzadosMercadeo from '../../components/Mercadeo/Filtros/FiltrosAvanzadosMercadeo';
 import FiltroActivoMercadeo from '../../components/Mercadeo/Filtros/FiltroActivoMercadeo';
+import KPIBonificacionesMercadeo from '../../components/mercadeo/KPIBonificacionesMercadeo.jsx';
 
 // Importar componente de gráficos (puede ser opcional si no existe)
 // import GraficoGalonajePorSegmento from '../../components/shared/GraficoGalonajePorSegmento';
@@ -62,22 +64,18 @@ export default function MercadeoInformeSeguimientoDashboard() {
 
   // Obtener datos de asesores y PDVs usando los hooks
   const { asesores, loading: asesoresLoading, error: asesoresError } = useAsesoresMercadeo();
+  // Hacer disponible la lista de asesores globalmente para el filtrado de bonificaciones
+  if (typeof window !== 'undefined') {
+    window.asesoresGlobal = asesores || [];
+  }
   const { puntosVenta: pdvsData, loading: pdvsLoading } = usePuntosVentaMercadeo();
-  
-  // Debug de asesores
-  // console.log('Dashboard - asesores hook result:', {
-  //   asesores: asesores,
-  //   asesoresLength: asesores?.length,
-  //   asesoresLoading,
-  //   asesoresError,
-  //   firstAsesor: asesores?.[0]
-  // });
   
   // Obtener datos de métricas usando los hooks
   const { cobertura: coberturaData, loading: coberturaLoading } = useCoberturaMercadeo(filtros);
   const { volumen: volumenData, loading: volumenLoading } = useVolumenMercadeo(filtros);
   const { visitas: visitasData, loading: visitasLoading } = useVisitasMercadeo(filtros);
   const { precios: preciosData, loading: preciosLoading } = usePreciosMercadeo(filtros);
+  const { loading: bonificacionesLoading, error: bonificacionesError, totalPuntos: bonificacionesTotalPuntos } = useBonificacionesMercadeo();
 
   // Hook para descargas Excel
   const { downloadAllKPIData, downloadVisitasHistorial, loading: loadingDownload } = useExcelDownload();
@@ -88,15 +86,10 @@ export default function MercadeoInformeSeguimientoDashboard() {
   // Verificar si está cargando datos
   const isLoading = !pageReady || asesoresLoading || pdvsLoading || 
                    coberturaLoading || volumenLoading || visitasLoading || 
-                   preciosLoading;
+                   preciosLoading || bonificacionesLoading;
 
   // Preparar los datos de asesores y sus PDVs asignados
   useEffect(() => {
-    // console.log('=== DEBUG PREPARAR DATOS ===');
-    // console.log('asesores:', asesores);
-    // console.log('pdvsData:', pdvsData);
-    // console.log('asesores.length:', asesores?.length);
-    // console.log('pdvsData.length:', pdvsData?.length);
     
     if (asesores && asesores.length > 0 && pdvsData && pdvsData.length > 0) {
       // Asociar PDVs a cada asesor
@@ -104,15 +97,11 @@ export default function MercadeoInformeSeguimientoDashboard() {
         // Encontrar todos los PDVs asignados a este asesor
         const pdvsAsesor = pdvsData.filter(pdv => pdv.asesor_id === asesor.id);
         
-        //console.log(`Asesor ${asesor.nombre} (ID: ${asesor.id}) tiene ${pdvsAsesor.length} PDVs:`, pdvsAsesor);
-        
         return {
           ...asesor,
           pdvs: pdvsAsesor
         };
       });
-      
-      //console.log('asesoresConPdvs:', asesoresConPdvs);
       
       // Si hay un asesor seleccionado, actualizar su info con los nuevos datos
       if (asesorSeleccionado) {
@@ -122,7 +111,6 @@ export default function MercadeoInformeSeguimientoDashboard() {
         }
       }
     }
-    //console.log('===============================');
   }, [asesores, pdvsData]); // Remover asesorSeleccionado de las dependencias
 
   // Filtrar asesores por búsqueda (código o nombre)
@@ -185,7 +173,7 @@ export default function MercadeoInformeSeguimientoDashboard() {
       <p>Cobertura: {coberturaLoading ? 'Cargando...' : 'Listo'}</p>
       <p>Volumen: {volumenLoading ? 'Cargando...' : 'Listo'}</p>
       <p>Visitas: {visitasLoading ? 'Cargando...' : 'Listo'}</p>
-      <p>Precios: {preciosLoading ? 'Cargando...' : 'Listo'}</p>
+      <p>Precios: {preciosLoading ? 'Cargando...' : 'Listo'}</p>      <p>Bonificaciones: {bonificacionesLoading ? 'Cargando...' : 'Listo'}</p>
     </div>;
   }
 
@@ -196,13 +184,9 @@ export default function MercadeoInformeSeguimientoDashboard() {
 
   // Manejar cambios en filtros avanzados
   const handleFiltrosChange = (nuevosFiltros) => {
-    // console.log('=== handleFiltrosChange ===');
-    // console.log('nuevosFiltros recibidos:', nuevosFiltros);
-    
+
     // Los filtros ya vienen en el formato correcto (asesor_id, pdv_id)
     setFiltros(nuevosFiltros);
-    // console.log('Filtros establecidos:', nuevosFiltros);
-    // console.log('==========================');
   };
 
   // Limpiar filtros
@@ -273,13 +257,6 @@ export default function MercadeoInformeSeguimientoDashboard() {
 
   // Datos de métricas desde los hooks
   const getMetricasData = () => {
-    // Debug: Verificar estructura de datos
-    // console.log('=== DEBUG MÉTRICAS MERCADEO ===');
-    // console.log('coberturaData estructura:', coberturaData);
-    // console.log('volumenData estructura:', volumenData);
-    // console.log('visitasData estructura:', visitasData);
-    // console.log('preciosData estructura:', preciosData);
-    // console.log('===============================');
     
     // Crear métricas usando los datos del API (igual que OT)
     return [
@@ -448,9 +425,6 @@ export default function MercadeoInformeSeguimientoDashboard() {
     setBusquedaAsesor('');
   };
 
-  // Este es un comentario que reemplaza el antiguo useEffect que se ha movido arriba
-  // Movido arriba para mantener constante el orden de los hooks
-
   // Función para hacer scroll hacia abajo
   const scrollToBottom = () => {
     const container = document.querySelector('.dashboard-seguimiento-container');
@@ -551,39 +525,40 @@ export default function MercadeoInformeSeguimientoDashboard() {
 
         {/* Contenedor de métricas */}
         <div className="metricas-container-50">
-          <div className="metricas-grid">
-            {metricas.map((metrica) => (
-              <div 
-                key={metrica.id} 
-                className="metrica-card-kpi"
-                onClick={() => handleDetalleClick(metrica.id)}
-              >
-                <div className="metrica-header-kpi">
-                  <span className="metrica-titulo-kpi">{metrica.titulo}</span>
-                </div>
-                
-                <div className="metrica-content-kpi">
-                  <div className="metrica-datos-row">
-                    <div className="dato-item-kpi">
-                      <span className="dato-numero">{metrica.meta.toLocaleString()}</span>
-                      <span className="dato-label-small">Meta</span>
-                    </div>
-                    <div className="dato-item-kpi">
-                      <span className="dato-numero">{metrica.implementado.toLocaleString()}</span>
-                      <span className="dato-label-small">Real</span>
-                    </div>
-                    <div className="dato-item-kpi">
-                      <span className="dato-numero porcentaje-kpi">{metrica.porcentaje}%</span>
-                      <span className="dato-label-small">Cumplimiento</span>
-                    </div>
-                  </div>
-                  <div className="puntos-obtenidos-label">
-                    <span className="puntos-label-text">{metrica.puntosLabel}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+           <div className="metricas-grid">
+             {metricas.map((metrica) => (
+               <div 
+                 key={metrica.id} 
+                 className="metrica-card-kpi"
+                 onClick={() => handleDetalleClick(metrica.id)}
+               >
+                 <div className="metrica-header-kpi">
+                   <span className="metrica-titulo-kpi">{metrica.titulo}</span>
+                 </div>
+                 <div className="metrica-content-kpi">
+                   <div className="metrica-datos-row">
+                     <div className="dato-item-kpi">
+                       <span className="dato-numero">{metrica.meta.toLocaleString()}</span>
+                       <span className="dato-label-small">Meta</span>
+                     </div>
+                     <div className="dato-item-kpi">
+                       <span className="dato-numero">{metrica.implementado.toLocaleString()}</span>
+                       <span className="dato-label-small">Real</span>
+                     </div>
+                     <div className="dato-item-kpi">
+                       <span className="dato-numero porcentaje-kpi">{metrica.porcentaje}%</span>
+                       <span className="dato-label-small">Cumplimiento</span>
+                     </div>
+                   </div>
+                   <div className="puntos-obtenidos-label">
+                     <span className="puntos-label-text">{metrica.puntosLabel}</span>
+                   </div>
+                 </div>
+               </div>
+             ))}
+             {/* KPI de Bonificaciones */}
+              <KPIBonificacionesMercadeo asesor_id={filtros.asesor_id} pdv_id={filtros.pdv_id} />
+           </div>
         </div>
 
         {/* Botón flotante para filtrar Asesor */}
@@ -804,7 +779,6 @@ function DetalleMetricaMercadeo({ metricId, asesorSeleccionado, datosBase, aseso
               <tr>
                 <th>Código PDV</th>
                 <th>Nombre PDV</th>
-                {/* <th>Asesor</th> */}
                 <th>Estado</th>
                 <th>Puntos</th>
               </tr>
@@ -848,7 +822,6 @@ function DetalleMetricaMercadeo({ metricId, asesorSeleccionado, datosBase, aseso
                 <tr>
                   <th>Código PDV</th>
                   <th>Nombre PDV</th>
-                  {/* <th>Asesor</th> */}
                   <th>Segmento</th>
                   <th>Meta (Gal)</th>
                   <th>Real (Gal)</th>
@@ -891,23 +864,6 @@ function DetalleMetricaMercadeo({ metricId, asesorSeleccionado, datosBase, aseso
               </tbody>
             </table>
           </div>
-
-          {/* Gráfica de galonaje por segmento */}
-          {/* <div className="segmento-container">
-            <h3>Galonaje Total por Segmento{asesorSeleccionado ? ` - ${asesorSeleccionado.nombre}` : ' (Todos los Asesores)'}</h3>
-            
-            {Array.isArray(datos) && datos.length > 0 ? (
-              <div className="graficas-container">
-                <ResumenVolumenMercadeo 
-                  datos={datos} 
-                  filtros={filtros}
-                  asesorSeleccionado={asesorSeleccionado}
-                />
-              </div>
-            ) : (
-              <div className="no-data">No hay datos disponibles para mostrar</div>
-            )}
-          </div> */}
         </div>
       )}
 
@@ -919,7 +875,6 @@ function DetalleMetricaMercadeo({ metricId, asesorSeleccionado, datosBase, aseso
               <tr>
                 <th>Código PDV</th>
                 <th>Nombre PDV</th>
-                {/* <th>Asesor</th> */}
                 <th>Visitas</th>
                 <th>Puntos</th>
               </tr>
@@ -933,7 +888,6 @@ function DetalleMetricaMercadeo({ metricId, asesorSeleccionado, datosBase, aseso
                   <tr key={index}>
                     <td>{pdv?.codigo || punto.codigo || 'N/A'}</td>
                     <td>{pdv?.nombre || punto.nombre || 'N/A'}</td>
-                    {/* <td>{asesor?.nombre || 'N/A'}</td> */}
                     <td>{punto.visitas || punto.cantidadVisitas || 0}</td>
                     <td><strong>{punto.puntos || 0}</strong></td>
                   </tr>
@@ -958,8 +912,6 @@ function DetalleMetricaMercadeo({ metricId, asesorSeleccionado, datosBase, aseso
               <tr>
                 <th>Código PDV</th>
                 <th>Nombre PDV</th>
-                {/* <th>Asesor</th> */}
-                {/* <th>Productos</th> */}
                 <th>Estado</th>
                 <th>Puntos</th>
               </tr>
@@ -978,10 +930,6 @@ function DetalleMetricaMercadeo({ metricId, asesorSeleccionado, datosBase, aseso
                   <tr key={index}>
                     <td>{pdv?.codigo || punto.codigo || 'N/A'}</td>
                     <td>{pdv?.nombre || punto.nombre || 'N/A'}</td>
-                    {/* <td>{asesor?.nombre || 'N/A'}</td> */}
-                    {/* <td className="productos-cell">
-                      <div className="productos-texto">{nombresProductos || 'Sin productos'}</div>
-                    </td> */}
                     <td>
                       <span className={`estado ${punto.estado === 'Precios Reportados' ? 'implementado' : 'no-implementado'}`}>
                         {punto.estado || 'No Reportado'}

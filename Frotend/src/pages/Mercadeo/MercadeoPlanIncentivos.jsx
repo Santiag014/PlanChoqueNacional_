@@ -280,6 +280,7 @@ export default function MercadeoPlanIncentivos() {
   return (
     <DashboardLayout user={user} pageTitle="PLAN DE INCENTIVOS">
       <div className="ranking-container">
+
         
         {/* Sección de información desplegable */}
         <div className="info-section">

@@ -2,22 +2,15 @@ import { useState, useEffect } from 'react';
 import { API_URL } from '../../config.js';
 
 /**
- * Hook para obtener bonificaciones del asesor
- * @param {string|number} userId - ID del usuario asesor
+ * Hook para obtener bonificaciones de todos los asesores del agente (mercadeo)
  * @returns {object} { bonificaciones, loading, error, refetch }
  */
-export function useBonificacionesAsesor(userId) {
+export function useBonificacionesMercadeo() {
   const [bonificaciones, setBonificaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const fetchBonificaciones = async () => {
-    if (!userId) {
-      setLoading(false);
-      setError('No se ha definido el usuario.');
-      return;
-    }
-    // Buscar token igual que otros hooks: primero authToken, luego token
     let token = localStorage.getItem('authToken');
     if (!token) token = localStorage.getItem('token');
     if (!token) {
@@ -28,7 +21,7 @@ export function useBonificacionesAsesor(userId) {
     setLoading(true);
     setError(null);
     try {
-      const url = `${API_URL}/api/asesor/bonificacion/${userId}`;
+      const url = `${API_URL}/api/mercadeo/bonificaciones`;
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -61,8 +54,7 @@ export function useBonificacionesAsesor(userId) {
 
   useEffect(() => {
     fetchBonificaciones();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, []);
 
   return { bonificaciones, loading, error, refetch: fetchBonificaciones };
 }

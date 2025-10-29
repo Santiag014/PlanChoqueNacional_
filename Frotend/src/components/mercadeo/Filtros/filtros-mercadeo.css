@@ -126,7 +126,7 @@
 }
 
 /* Estilos para FiltroActivoMercadeo */
-.filtro-activo-container {
+/* .filtro-activo-container {
   background: #f8f9fa;
   border-left: 4px solid #e30613;
   padding: 15px;
@@ -137,7 +137,7 @@
 .filtro-activo-container.mobile {
   padding: 10px;
   font-size: 14px;
-}
+} */
 
 .filtro-activo-header {
   display: flex;

@@ -429,17 +429,17 @@ export default function AsesorInformeSeguimientoDashboard() {
           </div>
 
           {/* Rectángulo de bonificaciones debajo de los KPIs */}
-          {/* <div className="bonificacion-card" onClick={() => setPopupBonificaciones(true)} style={{marginTop: '12px', cursor: 'pointer', background: '#fff7e6', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', padding: '8px 12px', textAlign: 'center', maxWidth: '340px', marginLeft: 'auto', marginRight: 'auto', display:'flex', alignItems:'center', justifyContent:'center', gap:'12px'}}>
+          <div className="bonificacion-card" onClick={() => setPopupBonificaciones(true)} style={{marginTop: '12px', cursor: 'pointer', background: '#fff7e6', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', padding: '8px 12px', textAlign: 'center', maxWidth: '340px', marginLeft: 'auto', marginRight: 'auto', display:'flex', alignItems:'center', justifyContent:'center', gap:'12px'}}>
             <span style={{fontWeight: 'bold', fontSize: '0.95rem', color: '#e30613'}}>Bonificaciones:</span>
-            <span style={{fontSize: '1.2rem', fontWeight: 700, color: '#f7941d'}}>{totalBonificacion} pts</span>
-          </div> */}
+            <span style={{fontSize: '0.95rem', fontWeight: 700, color: '#f7941d'}}>{totalBonificacion} pts</span>
+          </div>
 
           {/* Popup de bonificaciones */}
           {popupBonificaciones && (
             <div className="popup-bonificaciones-overlay" style={{position: 'fixed', top:0, left:0, width:'100vw', height:'100vh', background:'rgba(0,0,0,0.75)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center'}}>
               <div className="popup-bonificaciones" style={{background:'#f9f9f9', borderRadius:'18px', padding:'0', minWidth:'400px', maxWidth:'98vw', boxShadow:'0 8px 32px rgba(0,0,0,0.28)', overflow:'hidden', position:'relative'}}>
                 {/* Cabecera roja */}
-                <div style={{background:'#e30613', color:'#fff', padding:'28px 32px 18px 32px', fontSize:'1.7rem', fontWeight:700, letterSpacing:'0.5px', position:'relative'}}>
+                <div style={{background:'linear-gradient(90deg, rgb(227, 6, 19) 80%, rgb(247, 148, 29) 100%)', color:'#fff', padding:'28px 32px 18px 32px', fontSize:'1.7rem', fontWeight:700, letterSpacing:'0.5px', position:'relative'}}>
                   Retos Multiplicadores
                   <span onClick={()=>setPopupBonificaciones(false)} style={{position:'absolute', right:'24px', top:'24px', fontSize:'2rem', cursor:'pointer', fontWeight:400}}>&times;</span>
                 </div>
