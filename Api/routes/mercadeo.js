@@ -45,7 +45,25 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+
 const router = express.Router();
+
+// === FUNCIÓN GLOBAL DE FACTOR DE COMPLEJIDAD ===
+function calcularFactorComplejidad(totalAsignados) {
+  let factor = 1;
+  if (totalAsignados >= 1 && totalAsignados <= 3) {
+    factor = 1;
+  } else if (totalAsignados >= 4 && totalAsignados <= 6) {
+    factor = 1.12;
+  } else if (totalAsignados >= 7 && totalAsignados <= 9) {
+    factor = 1.18;
+  } else if (totalAsignados >= 10 && totalAsignados <= 12) {
+    factor = 1.3;
+  } else if (totalAsignados >= 13 && totalAsignados <= 15) {
+    factor = 1.4;
+  }
+  return factor;
+}
 
 // ============================================
 // ENDPOINTS DE DIAGNÓSTICO Y VERIFICACIÓN
@@ -655,43 +673,31 @@ router.get('/cobertura', authenticateToken, requireMercadeo, logAccess, async (r
     const rows = await executeQueryForMultipleUsers(query, queryParams);
 
   // PUNTOS BASE: Calculados con métricas base (sin filtros de PDV) - ESTÁTICOS
-  const puntosCoberturaBase = totalAsignadosBase > 0 ? Math.round((totalImpactadosBase / totalAsignadosBase) * MAX_PUNTOS_COBERTURA) : 0;
-    
-    // CORREGIDO: Si hay filtro PDV específico y ese PDV no tiene datos → 0 puntos
-    const puntosFinales = pdv_id && totalImpactadosValidos === 0 ? 0 : puntosCoberturaBase;
-    
-    console.log('=== DEBUG COBERTURA MERCADEO CORREGIDO ===');
-    console.log('BASE - Asignados:', totalAsignadosBase, 'Impactados:', totalImpactadosBase, 'Puntos:', puntosCoberturaBase);
-    console.log('FILTRADA - Asignados:', totalAsignados);
-    console.log('REALES (para UI) - Impactados:', totalImpactadosReales);
-    console.log('VÁLIDOS (para puntos) - Impactados:', totalImpactadosValidos);
-    console.log('PDV filtro:', pdv_id, 'Puntos finales:', puntosFinales);
-    console.log('Porcentaje con reales:', Math.round(porcentajeCobertura * 100) + '%');
-    console.log('Filtros aplicados:', { asesor_id, pdv_id, agente_id });
-    console.log('===============================');
-    
-    res.json({
-      success: true,
-      pdvs: rows,
-      data: rows,
-      total: rows.length,
-      // Métricas principales para el dashboard
-      puntos: puntosFinales, // Puntos ajustados (0 si PDV filtrado no tiene datos)
-      meta: totalAsignados, // Meta filtrada (para UI)
-      real: totalImpactadosReales, // REAL: Todos los PDVs con registros (sin filtro de fecha)
-      porcentajeCumplimiento: Math.round(porcentajeCobertura * 100),
-      // Propiedades adicionales para compatibilidad
-      totalAsignados: totalAsignados,
-      totalImplementados: totalImpactadosReales, // REAL: Usar impactados reales
-      puntosCobertura: puntosFinales, // Puntos ajustados
-      estadisticas: {
-        totalAsignados,
-        totalImpactados: totalImpactadosReales, // REAL: Usar impactados reales
-        porcentajeCobertura: Math.round(porcentajeCobertura * 100),
-        puntosTotal: puntosFinales, // Puntos ajustados
-        puntosPorPDV: Number(puntosBasePorPDV.toFixed(2))
-      }
-    });
+  let puntosCoberturaBase = totalAsignadosBase > 0 ? Math.round((totalImpactadosBase / totalAsignadosBase) * MAX_PUNTOS_COBERTURA) : 0;
+  // Aplica el factor de complejidad
+  puntosCoberturaBase = Math.round(puntosCoberturaBase * calcularFactorComplejidad(totalAsignadosBase));
+  // CORREGIDO: Si hay filtro PDV específico y ese PDV no tiene datos → 0 puntos
+  const puntosFinales = pdv_id && totalImpactadosValidos === 0 ? 0 : puntosCoberturaBase;
+  res.json({
+    success: true,
+    pdvs: rows,
+    data: rows,
+    total: rows.length,
+    puntos: puntosFinales,
+    meta: totalAsignados,
+    real: totalImpactadosReales,
+    porcentajeCumplimiento: Math.round(porcentajeCobertura * 100),
+    totalAsignados: totalAsignados,
+    totalImplementados: totalImpactadosReales,
+    puntosCobertura: puntosFinales,
+    estadisticas: {
+      totalAsignados,
+      totalImpactados: totalImpactadosReales,
+      porcentajeCobertura: Math.round(porcentajeCobertura * 100),
+      puntosTotal: puntosFinales,
+      puntosPorPDV: Number(puntosBasePorPDV.toFixed(2))
+    }
+  });
 
   } catch (err) {
     console.error('Error obteniendo métricas de cobertura (Mercadeo):', err);
@@ -831,27 +837,10 @@ router.get('/volumen', authenticateToken, requireMercadeo, logAccess, async (req
     // NUEVA MATRIZ DE PUNTOS MÁXIMOS: Volumen = 6000
     const MAX_PUNTOS_VOLUMEN = 6000;
     let puntosVolumen = totalMeta > 0 ? Math.round((totalReal / totalMeta) * MAX_PUNTOS_VOLUMEN) : 0;
-
-    console.log('=== DEBUG VOLUMEN MERCADEO (DISTRIBUCIÓN PROPORCIONAL) ===');
-    console.log('Filtros aplicados:', { asesor_id, pdv_id, agente_id });
-    console.log('totalMeta:', totalMeta);
-    console.log('totalReal:', totalReal);
-    console.log('puntosVolumen (SIN límite):', puntosVolumen);
-    console.log('Fórmula: (' + totalReal + '/' + totalMeta + ') * 350 =', puntosVolumen);
-    
-    let logicaAplicada = 'CONSULTA POR AGENTE_ID';
-    if (asesor_id && pdv_id) {
-      logicaAplicada = 'FILTRO POR ASESOR Y PDV ESPECÍFICO';
-    } else if (asesor_id) {
-      logicaAplicada = 'FILTRO POR ASESOR - Fórmula idéntica a asesor.js';
-    } else if (pdv_id) {
-      logicaAplicada = 'FILTRO POR PDV ESPECÍFICO';
-    }
-    
-    console.log('Lógica aplicada:', logicaAplicada);
-    console.log('Parámetros meta:', metaParams);
-    console.log('Parámetros real:', realParams);
-    console.log('=======================================================');
+    // Aplica el factor de complejidad
+    const totalAsignados = await executeQueryForMultipleUsers(`SELECT COUNT(*) as total FROM puntos_venta WHERE ${whereClause}`, queryParams);
+    const totalAsignadosCount = totalAsignados[0]?.total || 0;
+    puntosVolumen = Math.round(puntosVolumen * calcularFactorComplejidad(totalAsignadosCount));
 
     // Obtener detalle por PDV incluyendo puntos reales de registro_puntos
     // CORREGIDO: Usar subconsultas para evitar duplicación de puntos cuando hay múltiples productos
@@ -1121,13 +1110,11 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
     
   // NUEVA MATRIZ DE PUNTOS MÁXIMOS: Frecuencia = 1000
   const MAX_PUNTOS_FRECUENCIA = 1000;
-  const puntosVisitasBase = metaBase > 0 ? Math.round((totalVisitasBase / metaBase) * MAX_PUNTOS_FRECUENCIA) : 0;
-    
-    console.log('=== DEBUG MÉTRICAS BASE vs FILTRADAS ===');
-    console.log('Meta BASE (puntos):', metaBase, 'Visitas BASE:', totalVisitasBase, 'Puntos BASE:', puntosVisitasBase);
-    console.log('Meta FILTRADA (UI):', metaVisitas, 'Visitas FILTRADAS:', totalVisitas);
-    console.log('Filtros aplicados:', { asesor_id, pdv_id, agente_id });
-    console.log('==========================================');
+  let puntosVisitasBase = metaBase > 0 ? Math.round((totalVisitasBase / metaBase) * MAX_PUNTOS_FRECUENCIA) : 0;
+  // Aplica el factor de complejidad
+  const totalAsignados = await executeQueryForMultipleUsers(`SELECT COUNT(*) as total FROM puntos_venta WHERE ${whereClauseBase}`, queryParamsBase);
+  const totalAsignadosCount = totalAsignados[0]?.total || 0;
+  puntosVisitasBase = Math.round(puntosVisitasBase * calcularFactorComplejidad(totalAsignadosCount));
 
     // Obtener detalle por PDV
     const pdvs = await executeQueryForMultipleUsers(
@@ -1341,41 +1328,44 @@ router.get('/precios', authenticateToken, requireMercadeo, logAccess, async (req
     const porcentajePrecios = totalAsignados > 0 ? (totalConPrecios / totalAsignados) : 0;
   // NUEVA MATRIZ DE PUNTOS MÁXIMOS: Precios = 2000
   const MAX_PUNTOS_PRECIOS = 2000;
-  const puntosPorPDV = totalAsignados > 0 ? Math.floor(MAX_PUNTOS_PRECIOS / totalAsignados) : 0;
 
-    const query = `
-      SELECT 
-        puntos_venta.id,
-        puntos_venta.codigo,
-        puntos_venta.descripcion as nombre,
-        users.name as nombre_asesor,
-        users.id as asesor_id,
-        CASE 
-          WHEN COUNT(CASE WHEN registro_servicios.kpi_precio = 1 AND registros_mistery_shopper.id_registro_pdv IS NOT NULL THEN 1 END) > 0 THEN 'REPORTADOS'
-          ELSE 'NO REPORTADOS'
-        END as estado,
-        CASE 
-          WHEN COUNT(
-            CASE 
-              WHEN registro_servicios.kpi_precio = 1 AND registros_mistery_shopper.id_registro_pdv IS NOT NULL THEN 1 
-            END
-          ) > 0 THEN ${puntosPorPDV}
-          ELSE 0
-        END AS puntos
-      FROM puntos_venta
-      INNER JOIN users ON users.id = puntos_venta.user_id
-      LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id
-      LEFT JOIN registros_mistery_shopper 
-          ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
-      WHERE ${whereClause} 
-      GROUP BY puntos_venta.id, puntos_venta.codigo, puntos_venta.descripcion, users.name, users.id
-      ORDER BY puntos_venta.codigo
-    `;
-    
-    const rows = await executeQueryForMultipleUsers(query, queryParams);
+  let puntosPorPDV = totalAsignados > 0 ? Math.floor(MAX_PUNTOS_PRECIOS / totalAsignados) : 0;
+  // Aplica el factor de complejidad
+  puntosPorPDV = Math.round(puntosPorPDV * calcularFactorComplejidad(totalAsignados));
+
+  const query = `
+    SELECT 
+      puntos_venta.id,
+      puntos_venta.codigo,
+      puntos_venta.descripcion as nombre,
+      users.name as nombre_asesor,
+      users.id as asesor_id,
+      CASE 
+        WHEN COUNT(CASE WHEN registro_servicios.kpi_precio = 1 AND registros_mistery_shopper.id_registro_pdv IS NOT NULL THEN 1 END) > 0 THEN 'REPORTADOS'
+        ELSE 'NO REPORTADOS'
+      END as estado,
+      CASE 
+        WHEN COUNT(
+          CASE 
+            WHEN registro_servicios.kpi_precio = 1 AND registros_mistery_shopper.id_registro_pdv IS NOT NULL THEN 1 
+          END
+        ) > 0 THEN ${puntosPorPDV}
+        ELSE 0
+      END AS puntos
+    FROM puntos_venta
+    INNER JOIN users ON users.id = puntos_venta.user_id
+    LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id
+    LEFT JOIN registros_mistery_shopper 
+        ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
+    WHERE ${whereClause} 
+    GROUP BY puntos_venta.id, puntos_venta.codigo, puntos_venta.descripcion, users.name, users.id
+    ORDER BY puntos_venta.codigo
+  `;
+  const rows = await executeQueryForMultipleUsers(query, queryParams);
 
   // Calcular puntos totales (IGUAL QUE ASESOR: 2000 puntos máximo)
-  const puntosPrecios = totalAsignados > 0 ? Math.round((totalConPrecios / totalAsignados) * MAX_PUNTOS_PRECIOS) : 0;
+  let puntosPrecios = totalAsignados > 0 ? Math.round((totalConPrecios / totalAsignados) * MAX_PUNTOS_PRECIOS) : 0;
+  puntosPrecios = Math.round(puntosPrecios * calcularFactorComplejidad(totalAsignados));
 
     res.json({
       success: true,
@@ -1408,6 +1398,45 @@ router.get('/precios', authenticateToken, requireMercadeo, logAccess, async (req
       message: 'Error al obtener métricas de precios',
       error: err.message
     });
+  }
+});
+
+/**
+ * @route GET /api/mercadeo/bonificaciones
+ * @description Obtiene bonificaciones (retos) de todos los asesores del agente logueado
+ * @access Private (requiere autenticación y rol MERCADEO)
+ * @returns {Object[]} Array de bonificaciones: asesor, descripcion, puntos
+ *
+ * Ejemplo de respuesta:
+ * [
+ *   { asesor_id: 1, asesor: 'Juan Pérez', descripcion: 'Reto X', puntos: 100 },
+ *   ...
+ * ]
+ */
+router.get('/bonificaciones', authenticateToken, requireMercadeo, logAccess, async (req, res) => {
+  try {
+    // Obtener agente_id del usuario logueado
+    const userId = req.user.id;
+    const agenteInfo = await executeQueryForMultipleUsers(
+      `SELECT agente_id FROM users WHERE id = ?`, [userId]
+    );
+    const agenteId = agenteInfo[0]?.agente_id;
+    if (!agenteId) {
+      return res.status(400).json({ success: false, message: 'No se encontró agente_id para el usuario.' });
+    }
+    // Traer bonificaciones de todos los asesores de este agente
+    const bonificaciones = await executeQueryForMultipleUsers(
+      `SELECT rb.id_asesor as asesor_id, u.name as asesor, rb.descripcion, rb.puntos
+       FROM retos_bonificadores rb
+       INNER JOIN users u ON u.id = rb.id_asesor
+       WHERE u.agente_id = ?
+       ORDER BY u.name, rb.descripcion`,
+      [agenteId]
+    );
+    res.json({ success: true, bonificaciones });
+  } catch (err) {
+    console.error('Error obteniendo bonificaciones de mercadeo:', err);
+    res.status(500).json({ success: false, message: 'Error al obtener bonificaciones', error: err.message });
   }
 });
 
@@ -2117,7 +2146,8 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
     };
 
     for (const asesor of asesores) {
-      // 1. PUNTOS COBERTURA
+
+      // 1. PUNTOS COBERTURA (con factor de complejidad)
       const pdvsAsesor = await executeQueryForMultipleUsers(
         `SELECT id FROM puntos_venta WHERE user_id = ?`, [asesor.id]
       );
@@ -2127,9 +2157,10 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
          WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2 AND fecha_registro <= ?`, [asesor.id, '2025-09-06']
       );
       const totalImplementados = implementados.length;
-      const puntosCobertura = totalAsignados > 0 ? Math.round((totalImplementados / totalAsignados) * MAX_PUNTOS.cobertura) : 0;
+      let puntosCobertura = totalAsignados > 0 ? Math.round((totalImplementados / totalAsignados) * MAX_PUNTOS.cobertura) : 0;
+      puntosCobertura = Math.round(puntosCobertura * calcularFactorComplejidad(totalAsignados));
 
-      // 2. PUNTOS VOLUMEN
+      // 2. PUNTOS VOLUMEN (con factor de complejidad)
       const metaVolumenResult = await executeQueryForMultipleUsers(
         `SELECT SUM(meta_volumen) as totalMeta 
          FROM puntos_venta 
@@ -2149,9 +2180,10 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
          WHERE pv.user_id = ?`, [asesor.id, asesor.id]
       );
       const totalRealVolumen = realVolumenResult[0]?.totalReal || 0;
-      const puntosVolumen = totalMetaVolumen > 0 ? Math.round((totalRealVolumen / totalMetaVolumen) * MAX_PUNTOS.volumen) : 0;
+      let puntosVolumen = totalMetaVolumen > 0 ? Math.round((totalRealVolumen / totalMetaVolumen) * MAX_PUNTOS.volumen) : 0;
+      puntosVolumen = Math.round(puntosVolumen * calcularFactorComplejidad(totalAsignados));
 
-      // 3. PUNTOS VISITAS
+      // 3. PUNTOS VISITAS (con factor de complejidad)
       const totalPdvs = pdvsAsesor.length;
       const metaVisitas = totalPdvs * 10;
       const realVisitas = await executeQueryForMultipleUsers(
@@ -2159,22 +2191,27 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
          WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [asesor.id]
       );
       const totalVisitas = realVisitas[0]?.totalVisitas || 0;
-      const puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * MAX_PUNTOS.visitas) : 0;
+      let puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * MAX_PUNTOS.visitas) : 0;
+      puntosVisitas = Math.round(puntosVisitas * calcularFactorComplejidad(totalAsignados));
 
-      // 4. PUNTOS PRECIOS
+      // 4. PUNTOS PRECIOS (con factor de complejidad)
       const reportadosPrecios = await executeQueryForMultipleUsers(
         `SELECT DISTINCT pdv_id FROM registro_servicios
          LEFT JOIN registros_mistery_shopper ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
          WHERE user_id = ? AND kpi_precio = 1 AND registros_mistery_shopper.id IS NOT NULL`, [asesor.id]
       );
       const totalReportados = reportadosPrecios.length;
-      const puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * MAX_PUNTOS.precios) : 0;
+      let puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * MAX_PUNTOS.precios) : 0;
+      puntosPrecios = Math.round(puntosPrecios * calcularFactorComplejidad(totalAsignados));
 
-      // 5. PUNTOS BONIFICACIÓN
+      // 5. PUNTOS BONIFICACIÓN (retos_bonificadores por agente)
+      // Sumar bonificaciones solo de los asesores de este agente
       const bonificaciones = await executeQueryForMultipleUsers(
-        `SELECT SUM(puntos) as totalBonificacion FROM retos_bonificadores WHERE id_asesor = ?`, [asesor.id]
+        `SELECT COALESCE(SUM(rb.puntos),0) as totalBonificacion FROM retos_bonificadores rb
+         INNER JOIN users u ON u.id = rb.id_asesor
+         WHERE u.agente_id = ? AND rb.id_asesor = ?`, [miAgenteId, asesor.id]
       );
-      const puntosBonificacion = 0;
+      const puntosBonificacion = Number(bonificaciones[0]?.totalBonificacion) || 0;
 
       // TOTAL DE PUNTOS
       const totalGeneral = puntosCobertura + puntosVolumen + puntosVisitas + puntosPrecios + puntosBonificacion;
@@ -2491,107 +2528,125 @@ router.get('/implementaciones/excel', authenticateToken, requireMercadeo, logAcc
       });
     }
 
-    // Query SQL optimizada para implementaciones - FILTRADO POR TERRITORIO
+    // Query SQL optimizada para implementaciones - FILTRADO POR TERRITORIO (idéntica a OT)
     const queryImplementaciones = `
+    SELECT 
+      a.descripcion AS agente,
+      pv.codigo,
+      pv.nit,
+      pv.descripcion AS nombre_PDV,
+      pv.direccion,
+      pv.segmento,
+      pv.ciudad,
+      TRUNCATE(pv.meta_volumen,2)AS meta_volumen,
+      d.descripcion AS departamento,
+      u.name as Asesor,
+
+      -- Total de compras redondeado a 2 decimales
+      ROUND(
+        COALESCE(pvi.compra_1,0) +
+        COALESCE(pvi.compra_2,0) +
+        COALESCE(pvi.compra_3,0) +
+        COALESCE(pvi.compra_4,0) +
+        COALESCE(pvi.compra_5,0)
+      ,2) AS "Meta Volumen (TOTAL)",
+
+      -- Galonaje vendido redondeado a 2 decimales
+      ROUND(COALESCE(g.GalonajeVendido, 0),2) AS GalonajeVendido,
+
+      -- Compras individuales
+      COALESCE(pvi.compra_1, 0) AS compra_1,
+      COALESCE(pvi.compra_2, 0) AS compra_2,
+      COALESCE(pvi.compra_3, 0) AS compra_3,
+      COALESCE(pvi.compra_4, 0) AS compra_4,
+      COALESCE(pvi.compra_5, 0) AS compra_5,
+
+      -- Implementaciones realizadas (autorizadas)
+      COALESCE(impl.impl_1, 0) AS impl_1_realizada,
+      COALESCE(impl.impl_2, 0) AS impl_2_realizada,
+      COALESCE(impl.impl_3, 0) AS impl_3_realizada,
+      COALESCE(impl.impl_4, 0) AS impl_4_realizada,
+      COALESCE(impl.impl_5_1, 0) AS impl_5_1_realizada,
+      COALESCE(impl.impl_5_2, 0) AS impl_5_2_realizada,
+
+      -- Implementaciones no autorizadas
+      COALESCE(impl.impl_1_no_autorizado, 0) AS impl_1_no_autorizado,
+      COALESCE(impl.impl_2_no_autorizado, 0) AS impl_2_no_autorizado,
+      COALESCE(impl.impl_3_no_autorizado, 0) AS impl_3_no_autorizado,
+      COALESCE(impl.impl_4_no_autorizado, 0) AS impl_4_no_autorizado,
+      COALESCE(impl.impl_5_1_no_autorizado, 0) AS impl_5_1_no_autorizado,
+      COALESCE(impl.impl_5_2_no_autorizado, 0) AS impl_5_2_no_autorizado
+
+    FROM puntos_venta pv
+    LEFT JOIN depar_ciudades dc 
+      ON dc.descripcion = pv.ciudad
+    LEFT JOIN departamento d 
+      ON d.id = dc.id_departamento
+    LEFT JOIN puntos_venta__implementacion pvi 
+      ON pvi.pdv_id = pv.id
+    INNER JOIN agente a 
+      ON a.id = pv.id_agente
+    INNER JOIN users u 
+      ON u.id = pv.user_id
+
+    -- Galonaje vendido
+    LEFT JOIN (
       SELECT 
-          a.descripcion AS agente,
-          pv.codigo,
-          pv.nit,
-          pv.descripcion AS nombre_PDV,
-          pv.direccion,
-          pv.segmento,
-          pv.ciudad,
-          TRUNCATE(pv.meta_volumen,2) AS meta_volumen,
-          d.descripcion AS departamento,
-          u.name as Asesor,
+        rs.pdv_id, 
+        SUM(rp.conversion_galonaje) AS GalonajeVendido
+      FROM registro_servicios rs
+      INNER JOIN registro_productos rp 
+          ON rp.registro_id = rs.id
+      WHERE rs.estado_id = 2 
+      AND rs.estado_agente_id = 2   -- ✅ condición global
+      GROUP BY rs.pdv_id
+    ) g ON g.pdv_id = pv.id
 
-          -- Total de compras redondeado a 2 decimales
-          ROUND(
-              COALESCE(pvi.compra_1,0) +
-              COALESCE(pvi.compra_2,0) +
-              COALESCE(pvi.compra_3,0) +
-              COALESCE(pvi.compra_4,0) +
-              COALESCE(pvi.compra_5,0)
-          ,2) AS "Meta Volumen (TOTAL)",
+    -- Implementaciones
+    LEFT JOIN (
+      SELECT 
+        rs.pdv_id,
+        -- Autorizadas (Si)
+        SUM(CASE WHEN ri.nro_implementacion = 1 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_1,
+        SUM(CASE WHEN ri.nro_implementacion = 2 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_2,
+        SUM(CASE WHEN ri.nro_implementacion = 3 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_3,
+        SUM(CASE WHEN ri.nro_implementacion = 4 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_4,
 
-          -- Galonaje vendido redondeado a 2 decimales
-          ROUND(COALESCE(g.GalonajeVendido, 0),2) AS GalonajeVendido,
+        -- Implementación 5 dividida en dos columnas
+        CASE 
+          WHEN SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) >= 1 
+            THEN 1 ELSE 0 
+        END AS impl_5_1,
+        CASE 
+          WHEN SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) >= 2 
+            THEN 1 ELSE 0 
+        END AS impl_5_2,
 
-          -- Compras individuales
-          COALESCE(pvi.compra_1, 0) AS compra_1,
-          COALESCE(pvi.compra_2, 0) AS compra_2,
-          COALESCE(pvi.compra_3, 0) AS compra_3,
-          COALESCE(pvi.compra_4, 0) AS compra_4,
-          COALESCE(pvi.compra_5, 0) AS compra_5,
+        -- No autorizadas (No)
+        SUM(CASE WHEN ri.nro_implementacion = 1 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_1_no_autorizado,
+        SUM(CASE WHEN ri.nro_implementacion = 2 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_2_no_autorizado,
+        SUM(CASE WHEN ri.nro_implementacion = 3 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_3_no_autorizado,
+        SUM(CASE WHEN ri.nro_implementacion = 4 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_4_no_autorizado,
+        CASE 
+          WHEN SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) >= 1 
+            THEN 1 ELSE 0 
+        END AS impl_5_1_no_autorizado,
+        CASE 
+          WHEN SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) >= 2 
+            THEN 1 ELSE 0 
+        END AS impl_5_2_no_autorizado
+      FROM registro_servicios rs
+      INNER JOIN registros_implementacion ri 
+        ON ri.id_registro = rs.id
+      WHERE rs.estado_id = 2 
+      AND rs.estado_agente_id = 2   -- ✅ condición global
+      GROUP BY rs.pdv_id
+    ) impl ON impl.pdv_id = pv.id
 
-          -- Implementaciones realizadas (autorizadas)
-          COALESCE(impl.impl_1, 0) AS impl_1_realizada,
-          COALESCE(impl.impl_2, 0) AS impl_2_realizada,
-          COALESCE(impl.impl_3, 0) AS impl_3_realizada,
-          COALESCE(impl.impl_4, 0) AS impl_4_realizada,
-          COALESCE(impl.impl_5, 0) AS impl_5_realizada,
-
-          -- Implementaciones no autorizadas
-          COALESCE(impl.impl_1_no_autorizado, 0) AS impl_1_no_autorizado,
-          COALESCE(impl.impl_2_no_autorizado, 0) AS impl_2_no_autorizado,
-          COALESCE(impl.impl_3_no_autorizado, 0) AS impl_3_no_autorizado,
-          COALESCE(impl.impl_4_no_autorizado, 0) AS impl_4_no_autorizado,
-          COALESCE(impl.impl_5_no_autorizado, 0) AS impl_5_no_autorizado
-
-      FROM puntos_venta pv
-      LEFT JOIN depar_ciudades dc 
-            ON dc.descripcion = pv.ciudad
-      LEFT JOIN departamento d 
-            ON d.id = dc.id_departamento
-      LEFT JOIN puntos_venta__implementacion pvi 
-            ON pvi.pdv_id = pv.id
-      INNER JOIN agente a 
-            ON a.id = pv.id_agente
-      INNER JOIN users u 
-            ON u.id = pv.user_id
-
-      -- Galonaje vendido
-      LEFT JOIN (
-          SELECT 
-              rs.pdv_id, 
-              SUM(rp.conversion_galonaje) AS GalonajeVendido
-          FROM registro_servicios rs
-          INNER JOIN registro_productos rp 
-                  ON rp.registro_id = rs.id
-          WHERE rs.estado_id = 2 
-            AND rs.estado_agente_id = 2   -- ✅ condición global
-          GROUP BY rs.pdv_id
-      ) g ON g.pdv_id = pv.id
-
-      -- Implementaciones
-      LEFT JOIN (
-          SELECT 
-              rs.pdv_id,
-              -- Autorizadas (Si)
-              SUM(CASE WHEN ri.nro_implementacion = 1 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_1,
-              SUM(CASE WHEN ri.nro_implementacion = 2 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_2,
-              SUM(CASE WHEN ri.nro_implementacion = 3 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_3,
-              SUM(CASE WHEN ri.nro_implementacion = 4 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_4,
-              SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_5,
-
-              -- No autorizadas (No)
-              SUM(CASE WHEN ri.nro_implementacion = 1 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_1_no_autorizado,
-              SUM(CASE WHEN ri.nro_implementacion = 2 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_2_no_autorizado,
-              SUM(CASE WHEN ri.nro_implementacion = 3 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_3_no_autorizado,
-              SUM(CASE WHEN ri.nro_implementacion = 4 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_4_no_autorizado,
-              SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_5_no_autorizado
-          FROM registro_servicios rs
-          INNER JOIN registros_implementacion ri 
-              ON ri.id_registro = rs.id
-          WHERE rs.estado_id = 2 
-            AND rs.estado_agente_id = 2   -- ✅ condición global
-          GROUP BY rs.pdv_id
-      ) impl ON impl.pdv_id = pv.id
-
-      WHERE pv.id_agente = ?  -- ✅ FILTRO TERRITORIAL POR AGENTE_ID
-      GROUP BY pv.codigo
-      ORDER BY MAX(a.descripcion), MAX(pv.descripcion);
-      `;
+    WHERE pv.id_agente = ?  -- ✅ FILTRO TERRITORIAL POR AGENTE_ID
+    GROUP BY pv.codigo
+    ORDER BY MAX(a.descripcion), MAX(pv.descripcion);
+    `;
 
     // Query SQL para visitas con subconsultas para productos y fotos - FILTRADO POR TERRITORIO
     const queryVisitas = `
@@ -2690,15 +2745,44 @@ router.get('/implementaciones/excel', authenticateToken, requireMercadeo, logAcc
         }
       };
 
-      // Calcular estados de cada implementación
+      // --- Lógica idéntica a OT para Implementación 5 (dos columnas)
+      let impl5_1 = 'No Habilitado';
+      let impl5_2 = 'No Habilitado';
+      const galonaje = row.GalonajeVendido;
+      const compra5 = row.compra_5;
+      const impl5_1_realizada = row.impl_5_1_realizada || 0;
+      const impl5_2_realizada = row.impl_5_2_realizada || 0;
+      const impl5_1_no_autorizado = row.impl_5_1_no_autorizado || 0;
+      const impl5_2_no_autorizado = row.impl_5_2_no_autorizado || 0;
+
+      if (galonaje < compra5) {
+        impl5_1 = 'No Habilitado';
+        impl5_2 = 'No Habilitado';
+      } else {
+        if (impl5_1_realizada > 0) {
+          impl5_1 = 'Realizada';
+        } else if (impl5_1_no_autorizado > 0) {
+          impl5_1 = 'No Autorizo';
+        } else {
+          impl5_1 = 'Pendiente';
+        }
+        if (impl5_2_realizada > 0) {
+          impl5_2 = 'Realizada';
+        } else if (impl5_2_no_autorizado > 0) {
+          impl5_2 = 'No Autorizo';
+        } else {
+          impl5_2 = 'Pendiente';
+        }
+      }
+
+      // Calcular estados de las otras implementaciones
       const impl1Status = getImplementacionStatus(1, row.GalonajeVendido, row.compra_1, row.impl_1_realizada, row.impl_1_no_autorizado);
       const impl2Status = getImplementacionStatus(2, row.GalonajeVendido, row.compra_2, row.impl_2_realizada, row.impl_2_no_autorizado);
       const impl3Status = getImplementacionStatus(3, row.GalonajeVendido, row.compra_3, row.impl_3_realizada, row.impl_3_no_autorizado);
       const impl4Status = getImplementacionStatus(4, row.GalonajeVendido, row.compra_4, row.impl_4_realizada, row.impl_4_no_autorizado);
-      const impl5Status = getImplementacionStatus(5, row.GalonajeVendido, row.compra_5, row.impl_5_realizada, row.impl_5_no_autorizado);
 
       // Calcular total de implementaciones habilitadas (incluye Realizada, Pendiente y No Autorizo)
-      const totalHabilitadas = [impl1Status, impl2Status, impl3Status, impl4Status, impl5Status]
+      const totalHabilitadas = [impl1Status, impl2Status, impl3Status, impl4Status, impl5_1, impl5_2]
         .filter(status => status === 'Realizada' || status === 'Pendiente' || status === 'No Autorizo').length;
 
       return {
@@ -2708,7 +2792,8 @@ router.get('/implementaciones/excel', authenticateToken, requireMercadeo, logAcc
         Implementacion_2: impl2Status,
         Implementacion_3: impl3Status,
         Implementacion_4: impl4Status,
-        Implementacion_5: impl5Status
+        Implementacion_5_1: impl5_1,
+        Implementacion_5_2: impl5_2
       };
     });
 
@@ -2769,7 +2854,7 @@ router.get('/implementaciones/excel', authenticateToken, requireMercadeo, logAcc
       'Empresa', 'Código', 'nit', 'Nombre P.D.V', 'Dirección', 'Segmento', 'Ciudad', 'Departamento', 'Asesor', 'Meta Volumen (TOTAL)',
       'Galones Comprado','Cuantas implementaciones puede tener',
       'Primera implementación', 'Segunda implementación', 'Tercera implementación', 
-      'Cuarta implementación', 'Quinta implementación'
+      'Cuarta implementación', 'Quinta implementación 1', 'Quinta implementación 2'
     ];
 
     // Configurar la fila de headers (fila 4) para implementaciones
@@ -2912,7 +2997,8 @@ router.get('/implementaciones/excel', authenticateToken, requireMercadeo, logAcc
           row.Implementacion_2 || 'No Habilitado',
           row.Implementacion_3 || 'No Habilitado',
           row.Implementacion_4 || 'No Habilitado',
-          row.Implementacion_5 || 'No Habilitado'
+          row.Implementacion_5_1 || 'No Habilitado',
+          row.Implementacion_5_2 || 'No Habilitado'
         ];
 
         // Escribir cada celda con formato
@@ -2920,8 +3006,8 @@ router.get('/implementaciones/excel', authenticateToken, requireMercadeo, logAcc
           const cell = dataRow.getCell(colIndex + 2); // Empezar en columna B
           cell.value = value;
           
-          // Aplicar color de fondo si es columna de implementación (índices 12-16, que corresponden a las 5 implementaciones)
-          if (colIndex >= 12 && colIndex <= 16) {
+          // Aplicar color de fondo si es columna de implementación (índices 12-17, que corresponden a las 6 implementaciones)
+          if (colIndex >= 12 && colIndex <= 17) {
             cell.fill = getImplementacionColorFill(value);
           }
           
@@ -3037,8 +3123,8 @@ router.get('/implementaciones/excel', authenticateToken, requireMercadeo, logAcc
     
     // Auto-ajustar anchos SOLO de las columnas con datos en la hoja de Implementaciones (B a R)
     
-    // Definir explícitamente las columnas que contienen datos para implementaciones
-    const columnasImplementaciones = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'];
+  // Definir explícitamente las columnas que contienen datos para implementaciones (ahora hasta S)
+  const columnasImplementaciones = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S'];
     
     // Función optimizada para calcular el ancho óptimo basado en el contenido
     const calculateColumnWidth = (worksheet, columnLetter, maxRow) => {
