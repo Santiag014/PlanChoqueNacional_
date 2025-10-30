@@ -747,7 +747,7 @@ const ejecutarCalculosDeBonos = async () => {
             INNER JOIN registros_implementacion ri ON rs.id = ri.id_registro
             WHERE rs.user_id = ? 
               AND rs.estado_id = 2 AND rs.estado_agente_id = 2
-              AND rs.fecha_registro <= '2025-10-24'
+              AND DATE(rs.created_at) <= '2025-10-25'
               AND ri.acepto_implementacion = 'Si'
               AND ri.nro_implementacion IN (2, 3)
             GROUP BY rs.pdv_id
