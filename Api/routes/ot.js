@@ -1013,104 +1013,122 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
 
     // Query SQL optimizada para implementaciones
     const baseQueryImplementaciones = `
+    SELECT 
+      a.descripcion AS agente,
+      pv.codigo,
+      pv.nit,
+      pv.descripcion AS nombre_PDV,
+      pv.direccion,
+      pv.segmento,
+      pv.ciudad,
+      TRUNCATE(pv.meta_volumen,2)AS meta_volumen,
+      d.descripcion AS departamento,
+      u.name as Asesor,
+
+      -- Total de compras redondeado a 2 decimales
+      ROUND(
+        COALESCE(pvi.compra_1,0) +
+        COALESCE(pvi.compra_2,0) +
+        COALESCE(pvi.compra_3,0) +
+        COALESCE(pvi.compra_4,0) +
+        COALESCE(pvi.compra_5,0)
+      ,2) AS "Meta Volumen (TOTAL)",
+
+      -- Galonaje vendido redondeado a 2 decimales
+      ROUND(COALESCE(g.GalonajeVendido, 0),2) AS GalonajeVendido,
+
+      -- Compras individuales
+      COALESCE(pvi.compra_1, 0) AS compra_1,
+      COALESCE(pvi.compra_2, 0) AS compra_2,
+      COALESCE(pvi.compra_3, 0) AS compra_3,
+      COALESCE(pvi.compra_4, 0) AS compra_4,
+      COALESCE(pvi.compra_5, 0) AS compra_5,
+
+      -- Implementaciones realizadas (autorizadas)
+      COALESCE(impl.impl_1, 0) AS impl_1_realizada,
+      COALESCE(impl.impl_2, 0) AS impl_2_realizada,
+      COALESCE(impl.impl_3, 0) AS impl_3_realizada,
+      COALESCE(impl.impl_4, 0) AS impl_4_realizada,
+      COALESCE(impl.impl_5_1, 0) AS impl_5_1_realizada,
+      COALESCE(impl.impl_5_2, 0) AS impl_5_2_realizada,
+
+      -- Implementaciones no autorizadas
+      COALESCE(impl.impl_1_no_autorizado, 0) AS impl_1_no_autorizado,
+      COALESCE(impl.impl_2_no_autorizado, 0) AS impl_2_no_autorizado,
+      COALESCE(impl.impl_3_no_autorizado, 0) AS impl_3_no_autorizado,
+      COALESCE(impl.impl_4_no_autorizado, 0) AS impl_4_no_autorizado,
+      COALESCE(impl.impl_5_1_no_autorizado, 0) AS impl_5_1_no_autorizado,
+      COALESCE(impl.impl_5_2_no_autorizado, 0) AS impl_5_2_no_autorizado
+
+    FROM puntos_venta pv
+    LEFT JOIN depar_ciudades dc 
+      ON dc.descripcion = pv.ciudad
+    LEFT JOIN departamento d 
+      ON d.id = dc.id_departamento
+    LEFT JOIN puntos_venta__implementacion pvi 
+      ON pvi.pdv_id = pv.id
+    INNER JOIN agente a 
+      ON a.id = pv.id_agente
+    INNER JOIN users u 
+      ON u.id = pv.user_id
+
+    -- Galonaje vendido
+    LEFT JOIN (
       SELECT 
-          a.descripcion AS agente,
-          pv.codigo,
-          pv.nit,
-          pv.descripcion AS nombre_PDV,
-          pv.direccion,
-          pv.segmento,
-          pv.ciudad,
-          TRUNCATE(pv.meta_volumen,2)AS meta_volumen,
-          d.descripcion AS departamento,
-          u.name as Asesor,
+        rs.pdv_id, 
+        SUM(rp.conversion_galonaje) AS GalonajeVendido
+      FROM registro_servicios rs
+      INNER JOIN registro_productos rp 
+          ON rp.registro_id = rs.id
+      WHERE rs.estado_id = 2 
+      AND rs.estado_agente_id = 2   -- ✅ condición global
+      GROUP BY rs.pdv_id
+    ) g ON g.pdv_id = pv.id
 
-          -- Total de compras redondeado a 2 decimales
-          ROUND(
-              COALESCE(pvi.compra_1,0) +
-              COALESCE(pvi.compra_2,0) +
-              COALESCE(pvi.compra_3,0) +
-              COALESCE(pvi.compra_4,0) +
-              COALESCE(pvi.compra_5,0)
-          ,2) AS "Meta Volumen (TOTAL)",
+    -- Implementaciones
+    LEFT JOIN (
+      SELECT 
+        rs.pdv_id,
+        -- Autorizadas (Si)
+        SUM(CASE WHEN ri.nro_implementacion = 1 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_1,
+        SUM(CASE WHEN ri.nro_implementacion = 2 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_2,
+        SUM(CASE WHEN ri.nro_implementacion = 3 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_3,
+        SUM(CASE WHEN ri.nro_implementacion = 4 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_4,
 
-          -- Galonaje vendido redondeado a 2 decimales
-          ROUND(COALESCE(g.GalonajeVendido, 0),2) AS GalonajeVendido,
+        -- Implementación 5 dividida en dos columnas
+        CASE 
+          WHEN SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) >= 1 
+            THEN 1 ELSE 0 
+        END AS impl_5_1,
+        CASE 
+          WHEN SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) >= 2 
+            THEN 1 ELSE 0 
+        END AS impl_5_2,
 
-          -- Compras individuales
-          COALESCE(pvi.compra_1, 0) AS compra_1,
-          COALESCE(pvi.compra_2, 0) AS compra_2,
-          COALESCE(pvi.compra_3, 0) AS compra_3,
-          COALESCE(pvi.compra_4, 0) AS compra_4,
-          COALESCE(pvi.compra_5, 0) AS compra_5,
+        -- No autorizadas (No)
+        SUM(CASE WHEN ri.nro_implementacion = 1 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_1_no_autorizado,
+        SUM(CASE WHEN ri.nro_implementacion = 2 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_2_no_autorizado,
+        SUM(CASE WHEN ri.nro_implementacion = 3 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_3_no_autorizado,
+        SUM(CASE WHEN ri.nro_implementacion = 4 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_4_no_autorizado,
+        CASE 
+          WHEN SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) >= 1 
+            THEN 1 ELSE 0 
+        END AS impl_5_1_no_autorizado,
+        CASE 
+          WHEN SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) >= 2 
+            THEN 1 ELSE 0 
+        END AS impl_5_2_no_autorizado
+      FROM registro_servicios rs
+      INNER JOIN registros_implementacion ri 
+        ON ri.id_registro = rs.id
+      WHERE rs.estado_id = 2 
+      AND rs.estado_agente_id = 2   -- ✅ condición global
+      GROUP BY rs.pdv_id
+    ) impl ON impl.pdv_id = pv.id
 
-          -- Implementaciones realizadas (autorizadas)
-          COALESCE(impl.impl_1, 0) AS impl_1_realizada,
-          COALESCE(impl.impl_2, 0) AS impl_2_realizada,
-          COALESCE(impl.impl_3, 0) AS impl_3_realizada,
-          COALESCE(impl.impl_4, 0) AS impl_4_realizada,
-          COALESCE(impl.impl_5, 0) AS impl_5_realizada,
-
-          -- Implementaciones no autorizadas
-          COALESCE(impl.impl_1_no_autorizado, 0) AS impl_1_no_autorizado,
-          COALESCE(impl.impl_2_no_autorizado, 0) AS impl_2_no_autorizado,
-          COALESCE(impl.impl_3_no_autorizado, 0) AS impl_3_no_autorizado,
-          COALESCE(impl.impl_4_no_autorizado, 0) AS impl_4_no_autorizado,
-          COALESCE(impl.impl_5_no_autorizado, 0) AS impl_5_no_autorizado
-
-      FROM puntos_venta pv
-      LEFT JOIN depar_ciudades dc 
-            ON dc.descripcion = pv.ciudad
-      LEFT JOIN departamento d 
-            ON d.id = dc.id_departamento
-      LEFT JOIN puntos_venta__implementacion pvi 
-            ON pvi.pdv_id = pv.id
-      INNER JOIN agente a 
-            ON a.id = pv.id_agente
-      INNER JOIN users u 
-            ON u.id = pv.user_id
-
-      -- Galonaje vendido
-      LEFT JOIN (
-          SELECT 
-              rs.pdv_id, 
-              SUM(rp.conversion_galonaje) AS GalonajeVendido
-          FROM registro_servicios rs
-          INNER JOIN registro_productos rp 
-                  ON rp.registro_id = rs.id
-          WHERE rs.estado_id = 2 
-            AND rs.estado_agente_id = 2   -- ✅ condición global
-          GROUP BY rs.pdv_id
-      ) g ON g.pdv_id = pv.id
-
-      -- Implementaciones
-      LEFT JOIN (
-          SELECT 
-              rs.pdv_id,
-              -- Autorizadas (Si)
-              SUM(CASE WHEN ri.nro_implementacion = 1 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_1,
-              SUM(CASE WHEN ri.nro_implementacion = 2 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_2,
-              SUM(CASE WHEN ri.nro_implementacion = 3 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_3,
-              SUM(CASE WHEN ri.nro_implementacion = 4 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_4,
-              SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'Si' THEN 1 ELSE 0 END) AS impl_5,
-
-              -- No autorizadas (No)
-              SUM(CASE WHEN ri.nro_implementacion = 1 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_1_no_autorizado,
-              SUM(CASE WHEN ri.nro_implementacion = 2 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_2_no_autorizado,
-              SUM(CASE WHEN ri.nro_implementacion = 3 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_3_no_autorizado,
-              SUM(CASE WHEN ri.nro_implementacion = 4 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_4_no_autorizado,
-              SUM(CASE WHEN ri.nro_implementacion = 5 AND ri.acepto_implementacion = 'No' THEN 1 ELSE 0 END) AS impl_5_no_autorizado
-          FROM registro_servicios rs
-          INNER JOIN registros_implementacion ri 
-              ON ri.id_registro = rs.id
-          WHERE rs.estado_id = 2 
-            AND rs.estado_agente_id = 2   -- ✅ condición global
-          GROUP BY rs.pdv_id
-      ) impl ON impl.pdv_id = pv.id
-
-      GROUP BY pv.codigo
-      ORDER BY MAX(a.descripcion), MAX(pv.descripcion);
-      `;
+    GROUP BY pv.codigo
+    ORDER BY MAX(a.descripcion), MAX(pv.descripcion);
+    `;
 
     // Query SQL para visitas con subconsultas para productos y fotos
     const baseQueryVisitas = `
@@ -1241,15 +1259,46 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
         }
       };
 
-      // Calcular estados de cada implementación
+      // --- Nueva lógica para Implementación 5 (dos columnas)
+      let impl5_1 = 'No Habilitado';
+      let impl5_2 = 'No Habilitado';
+      const galonaje = row.GalonajeVendido;
+      const compra5 = row.compra_5;
+      const impl5_1_realizada = row.impl_5_1_realizada || 0;
+      const impl5_2_realizada = row.impl_5_2_realizada || 0;
+      const impl5_1_no_autorizado = row.impl_5_1_no_autorizado || 0;
+      const impl5_2_no_autorizado = row.impl_5_2_no_autorizado || 0;
+
+      if (galonaje < compra5) {
+        impl5_1 = 'No Habilitado';
+        impl5_2 = 'No Habilitado';
+      } else {
+        // Implementación 5_1
+        if (impl5_1_realizada > 0) {
+          impl5_1 = 'Realizada';
+        } else if (impl5_1_no_autorizado > 0) {
+          impl5_1 = 'No Autorizo';
+        } else {
+          impl5_1 = 'Pendiente';
+        }
+        // Implementación 5_2
+        if (impl5_2_realizada > 0) {
+          impl5_2 = 'Realizada';
+        } else if (impl5_2_no_autorizado > 0) {
+          impl5_2 = 'No Autorizo';
+        } else {
+          impl5_2 = 'Pendiente';
+        }
+      }
+
+      // Calcular estados de las otras implementaciones
       const impl1Status = getImplementacionStatus(1, row.GalonajeVendido, row.compra_1, row.impl_1_realizada, row.impl_1_no_autorizado);
       const impl2Status = getImplementacionStatus(2, row.GalonajeVendido, row.compra_2, row.impl_2_realizada, row.impl_2_no_autorizado);
       const impl3Status = getImplementacionStatus(3, row.GalonajeVendido, row.compra_3, row.impl_3_realizada, row.impl_3_no_autorizado);
       const impl4Status = getImplementacionStatus(4, row.GalonajeVendido, row.compra_4, row.impl_4_realizada, row.impl_4_no_autorizado);
-      const impl5Status = getImplementacionStatus(5, row.GalonajeVendido, row.compra_5, row.impl_5_realizada, row.impl_5_no_autorizado);
 
       // Calcular total de implementaciones habilitadas (incluye Realizada, Pendiente y No Autorizo)
-      const totalHabilitadas = [impl1Status, impl2Status, impl3Status, impl4Status, impl5Status]
+      const totalHabilitadas = [impl1Status, impl2Status, impl3Status, impl4Status, impl5_1, impl5_2]
         .filter(status => status === 'Realizada' || status === 'Pendiente' || status === 'No Autorizo').length;
 
       return {
@@ -1259,7 +1308,8 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
         Implementacion_2: impl2Status,
         Implementacion_3: impl3Status,
         Implementacion_4: impl4Status,
-        Implementacion_5: impl5Status
+        Implementacion_5_1: impl5_1,
+        Implementacion_5_2: impl5_2
       };
     });
 
@@ -1283,7 +1333,11 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
         for (let i = 5; i <= maxRows; i++) {
           const row = worksheetImplementaciones.getRow(i);
           for (let j = 2; j <= 18; j++) { // Columnas B a R (expandido para más columnas)
-            row.getCell(j).value = null;
+            const cell = row.getCell(j);
+            cell.value = null;
+            cell.fill = undefined;
+            cell.font = undefined;
+            cell.border = undefined;
           }
         }
       } else {
@@ -1308,7 +1362,11 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       for (let i = 5; i <= maxRowsVisitas; i++) {
         const row = worksheetVisitas.getRow(i);
         for (let j = 2; j <= 25; j++) { // Columnas B a Y (expandido para visitas)
-          row.getCell(j).value = null;
+          const cell = row.getCell(j);
+          cell.value = null;
+          cell.fill = undefined;
+          cell.font = undefined;
+          cell.border = undefined;
         }
       }
     }
@@ -1320,7 +1378,7 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
       'Empresa', 'Código', 'nit', 'Nombre P.D.V', 'Dirección', 'Segmento', 'Ciudad', 'Departamento', 'Asesor', 'Meta Volumen (TOTAL)',
       'Galones Comprado','Cuantas implementaciones puede tener',
       'Primera implementación', 'Segunda implementación', 'Tercera implementación', 
-      'Cuarta implementación', 'Quinta implementación'
+      'Cuarta implementación', 'Quinta implementación 1', 'Quinta implementación 2'
     ];
 
     // Configurar la fila de headers (fila 4) para implementaciones
@@ -1463,7 +1521,8 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
           row.Implementacion_2 || 'No Habilitado',
           row.Implementacion_3 || 'No Habilitado',
           row.Implementacion_4 || 'No Habilitado',
-          row.Implementacion_5 || 'No Habilitado'
+          row.Implementacion_5_1 || 'No Habilitado',
+          row.Implementacion_5_2 || 'No Habilitado'
         ];
 
         // Escribir cada celda con formato
@@ -1471,8 +1530,8 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
           const cell = dataRow.getCell(colIndex + 2); // Empezar en columna B
           cell.value = value;
           
-          // Aplicar color de fondo si es columna de implementación (índices 12-16, que corresponden a las 5 implementaciones)
-          if (colIndex >= 12 && colIndex <= 16) {
+          // Aplicar color de fondo si es columna de implementación (índices 12-17, que corresponden a las 6 implementaciones)
+          if (colIndex >= 12 && colIndex <= 17) {
             cell.fill = getImplementacionColorFill(value);
           }
           
@@ -1586,8 +1645,8 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     
     // Auto-ajustar anchos SOLO de las columnas con datos en la hoja de Implementaciones (B a R)
     
-    // Definir explícitamente las columnas que contienen datos para implementaciones
-    const columnasImplementaciones = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'];
+  // Definir explícitamente las columnas que contienen datos para implementaciones (ahora hasta S)
+  const columnasImplementaciones = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S'];
     
     // Función optimizada para calcular el ancho óptimo basado en el contenido
     const calculateColumnWidth = (worksheet, columnLetter, maxRow) => {
