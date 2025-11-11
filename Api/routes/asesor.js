@@ -430,9 +430,9 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
     const totalPdvsGlobal = todosLosPdvsGlobales.length;
     const metaVisitasGlobal = totalPdvsGlobal * 10; // Meta global: 20 visitas por PDV
     
-    // PASO 2: Obtener visitas reales GLOBALES (sin filtro, solo una por día)
+    // PASO 2: Obtener visitas reales GLOBALES (sin filtro, solo una visita por PDV por día)
     const realGlobalResult = await executeQueryForMultipleUsers(
-    `SELECT COUNT(*) as totalVisitas
+    `SELECT COUNT(DISTINCT CONCAT(pdv_id, '-', DATE(fecha_registro))) as totalVisitas
        FROM registro_servicios
        WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [user_id]
     );
@@ -444,13 +444,13 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
     // Aplica el factor de complejidad global
     puntosVisitasGlobal = Math.round(puntosVisitasGlobal * calcularFactorComplejidad(totalPdvsGlobal));
     
-    // PASO 4: Obtener detalle de visitas GLOBAL para cada PDV (sin filtro)
+    // PASO 4: Obtener detalle de visitas GLOBAL para cada PDV (sin filtro, solo una visita por PDV por día)
     const pdvsVisitasGlobalesResult = await executeQueryForMultipleUsers(
       `SELECT 
          pv.id,
          pv.codigo,
          pv.descripcion AS nombre,
-         COUNT(rs.id) AS cantidadVisitas,
+         COUNT(DISTINCT DATE(rs.fecha_registro)) AS cantidadVisitas,
          10 AS meta
        FROM puntos_venta pv
        LEFT JOIN registro_servicios rs ON rs.pdv_id = pv.id AND rs.user_id = ? AND (rs.estado_id = 2 AND rs.estado_agente_id = 2)
@@ -517,7 +517,7 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
     // console.log('PDVs a mostrar:', pdvsParaMostrar.length);
     // console.log('================================================');
     
-    // PASO 8: Obtener tipos de visita (se mantiene global siempre)
+    // PASO 8: Obtener tipos de visita (filtrado si aplica, solo una visita por PDV por día)
     const tiposVisitaResult = await executeQueryForMultipleUsers(
       `SELECT 
          CASE
@@ -527,7 +527,7 @@ router.get('/visitas/:user_id', authenticateToken, requireAsesor, logAccess, asy
             WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Frecuencia'
             ELSE 'Otro'
          END AS tipo,
-         COUNT(*) AS cantidad
+         COUNT(DISTINCT CONCAT(pdv_id, '-', DATE(fecha_registro))) AS cantidad
        FROM registro_servicios
        WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2
        ${pdv_id ? 'AND pdv_id = ?' : ''}
@@ -1405,11 +1405,11 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
       // Aplica el factor de complejidad igual que en los endpoints principales
       puntosVolumen = Math.round(puntosVolumen * calcularFactorComplejidad(totalAsignados));
 
-      // 3. PUNTOS VISITAS - Igual que cobertura pero con meta de 10 visitas por PDV
+      // 3. PUNTOS VISITAS - Igual que cobertura pero con meta de 10 visitas por PDV (solo una visita por PDV por día)
       const totalPdvs = pdvsAsesor.length;
       const metaVisitas = totalPdvs * 10;
       const realVisitasResult = await executeQueryForMultipleUsers(
-        `SELECT COUNT(*) as totalVisitas FROM registro_servicios
+        `SELECT COUNT(DISTINCT CONCAT(pdv_id, '-', DATE(fecha_registro))) as totalVisitas FROM registro_servicios
          WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [asesor.id]
       );
       const totalVisitas = realVisitasResult[0]?.totalVisitas || 0;

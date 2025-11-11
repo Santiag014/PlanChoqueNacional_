@@ -562,21 +562,26 @@ router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAcc
 
     const metaVisitas = totalPdvs * 10;
 
-    // Consulta para visitas reales
+    // Consulta para visitas reales - Solo una visita por PDV por día
+    // CORREGIDO: Siempre aplicar filtro de estados, con o sin whereClause
+    const whereClauseVisitas = whereClause 
+      ? whereClause.replace('WHERE', 'WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2 AND')
+      : 'WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2';
+    
     const realQuery = `
-      SELECT COUNT(rs.id) as totalVisitas
+      SELECT COUNT(DISTINCT CONCAT(rs.pdv_id, '-', DATE(rs.fecha_registro))) as totalVisitas
       FROM registro_servicios rs
       INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
       INNER JOIN users u ON u.id = pv.user_id
       LEFT JOIN agente ag ON ag.id = pv.id_agente
-      ${whereClause.replace('WHERE', 'WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2 AND')}
+      ${whereClauseVisitas}
     `;
     const realResult = await executeQueryForMultipleUsers(realQuery, queryParams);
     const totalVisitas = realResult[0]?.totalVisitas || 0;
 
     const puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 1000) : 0;
 
-    // Consulta para detalle por PDV
+    // Consulta para detalle por PDV - Solo una visita por PDV por día
     const pdvsDetalleQuery = `
       SELECT 
          pv.id,
@@ -586,7 +591,7 @@ router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAcc
          u.id as asesor_id,
          ag.descripcion as compania,
          ag.id as agente_id,
-         COUNT(rs.id) AS cantidadVisitas,
+         COUNT(DISTINCT DATE(rs.fecha_registro)) AS cantidadVisitas,
          10 AS meta
       FROM puntos_venta pv
       INNER JOIN users u ON u.id = pv.user_id
@@ -615,6 +620,11 @@ router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAcc
       };
     });
 
+    // CORREGIDO: Aplicar filtro de estados también a tipos de visita
+    const whereClauseTipos = whereClause 
+      ? whereClause.replace('WHERE', 'WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2 AND')
+      : 'WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2';
+    
     const tiposQuery = `
       SELECT 
          CASE
@@ -624,12 +634,12 @@ router.get('/visitas', authenticateToken, requireOT, addUserRestrictions, logAcc
             WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Frecuencia'
             ELSE 'Otro'
          END AS tipo,
-         COUNT(*) AS cantidad
+         COUNT(DISTINCT CONCAT(rs.pdv_id, '-', DATE(rs.fecha_registro))) AS cantidad
       FROM registro_servicios rs
       INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
       INNER JOIN users u ON u.id = pv.user_id
       LEFT JOIN agente ag ON ag.id = pv.id_agente
-      ${whereClause.replace('WHERE', 'WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2 AND')}
+      ${whereClauseTipos}
       GROUP BY tipo
     `;
     const tiposVisita = await executeQueryForMultipleUsers(tiposQuery, queryParams);
@@ -1207,9 +1217,10 @@ router.get('/implementaciones/excel', authenticateToken, requireOT, addUserRestr
     // Si el usuario tiene restricciones, agregar filtro WHERE
     if (userRestrictions && userRestrictions.hasRestrictions) {
       const agenteFilter = `pv.id_agente IN (${userRestrictions.agenteIds.map(() => '?').join(',')})`;
+      // Agregar WHERE antes de GROUP BY - buscar el patrón exacto
       finalQueryImplementaciones = baseQueryImplementaciones.replace(
-        'GROUP BY pv.codigo\n      ORDER BY MAX(a.descripcion), MAX(pv.descripcion);',
-        `WHERE ${agenteFilter}\n      GROUP BY pv.codigo\n      ORDER BY MAX(a.descripcion), MAX(pv.descripcion);`
+        'GROUP BY pv.codigo',
+        `WHERE ${agenteFilter}\n    GROUP BY pv.codigo`
       );
       queryParamsImplementaciones = userRestrictions.agenteIds;
     }

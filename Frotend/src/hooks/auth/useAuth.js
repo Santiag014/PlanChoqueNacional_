@@ -61,6 +61,16 @@ export const useAuthBase = () => {
             if (storedToken && storedToken !== 'legacy_auth') {
               setToken(storedToken); // Establecer token inmediatamente
               
+              // ✅ VERIFICAR SI EL TOKEN EXPIRÓ (verificación proactiva)
+              const isTokenExpired = checkTokenExpiration(storedToken);
+              if (isTokenExpired) {
+                console.warn('🔴 Token expirado detectado - Haciendo logout...');
+                setError('Tu sesión ha expirado después de 24 horas. Por favor, inicia sesión nuevamente.');
+                logout();
+                window.location.href = '/';
+                return;
+              }
+              
               // Verificar si el token sigue siendo válido de forma asíncrona (sin bloquear)
               verifyToken(storedToken).then((isValid) => {
                 if (!isValid) {
@@ -123,8 +133,44 @@ export const useAuthBase = () => {
   }, []); // Sin dependencias para que solo se ejecute una vez al montar
 
   // ============================================
-  // FUNCIONES DE VALIDACIÓN DE SESIÓN
+  // FUNCIONES DE VALIDACIÓN DE SESIÓN Y TOKEN
   // ============================================
+
+  // ✅ NUEVA FUNCIÓN: Verificar si el token está expirado (sin llamada al servidor)
+  const checkTokenExpiration = (tokenToCheck) => {
+    if (!tokenToCheck || tokenToCheck === 'legacy_auth' || tokenToCheck === 'no-token-auth') {
+      return false; // No verificar tokens especiales
+    }
+
+    try {
+      // Decodificar el token JWT (sin verificar firma, solo leer payload)
+      const base64Url = tokenToCheck.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+
+      const payload = JSON.parse(jsonPayload);
+      
+      // Verificar si el token tiene campo 'exp' (expiration time)
+      if (payload.exp) {
+        const currentTime = Math.floor(Date.now() / 1000); // Tiempo actual en segundos
+        const isExpired = payload.exp < currentTime;
+        
+        if (isExpired) {
+          const expiredDate = new Date(payload.exp * 1000);
+          console.warn(`🔴 Token expirado desde: ${expiredDate.toLocaleString()}`);
+        }
+        
+        return isExpired;
+      }
+      
+      return false; // Si no tiene campo exp, asumir no expirado
+    } catch (error) {
+      console.error('Error verificando expiración del token:', error);
+      return false; // En caso de error, asumir no expirado para no bloquear
+    }
+  };
 
   // Función para validar si el usuario puede iniciar sesión (prevenir sesiones múltiples)
   const validateUserLogin = async (userId, userEmail, newSessionId) => {
@@ -287,15 +333,20 @@ export const useAuthBase = () => {
           throw new Error(canLogin.message || 'Ya existe una sesión activa para este usuario. No se pueden tener múltiples sesiones simultáneas.');
         }
         
-        // Guardar en localStorage
+        // Guardar en localStorage con ambas keys para compatibilidad
         localStorage.setItem('user', JSON.stringify(normalizedUser));
         localStorage.setItem('sessionId', newSessionId);
         if (newToken) {
+          // Guardar con ambos nombres para compatibilidad con código legacy
           localStorage.setItem('authToken', newToken);
+          localStorage.setItem('token', newToken); // ✅ AGREGADO para compatibilidad
           setToken(newToken);
         } else {
-          // Si no hay token, usar token legacy para compatibilidad
-          setToken('legacy_auth');
+          // Si no hay token, intentar login sin token (legacy)
+          console.warn('⚠️ No se recibió token del servidor, usando autenticación sin token');
+          localStorage.setItem('authToken', 'no-token-auth');
+          localStorage.setItem('token', 'no-token-auth');
+          setToken('no-token-auth');
         }
         
         // Actualizar estado
@@ -364,10 +415,11 @@ export const useAuthBase = () => {
       // Ignorar errores de red para no bloquear el logout
     }
     
-    // Limpiar localStorage inmediatamente
+    // Limpiar localStorage inmediatamente - TODAS las variantes de keys
     const keysToRemove = [
-      'authToken', 'user', 'userRole', 'sessionData', 
-      'userData', 'sessionId', 'lastActivity', 'loginTime'
+      'authToken', 'token', 'user', 'userRole', 'sessionData', 
+      'userData', 'sessionId', 'lastActivity', 'loginTime',
+      'auth', 'userInfo', 'accessToken' // Limpiar más variantes comunes
     ];
     keysToRemove.forEach(key => localStorage.removeItem(key));
     
@@ -500,30 +552,82 @@ export const useAuthBase = () => {
     };
   };
 
-  // Función para hacer requests autenticados
-  const authenticatedFetch = async (url, options = {}) => {
-    if (!token) {
-      throw new Error('No hay token de autenticación');
+  // Función para hacer requests autenticados con reintentos automáticos
+  const authenticatedFetch = async (url, options = {}, retries = 2) => {
+    // Verificar token antes de hacer request
+    if (!token || token === 'legacy_auth') {
+      console.warn('⚠️ Token no válido, intentando recuperar de localStorage...');
+      const storedToken = localStorage.getItem('authToken') || localStorage.getItem('token');
+      if (!storedToken) {
+        throw new Error('No hay token de autenticación válido');
+      }
+      // Actualizar token en el estado
+      setToken(storedToken);
     }
 
     const fullUrl = url.startsWith('http') ? url : `${API_URL}${url}`;
+    
+    // Obtener token más reciente
+    const currentToken = token !== 'legacy_auth' ? token : 
+                        localStorage.getItem('authToken') || 
+                        localStorage.getItem('token');
 
-    const response = await fetch(fullUrl, {
-      ...options,
-      headers: {
-        ...getAuthHeaders(),
-        ...options.headers
+    try {
+      const response = await fetch(fullUrl, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentToken}`,
+          ...options.headers
+        },
+        timeout: 30000 // 30 segundos de timeout
+      });
+
+      // ✅ MANEJO MEJORADO: Verificar si el token expiró
+      if (response.status === 401 || response.status === 403) {
+        // Intentar obtener el JSON de error para ver el código
+        try {
+          const errorData = await response.json();
+          
+          // ✅ Si el token expiró, hacer logout y redirigir
+          if (errorData.code === 'TOKEN_EXPIRED' || 
+              errorData.code === 'TOKEN_INVALID' || 
+              errorData.code === 'TOKEN_MISSING') {
+            
+            console.warn('🔴 Token expirado o inválido - Redirigiendo al login...');
+            
+            // Hacer logout limpio
+            await logout();
+            
+            // ✅ REDIRIGIR A LA PÁGINA DE LOGIN
+            window.location.href = '/';
+            
+            throw new Error(errorData.message || 'Sesión expirada. Redirigiendo al login...');
+          }
+        } catch (jsonError) {
+          // Si no se puede parsear el JSON, asumir error de autenticación
+          console.error('❌ Error de autenticación (401/403)');
+          await logout();
+          window.location.href = '/';
+          throw new Error('Sesión expirada o token inválido');
+        }
       }
-    });
 
-    // Si el token expiró, hacer logout
-    if (response.status === 401) {
-      //console.log('Token expirado, haciendo logout automático');
-      logout();
-      throw new Error('Sesión expirada');
+      return response;
+    } catch (error) {
+      // Reintentar si es un error de red y quedan reintentos
+      if (retries > 0 && (
+        error.name === 'TypeError' || 
+        error.message.includes('fetch') ||
+        error.message.includes('network')
+      )) {
+        console.warn(`⚠️ Error de red, reintentando... (${retries} intentos restantes)`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Esperar 1s antes de reintentar
+        return authenticatedFetch(url, options, retries - 1);
+      }
+      
+      throw error;
     }
-
-    return response;
   };
 
   return {

@@ -13,16 +13,29 @@ export const authenticateToken = (req, res, next) => {
   if (!token) {
     return res.status(401).json({ 
       success: false, 
-      message: 'Token de acceso requerido' 
+      message: 'Token de acceso requerido',
+      code: 'TOKEN_MISSING' // ✅ Código específico para frontend
     });
   }
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
-      //logger.warn('Token inválido desde IP:', req.ip);
+      // ✅ Diferenciar entre token expirado y token inválido
+      if (err.name === 'TokenExpiredError') {
+        logger.warn('Token expirado desde IP:', req.ip);
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Token expirado. Por favor, inicia sesión nuevamente.',
+          code: 'TOKEN_EXPIRED', // ✅ Código específico para redirección
+          expiredAt: err.expiredAt
+        });
+      }
+      
+      logger.warn('Token inválido desde IP:', req.ip);
       return res.status(403).json({ 
         success: false, 
-        message: 'Token inválido o expirado' 
+        message: 'Token inválido',
+        code: 'TOKEN_INVALID' // ✅ Código específico
       });
     }
     

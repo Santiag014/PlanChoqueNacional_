@@ -875,7 +875,9 @@ function DetalleMetricaMercadeo({ metricId, asesorSeleccionado, datosBase, aseso
               <tr>
                 <th>Código PDV</th>
                 <th>Nombre PDV</th>
+                <th>Meta</th>
                 <th>Visitas</th>
+                <th>% Cumplimiento</th>
                 <th>Puntos</th>
               </tr>
             </thead>
@@ -883,18 +885,27 @@ function DetalleMetricaMercadeo({ metricId, asesorSeleccionado, datosBase, aseso
               {Array.isArray(datos) && datos.length > 0 ? datos.map((punto, index) => {
                 const pdv = punto._pdv;
                 const asesor = punto._asesor;
+                const meta = punto.meta || 20; // Meta por defecto 20 visitas
+                const visitas = punto.visitas || punto.cantidadVisitas || 0;
+                const porcentaje = meta > 0 ? Math.round((visitas / meta) * 100) : 0;
                 
                 return (
                   <tr key={index}>
                     <td>{pdv?.codigo || punto.codigo || 'N/A'}</td>
                     <td>{pdv?.nombre || punto.nombre || 'N/A'}</td>
-                    <td>{punto.visitas || punto.cantidadVisitas || 0}</td>
+                    <td>{meta}</td>
+                    <td>{visitas}</td>
+                    <td>
+                      <span className={`porcentaje ${porcentaje >= 100 ? 'cumplido' : 'pendiente'}`}>
+                        {porcentaje}%
+                      </span>
+                    </td>
                     <td><strong>{punto.puntos || 0}</strong></td>
                   </tr>
                 );
               }) : (
                 <tr>
-                  <td colSpan="5" style={{textAlign: 'center', padding: '20px'}}>
+                  <td colSpan="6" style={{textAlign: 'center', padding: '20px'}}>
                     No hay datos disponibles para mostrar
                   </td>
                 </tr>

@@ -29,24 +29,29 @@ const JWT_EXPIRES_IN = '24h';
 // LOGIN DE USUARIOS - ENDPOINT PRINCIPAL DE AUTENTICACIÓN
 router.post('/login', async (req, res) => {
   let { email, password } = req.body;
+  const requestId = Date.now().toString(36); // ID único para rastrear esta petición
   
   try {
+    // 📊 Log inicial de petición
+    logger.info(`[${requestId}] 🔐 Intento de login para: ${email}`);
+    
     // ✅ USA POOL COMPARTIDO - NO crea conexión individual
     // Buscar usuario por email en la base de datos
     const rows = await executeQueryForMultipleUsers('SELECT * FROM users WHERE email = ?', [email]);
+    
     if (rows.length === 0) {
+      logger.warn(`[${requestId}] ❌ Usuario no encontrado: ${email}`);
       return res.status(401).json({ success: false, message: 'Usuario no encontrado' });
     }
     
     const user = rows[0];
-    
-    // Solo log en debug para datos sensibles
-    logger.debug('Usuario encontrado:', user.email);
+    logger.debug(`[${requestId}] ✅ Usuario encontrado: ${user.email} (ID: ${user.id})`);
     
     let hash = user.password || user.contrasena;
     
     // Verificar que exista el hash de la contraseña
     if (!hash) {
+      logger.error(`[${requestId}] ❌ No se encontró hash de contraseña para usuario: ${user.email}`);
       return res.status(500).json({ success: false, message: 'No se encontró el hash de la contraseña en la base de datos.' });
     }
     
@@ -57,23 +62,26 @@ router.post('/login', async (req, res) => {
     // Compatibilidad con hashes de PHP (convertir $2y$ a $2a$)
     if (hash.startsWith('$2y$')) {
       hash = hash.replace('$2y$', '$2a$');
+      logger.debug(`[${requestId}] 🔄 Hash convertido de PHP ($2y$) a bcrypt ($2a$)`);
     }
     
     // Verificar contraseña con bcrypt
     const match = await bcrypt.compare(password, hash);
     
     if (match) {
+      logger.info(`[${requestId}] ✅ Contraseña correcta para: ${user.email}`);
+      
       // Crear token JWT con información del usuario
       const token = jwt.sign(
         { 
-          id: user.id,  // Cambiado de userId a id para consistencia
+          id: user.id,
           email: user.email,
           tipo: user.tipo || user.rol || user.rol_id,
           nombre: user.nombre || user.name,
           apellido: user.apellido,
           agente_id: user.agente_id,
           IsPromotoria: user.IsPromotoria,
-          powerBI: user.power_bi  // Incluir el enlace de PowerBI en el token
+          powerBI: user.power_bi
         },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
@@ -98,15 +106,17 @@ router.post('/login', async (req, res) => {
         }
       };
       
-      // Solo log de seguridad para login exitoso
-      logger.security('Login exitoso para usuario:', user.email);
+      logger.security(`[${requestId}] ✅ Login exitoso - Usuario: ${user.email} - Rol: ${responseData.user.tipo}`);
       
       res.json(responseData);
     } else {
+      logger.warn(`[${requestId}] ❌ Contraseña incorrecta para: ${user.email}`);
       res.status(401).json({ success: false, message: 'Contraseña incorrecta' });
     }
     
   } catch (err) {
+    logger.error(`[${requestId}] 💥 Error crítico en login:`, err.message);
+    logger.error(`[${requestId}] Stack trace:`, err.stack);
     res.status(500).json({ success: false, message: 'Error en el servidor', error: err.message });
   }
   // ✅ NO necesitamos finally - el pool se encarga automáticamente

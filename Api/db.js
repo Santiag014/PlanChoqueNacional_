@@ -227,29 +227,29 @@ if (ENABLE_MONITORING) {
     
     // Solo monitorear si el pool está activo
     if (status.isPoolActive) {
-      // Alertas críticas para pool de 50
-      if (status.freeConnections < 5 && status.acquiringConnections > 10) {
+      // Alertas críticas para pool de 75
+      if (status.freeConnections < 8 && status.acquiringConnections > 15) {
         console.warn('⚠️ CRÍTICO: Pool bajo presión - Conexiones libres:', status.freeConnections);
       }
       
-      // Alerta cuando se acerque al límite de 50
-      if (status.allConnections > 40) {
+      // Alerta cuando se acerque al límite de 75
+      if (status.allConnections > 60) {
         console.warn('⚠️ ALTO USO: Conexiones activas cerca del límite:', status.allConnections);
       }
       
       // Alerta temprana para prevenir saturación
-      if (status.allConnections > 35) {
-        console.warn('⚡ ADVERTENCIA: Se acerca a capacidad máxima:', status.allConnections, '/ 50');
+      if (status.allConnections > 52) {
+        console.warn('⚡ ADVERTENCIA: Se acerca a capacidad máxima:', status.allConnections, '/ 75');
       }
       
       // Log cada 3 minutos del estado general
       if (Date.now() % 180000 < 10000) { // Aproximadamente cada 3 minutos
-        console.log(`📊 Pool Status (50 max): ${status.allConnections} total, ${status.freeConnections} libres, ${status.acquiringConnections} adquiriendo`);
+        console.log(`📊 Pool Status (75 max): ${status.allConnections} total, ${status.freeConnections} libres, ${status.acquiringConnections} adquiriendo`);
       }
     } else {
       // Log ocasional cuando el pool está inactivo
       if (Date.now() % 300000 < 10000) { // Cada 5 minutos
-        console.log(`🟢 Pool INACTIVO: 50 conexiones disponibles para uso`);
+        console.log(`🟢 Pool INACTIVO: 75 conexiones disponibles para uso`);
       }
     }
   }, 15000); // Cada 15 segundos (menos frecuente para no sobrecargar)
