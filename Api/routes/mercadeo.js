@@ -1073,7 +1073,7 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
     const metaVisitas = metaResult[0]?.metaVisitas || 0;
 
     const realResult = await executeQueryForMultipleUsers(
-      `SELECT COUNT(registro_servicios.id) as totalVisitas
+      `SELECT COUNT(DISTINCT CONCAT(registro_servicios.pdv_id, '-', DATE(registro_servicios.fecha_registro))) as totalVisitas
        FROM registro_servicios
        INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
        WHERE ${whereClause} AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2`, queryParams
@@ -1099,7 +1099,7 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
     const metaBase = metaBaseResult[0]?.metaBase || 0;
 
     const realBaseResult = await executeQueryForMultipleUsers(
-      `SELECT COUNT(registro_servicios.id) as totalVisitasBase
+      `SELECT COUNT(DISTINCT CONCAT(registro_servicios.pdv_id, '-', DATE(registro_servicios.fecha_registro))) as totalVisitasBase
        FROM registro_servicios
        INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
        WHERE ${whereClauseBase} AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2`, queryParamsBase
@@ -1116,7 +1116,7 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
   const totalAsignadosCount = totalAsignados[0]?.total || 0;
   puntosVisitasBase = Math.round(puntosVisitasBase * calcularFactorComplejidad(totalAsignadosCount));
 
-    // Obtener detalle por PDV
+    // Obtener detalle por PDV - Solo una visita por PDV por día
     const pdvs = await executeQueryForMultipleUsers(
       `SELECT 
         puntos_venta.id,
@@ -1124,10 +1124,10 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
         puntos_venta.descripcion as nombre,
         users.name as nombre_asesor,
         users.id as asesor_id,
-        COUNT(registro_servicios.id) AS cantidadVisitas,
+        COUNT(DISTINCT DATE(registro_servicios.fecha_registro)) AS cantidadVisitas,
         20 AS meta,
-        ROUND((COUNT(registro_servicios.id) / 20) * 100, 2) AS porcentaje,
-        COUNT(registro_servicios.id) AS visitasReales
+        ROUND((COUNT(DISTINCT DATE(registro_servicios.fecha_registro)) / 20) * 100, 2) AS porcentaje,
+        COUNT(DISTINCT DATE(registro_servicios.fecha_registro)) AS visitasReales
       FROM puntos_venta
       INNER JOIN users ON users.id = puntos_venta.user_id
       LEFT JOIN registro_servicios 
@@ -1207,7 +1207,7 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
     console.log('debugPdvs count:', debugPdvs.length);
     console.log('debugPdvs:', debugPdvs);
 
-    // Obtener tipos de visita
+    // Obtener tipos de visita - Solo una visita por PDV por día
     const tiposVisita = await executeQueryForMultipleUsers(
       `SELECT 
          CASE
@@ -1217,7 +1217,7 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
             WHEN kpi_frecuencia = 1 AND kpi_precio = 0 AND kpi_volumen = 0 THEN 'Frecuencia'
             ELSE 'Otro'
          END AS tipo,
-         COUNT(*) AS cantidad
+         COUNT(DISTINCT CONCAT(pdv_id, '-', DATE(fecha_registro))) AS cantidad
        FROM registro_servicios
        INNER JOIN puntos_venta ON puntos_venta.id = registro_servicios.pdv_id
        WHERE ${whereClause} AND registro_servicios.estado_id = 2 AND registro_servicios.estado_agente_id = 2
@@ -1230,10 +1230,10 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
          users.id as asesor_id,
          users.name as nombre_asesor,
          COUNT(DISTINCT puntos_venta.id) AS cantidadPdvs,
-         COUNT(registro_servicios.id) as totalVisitas,
+         COUNT(DISTINCT CONCAT(registro_servicios.pdv_id, '-', DATE(registro_servicios.fecha_registro))) as totalVisitas,
          COUNT(DISTINCT puntos_venta.id) * 20 as metaVisitas,
-         ROUND((COUNT(registro_servicios.id) / (COUNT(DISTINCT puntos_venta.id) * 20)) * 100, 2) as porcentajeCumplimiento,
-         ROUND((COUNT(registro_servicios.id) / (COUNT(DISTINCT puntos_venta.id) * 20)) * 150, 0) as puntosGanados
+         ROUND((COUNT(DISTINCT CONCAT(registro_servicios.pdv_id, '-', DATE(registro_servicios.fecha_registro))) / (COUNT(DISTINCT puntos_venta.id) * 20)) * 100, 2) as porcentajeCumplimiento,
+         ROUND((COUNT(DISTINCT CONCAT(registro_servicios.pdv_id, '-', DATE(registro_servicios.fecha_registro))) / (COUNT(DISTINCT puntos_venta.id) * 20)) * 150, 0) as puntosGanados
        FROM puntos_venta
        INNER JOIN users ON users.id = puntos_venta.user_id
        LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id 
@@ -1244,6 +1244,16 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
        ORDER BY totalVisitas DESC`, queryParams
     );
 
+    // Calcular porcentaje de cumplimiento
+    const porcentajeCumplimientoCalculado = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 100) : 0;
+    
+    console.log('=== RESPUESTA ENDPOINT VISITAS ===');
+    console.log('Meta visitas:', metaVisitas);
+    console.log('Total visitas (real):', totalVisitas);
+    console.log('Porcentaje cumplimiento:', porcentajeCumplimientoCalculado);
+    console.log('Puntos finales:', puntosFinalesVisitas);
+    console.log('====================================');
+
     res.json({
       success: true,
       pdvs: pdvsConPuntos,
@@ -1252,7 +1262,7 @@ router.get('/visitas', authenticateToken, requireMercadeo, logAccess, async (req
       puntos: puntosFinalesVisitas, // Puntos ajustados (0 si PDV filtrado no tiene datos)
       meta: metaVisitas, // Meta filtrada
       real: totalVisitas, // Visitas filtradas
-      porcentajeCumplimiento: metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * 100) : 0,
+      porcentajeCumplimiento: porcentajeCumplimientoCalculado,
       // Propiedades adicionales para compatibilidad
       meta_visitas: metaVisitas,
       real_visitas: totalVisitas,
@@ -2183,11 +2193,11 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
       let puntosVolumen = totalMetaVolumen > 0 ? Math.round((totalRealVolumen / totalMetaVolumen) * MAX_PUNTOS.volumen) : 0;
       puntosVolumen = Math.round(puntosVolumen * calcularFactorComplejidad(totalAsignados));
 
-      // 3. PUNTOS VISITAS (con factor de complejidad)
+      // 3. PUNTOS VISITAS (con factor de complejidad) - Solo una visita por PDV por día
       const totalPdvs = pdvsAsesor.length;
       const metaVisitas = totalPdvs * 10;
       const realVisitas = await executeQueryForMultipleUsers(
-        `SELECT COUNT(id) as totalVisitas FROM registro_servicios
+        `SELECT COUNT(DISTINCT CONCAT(pdv_id, '-', DATE(fecha_registro))) as totalVisitas FROM registro_servicios
          WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [asesor.id]
       );
       const totalVisitas = realVisitas[0]?.totalVisitas || 0;

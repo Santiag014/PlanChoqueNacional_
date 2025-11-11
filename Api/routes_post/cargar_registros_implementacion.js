@@ -94,23 +94,45 @@ router.post('/cargar-registros-implementacion', upload.any(), async (req, res) =
 
     if (req.files && req.files.length > 0) {
       const folder = new Date().toISOString().slice(0, 10);
+      
+      // 🔍 LOG DETALLADO: Ver todos los archivos recibidos (diagnóstico producción)
+      console.log(`📦 [DIAGNÓSTICO] Total archivos recibidos: ${req.files.length}`);
+      req.files.forEach((file, idx) => {
+        console.log(`   ${idx + 1}. fieldname: "${file.fieldname}", filename: "${file.filename}", size: ${file.size} bytes`);
+      });
 
       // Procesar foto de remisión (si existe)
       const fotoRemisionFile = req.files.find(f => f.fieldname === 'fotoRemision');
       if (fotoRemisionFile) {
         fotoRemisionUrl = `/uploads/${folder}/${fotoRemisionFile.filename}`;
         uploadedFilePaths.push(fotoRemisionFile.path); // Rastrear archivo
-        console.log(`[FOTO] Foto de remisión encontrada: ${fotoRemisionUrl}`);
+        console.log(`✅ [REMISIÓN] Archivo encontrado: ${fotoRemisionFile.filename}`);
+      } else {
+        console.log(`⚠️ [REMISIÓN] No se encontró archivo con fieldname "fotoRemision"`);
       }
 
       // Procesar foto de implementación (si existe)
       const fieldnameImplementacion = `foto_implementacion_${nro_implementacion}`;
+      console.log(`🔍 [BÚSQUEDA] Buscando foto con fieldname: "${fieldnameImplementacion}"`);
       const fotoImplementacionFile = req.files.find(f => f.fieldname === fieldnameImplementacion);
       if (fotoImplementacionFile) {
         fotoImplementacionUrl = `/uploads/${folder}/${fotoImplementacionFile.filename}`;
         uploadedFilePaths.push(fotoImplementacionFile.path); // Rastrear archivo
-        console.log(`[FOTO] Foto de implementación encontrada: ${fotoImplementacionUrl}`);
+        console.log(`✅ [IMPLEMENTACIÓN] Archivo encontrado: ${fotoImplementacionFile.filename}`);
+        
+        // 🚨 ALERTA DE DIAGNÓSTICO: Detectar duplicación (pero NO bloquear)
+        if (fotoRemisionUrl && fotoRemisionFile && fotoImplementacionFile.filename === fotoRemisionFile.filename) {
+          console.warn(`⚠️⚠️ [ALERTA] Posible duplicación detectada:`);
+          console.warn(`   Remisión: ${fotoRemisionFile.filename}`);
+          console.warn(`   Implementación: ${fotoImplementacionFile.filename}`);
+          console.warn(`   SON EL MISMO ARCHIVO - Usuario: ${user_id}, PDV: ${pdv_id}`);
+          console.warn(`   Se permitirá la carga pero revisa este caso en producción`);
+        }
+      } else {
+        console.log(`⚠️ [IMPLEMENTACIÓN] No se encontró archivo con fieldname "${fieldnameImplementacion}"`);
       }
+      
+      console.log(`📊 [RESUMEN] Remisión: ${fotoRemisionUrl ? 'SÍ' : 'NO'}, Implementación: ${fotoImplementacionUrl ? 'SÍ' : 'NO'}`);
     }
 
     // --- PASO 3: VALIDAR Y OBTENER DATOS DE LA BASE DE DATOS ---
