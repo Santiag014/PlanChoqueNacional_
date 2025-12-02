@@ -274,12 +274,12 @@ export default function AsesorInformeSeguimientoDashboard() {
         icon: IconPrecios,
         meta: pdvSeleccionado 
           ? 1
-          : precios?.totalAsignados || 0,
+          : precios?.totalConCobertura || 0,
         implementado: pdvSeleccionado
-          ? (precios?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.estado === 'REPORTADOS' ? 1 : 0)
-          : precios?.totalReportados || 0,
+          ? (precios?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.estado_mystery === 'Aceptado' ? 1 : 0)
+          : precios?.totalAceptados || 0,
         porcentaje: pdvSeleccionado
-          ? (precios?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.estado === 'REPORTADOS' ? 100 : 0)
+          ? (precios?.pdvs?.find(p => p.id === pdvSeleccionado.id)?.estado_mystery === 'Aceptado' ? 100 : 0)
           : precios?.porcentaje || 0,
         color: '#e30613',
         puntosLabel: `${precios?.puntosPrecios || 0} puntos obtenidos`,
@@ -665,7 +665,9 @@ export default function AsesorInformeSeguimientoDashboard() {
           codigo: pdv.codigo ? String(pdv.codigo) : 'N/A',
           nombre: pdv.nombre ? String(pdv.nombre) : 'Sin nombre',
           direccion: pdv.direccion ? String(pdv.direccion) : 'No disponible',
-          estado: pdv.estado === 'REPORTADOS' ? 'Registrado' : 'No Registrado',
+          cumplimiento: pdv.cumplimiento,
+          fecha_registro: pdv.fecha_registro,
+          estado_mystery: pdv.estado_mystery || 'Sin Visita',
           puntos: pdv.puntos || 0
         }));
       } catch (err) {
@@ -876,9 +878,9 @@ export default function AsesorInformeSeguimientoDashboard() {
         {metricId === 'precios' && (
           <div className="precios-detalles">
             <div className="estado-precios-resumen">
-              <h4>Estado de Precios por PDV</h4>
+              <h4>Estado de Aceptacion de Visita de Mystery Shopper</h4>
               <span className="pdvs-con-precio">
-                {datosPrecios.totalReportados} de {datosPrecios.totalAsignados} PDVs con precios reportados
+                {datosPrecios.totalAceptados} de {datosPrecios.totalConCobertura} PDVs con mystery aceptado
               </span>
               <span className="porcentaje-precio">
                 {datosPrecios.porcentaje}%
@@ -892,7 +894,9 @@ export default function AsesorInformeSeguimientoDashboard() {
                     <th>COD</th>
                     <th>NOMBRE</th>
                     <th>DIRECCIÓN</th>
-                    <th>ESTADO</th>
+                    <th>CUMPLIMIENTO</th>
+                    <th>FECHA REGISTRO</th>
+                    <th>ESTADO MYSTERY</th>
                     <th>PUNTOS</th>
                   </tr>
                 </thead>
@@ -904,16 +908,30 @@ export default function AsesorInformeSeguimientoDashboard() {
                         <td>{punto.nombre}</td>
                         <td>{punto.direccion}</td>
                         <td>
-                          <span className={`estado-precio ${punto.estado === 'Registrado' ? 'reportados' : 'no-reportados'}`}>
-                            {punto.estado === 'Registrado' ? 'PRECIOS REPORTADOS' : 'NO REPORTADOS'}
+                          {punto.cumplimiento !== null && punto.cumplimiento !== undefined 
+                            ? `${punto.cumplimiento}%` 
+                            : '-'}
+                        </td>
+                        <td>
+                          {punto.fecha_registro 
+                            ? new Date(punto.fecha_registro).toLocaleDateString('es-CO') 
+                            : '-'}
+                        </td>
+                        <td>
+                          <span className={`estado-mystery ${
+                            punto.estado_mystery === 'Aceptado' ? 'aceptado' : 
+                            punto.estado_mystery === 'No Aceptado' ? 'no-aceptado' : 
+                            'sin-visita'
+                          }`}>
+                            {punto.estado_mystery}
                           </span>
                         </td>
-                        <td>{punto.puntos}</td>
+                        <td><strong>{punto.puntos}</strong></td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5" className="sin-datos">No hay datos disponibles</td>
+                      <td colSpan="7" className="sin-datos">No hay datos disponibles</td>
                     </tr>
                   )}
                 </tbody>

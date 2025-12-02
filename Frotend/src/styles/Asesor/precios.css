@@ -5,7 +5,7 @@
   background: #f8f9fa;
   padding: 20px;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   margin: 15px 0;
 }
 
@@ -26,7 +26,7 @@
   background: white;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   font-size: 12px;
 }
 
@@ -102,6 +102,34 @@
   border: 1px solid rgba(227, 6, 19, 0.3);
 }
 
+/* Estilos para estado mystery shopper */
+.estado-mystery {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.estado-mystery.aceptado {
+  background: rgba(0, 166, 81, 0.15);
+  color: #00a651;
+  border: 1px solid rgba(0, 166, 81, 0.3);
+}
+
+.estado-mystery.no-aceptado {
+  background: rgba(227, 6, 19, 0.15);
+  color: #e30613;
+  border: 1px solid rgba(227, 6, 19, 0.3);
+}
+
+.estado-mystery.sin-visita {
+  background: rgba(128, 128, 128, 0.15);
+  color: #666;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+}
+
 /* Últimos precios reportados */
 .ultimos-precios {
   margin-top: 20px;
@@ -119,13 +147,13 @@
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
 }
 
 .precio-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .precio-header {
@@ -175,7 +203,7 @@
   padding: 10px;
   border-radius: 8px;
   text-align: center;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
 }
 
 .producto-nombre {
@@ -203,7 +231,7 @@
     padding: 10px 8px;
     font-size: 11px;
   }
-  
+
   .productos-grid {
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   }
@@ -215,11 +243,11 @@
     padding: 8px 6px;
     font-size: 10px;
   }
-  
+
   .productos-grid {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   }
-  
+
   .estado-precio {
     padding: 2px 4px;
     font-size: 9px;

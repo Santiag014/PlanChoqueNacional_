@@ -566,45 +566,85 @@ router.get('/precios/:user_id', authenticateToken, requireAsesor, logAccess, asy
 
   try {
 
-    // 1. Obtener todos los PDVs asignados al asesor (igual que en cobertura)
+    // 1. Obtener todos los PDVs asignados al asesor
     const pdvs = await executeQueryForMultipleUsers(
       `SELECT id, codigo, descripcion AS nombre, direccion
        FROM puntos_venta
        WHERE user_id = ?`, [user_id]
     );
     
-    // 2. Obtener PDVs con al menos un reporte de precio (kpi_precio = 1)
-    const reportados = await executeQueryForMultipleUsers(
+    // 2. Obtener PDVs con COBERTURA (estado_id = 2 AND estado_agente_id = 2)
+    const pdvsConCobertura = await executeQueryForMultipleUsers(
       `SELECT DISTINCT pdv_id
        FROM registro_servicios
-        LEFT JOIN registros_mistery_shopper 
-          ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
-       WHERE user_id = ? AND kpi_precio = 1 AND registros_mistery_shopper.id IS NOT NULL`, [user_id]
+       WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [user_id]
     );
-    const reportadosSet = new Set(reportados.map(r => r.pdv_id));
+    const coberturaSet = new Set(pdvsConCobertura.map(r => r.pdv_id));
 
-    // 3. Cálculo de puntos por precios (similar a cobertura)
+    // 3. Obtener datos de mystery shopper con cumplimiento y fecha_registro
+    const mysteryData = await executeQueryForMultipleUsers(
+      `SELECT 
+        rm.id_pdv,
+        rm.cumplimiento,
+        rm.fecha_visita as fecha_registro,
+        CASE 
+          WHEN rm.cumplimiento >= 85 THEN 'Aceptado'
+          ELSE 'No Aceptado'
+        END as estado_aprobacion
+       FROM registros_mystery rm
+       INNER JOIN puntos_venta pv ON rm.id_pdv = pv.id
+       WHERE pv.user_id = ?`, [user_id]
+    );
+    
+    // Crear un mapa de datos de mystery por PDV
+    const mysteryMap = new Map();
+    mysteryData.forEach(m => {
+      mysteryMap.set(m.id_pdv, {
+        cumplimiento: m.cumplimiento,
+        fecha_registro: m.fecha_registro,
+        estado_aprobacion: m.estado_aprobacion
+      });
+    });
+
+    // 4. Contar PDVs con mystery "Aceptado" (cumplimiento >= 95%)
+    const pdvsAceptados = mysteryData.filter(m => m.estado_aprobacion === 'Aceptado');
+    const totalAceptados = pdvsAceptados.length;
+
+    // 5. Cálculo de puntos por precios (basado en PDVs ACEPTADOS vs PDVs con cobertura)
     const totalAsignados = pdvs.length;
-    const totalReportados = reportadosSet.size;
-  let puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * 2000) : 0;
-  // Aplica el factor de complejidad global
-  puntosPrecios = Math.round(puntosPrecios * calcularFactorComplejidad(totalAsignados));
+    const totalConCobertura = coberturaSet.size; // META
+    const totalReal = totalAceptados; // REAL (solo aceptados)
+    
+    let puntosPrecios = totalConCobertura > 0 ? Math.round((totalReal / totalConCobertura) * 2000) : 0;
+    // Aplica el factor de complejidad global
+    puntosPrecios = Math.round(puntosPrecios * calcularFactorComplejidad(totalAsignados));
 
-    // 4. Asignar puntos individuales por PDV
-    const puntosPorPDV = totalReportados > 0 ? Math.floor(2000 / totalAsignados) : 0;
-    const pdvsDetalle = pdvs.map(pdv => ({
-      ...pdv,
-      estado: reportadosSet.has(pdv.id) ? 'REPORTADOS' : 'NO REPORTADOS',
-      puntos: reportadosSet.has(pdv.id) ? puntosPorPDV : 0
-    }));
+    // 6. Asignar puntos SOLO a PDVs con estado "Aceptado"
+    const puntosPorPDV = totalReal > 0 ? Math.floor(puntosPrecios / totalReal) : 0;
+    const pdvsDetalle = pdvs.map(pdv => {
+      const tieneCobertura = coberturaSet.has(pdv.id);
+      const mysteryInfo = mysteryMap.get(pdv.id);
+      const esAceptado = mysteryInfo && mysteryInfo.estado_aprobacion === 'Aceptado';
+      
+      return {
+        ...pdv,
+        // SOLO asignar puntos si es "Aceptado"
+        puntos: esAceptado ? puntosPorPDV : 0,
+        // Datos de mystery shopper
+        cumplimiento: mysteryInfo ? mysteryInfo.cumplimiento : null,
+        fecha_registro: mysteryInfo ? mysteryInfo.fecha_registro : null,
+        estado_mystery: mysteryInfo ? mysteryInfo.estado_aprobacion : 'Sin Visita'
+      };
+    });
     
     res.json({
       success: true,
       pdvs: pdvsDetalle,
       totalAsignados,
-      totalReportados,
+      totalConCobertura, // META: PDVs con cobertura
+      totalAceptados: totalReal, // REAL: PDVs con mystery aceptado
       puntosPrecios,
-      porcentaje: totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * 100) : 0
+      porcentaje: totalConCobertura > 0 ? Math.round((totalReal / totalConCobertura) * 100) : 0
     });
     
   } catch (error) {
@@ -616,6 +656,7 @@ router.get('/precios/:user_id', authenticateToken, requireAsesor, logAccess, asy
     });
   }
 });
+
 
 // ENDPOINT DE BONIFICACIÓN PARA DASHBOARD ASESOR
 router.get('/bonificacion/:user_id', authenticateToken, requireAsesor, logAccess, async (req, res) => {
@@ -1419,16 +1460,26 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
       // Aplica el factor de complejidad igual que en los endpoints principales
       puntosVisitas = Math.round(puntosVisitas * calcularFactorComplejidad(totalAsignados));
 
-      // 4. PUNTOS PRECIOS - Misma lógica que endpoint /precios
-      const reportadosPrecios = await executeQueryForMultipleUsers(
-        `SELECT DISTINCT pdv_id FROM registro_servicios
-         LEFT JOIN registros_mistery_shopper ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
-         WHERE user_id = ? AND kpi_precio = 1 AND registros_mistery_shopper.id IS NOT NULL`, [asesor.id]
+      // 4. PUNTOS PRECIOS - Misma lógica que endpoint /precios (basado en PDVs con cobertura vs PDVs con mystery aceptado)
+      // Obtener PDVs con COBERTURA
+      const pdvsConCoberturaPrecios = await executeQueryForMultipleUsers(
+        `SELECT DISTINCT pdv_id
+         FROM registro_servicios
+         WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [asesor.id]
       );
-      const totalReportados = reportadosPrecios.length;
-
-      // 4. PUNTOS PRECIOS - Aplica factor de complejidad
-      let puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * 2000) : 0;
+      const totalConCobertura = pdvsConCoberturaPrecios.length; // META
+      
+      // Obtener PDVs con mystery ACEPTADO (cumplimiento >= 85)
+      const mysteryAceptados = await executeQueryForMultipleUsers(
+        `SELECT rm.id_pdv
+         FROM registros_mystery rm
+         INNER JOIN puntos_venta pv ON rm.id_pdv = pv.id
+         WHERE pv.user_id = ? AND rm.cumplimiento >= 85`, [asesor.id]
+      );
+      const totalAceptados = mysteryAceptados.length; // REAL (solo aceptados)
+      
+      // Calcular puntos: (REAL / META) * 2000
+      let puntosPrecios = totalConCobertura > 0 ? Math.round((totalAceptados / totalConCobertura) * 2000) : 0;
       // Aplica el factor de complejidad igual que en los endpoints principales
       puntosPrecios = Math.round(puntosPrecios * calcularFactorComplejidad(totalAsignados));
 
@@ -1487,7 +1538,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireAsesor, logAccess, a
         total_pdvs_implementados: totalImplementados,
         total_visitas_realizadas: totalVisitas,
         meta_visitas: metaVisitas,
-        total_precios_reportados: totalReportados,
+        total_precios_reportados: totalAceptados,
         es_usuario_actual: asesor.id == userId
       });
     }

@@ -10,7 +10,9 @@ export function usePreciosAsesor(userId) {
   const [precios, setPrecios] = useState({
     pdvs: [],
     totalAsignados: 0,
-    totalReportados: 0,
+    totalConCobertura: 0,  // META: PDVs con cobertura
+    totalAceptados: 0,     // REAL: PDVs con mystery aceptado
+    totalReportados: 0,    // Mantener compatibilidad legacy
     porcentaje: 0,
     puntosPrecios: 0
   });
@@ -82,7 +84,9 @@ export function usePreciosAsesor(userId) {
         setPrecios({
           pdvs: data.pdvs || [],
           totalAsignados: data.totalAsignados || 0,
-          totalReportados: data.totalReportados || 0,
+          totalConCobertura: data.totalConCobertura || 0,  // META: PDVs con cobertura
+          totalAceptados: data.totalAceptados || 0,        // REAL: PDVs con mystery aceptado
+          totalReportados: data.totalAceptados || 0,       // Mantener compatibilidad legacy
           porcentaje: data.porcentaje || 0,
           puntosPrecios: data.puntosPrecios || 0
         });
