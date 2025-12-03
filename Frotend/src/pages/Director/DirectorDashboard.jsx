@@ -597,9 +597,9 @@ export default function DirectorDashboard() {
       </div>
       
       {/* Indicador flotante de scroll */}
-      <button className="scroll-indicator" onClick={scrollToBottom} title="Ver más contenido">
+      {/* <button className="scroll-indicator" onClick={scrollToBottom} title="Ver más contenido">
         Más contenido
-      </button>
+      </button> */}
     </DashboardLayout>
   );
 }

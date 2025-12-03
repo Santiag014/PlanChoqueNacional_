@@ -86,15 +86,26 @@ export function usePreciosOT(filtros = {}) {
       // Procesar respuesta
       const data = await response.json();
       
+      // 🔍 LOG 1: Verificar respuesta completa del servidor
+      console.log('📊 [PRECIOS OT] Respuesta completa del servidor:', {
+        success: data.success,
+        totalAsignados: data.totalAsignados,
+        totalConCobertura: data.totalConCobertura,
+        totalAceptados: data.totalAceptados,
+        puntosPrecios: data.puntosPrecios,
+        porcentaje: data.porcentaje,
+        cantidadPDVs: data.pdvs?.length
+      });
+      
       if (!response.ok) {
-        //console.error('usePreciosOT: Error de API', data);
+        console.error('❌ [PRECIOS OT] Error de API:', data);
         setError(data.message || `Error del servidor: ${response.status}`);
         setLoading(false);
         return;
       }
 
       if (!data.success) {
-        //console.error('usePreciosOT: Respuesta con success=false', data);
+        console.error('❌ [PRECIOS OT] Respuesta con success=false:', data);
         setError(data.message || 'El servidor reportó un error al obtener los precios');
         setLoading(false);
         return;
@@ -102,14 +113,20 @@ export function usePreciosOT(filtros = {}) {
 
       // Validar estructura de datos
       if (!Array.isArray(data.pdvs)) {
-        //console.error('usePreciosOT: Datos incorrectos - pdvs no es un array', data);
+        console.error('❌ [PRECIOS OT] Datos incorrectos - pdvs no es un array:', data);
         setError('La estructura de datos recibida del servidor es incorrecta');
         setLoading(false);
         return;
       }
 
-      // console.log('usePreciosOT: Datos recibidos correctamente', 
-      //   `${data.pdvs.length} PDVs, ${data.totalReportados}/${data.totalAsignados} reportados`);
+      // 🔍 LOG 2: Verificar estructura de datos recibidos
+      console.log('✅ [PRECIOS OT] Datos recibidos correctamente:', {
+        totalPDVs: data.pdvs.length,
+        primerPDV: data.pdvs[0],
+        totalConCobertura_META: data.totalConCobertura,
+        totalAceptados_REAL: data.totalAceptados,
+        puntos: data.puntosPrecios
+      });
       
       // Asegurarnos de que todos los campos tengan valores válidos
       const cleanPdvs = Array.isArray(data.pdvs) ? data.pdvs.map(pdv => ({
@@ -120,17 +137,31 @@ export function usePreciosOT(filtros = {}) {
         estado: pdv.estado || 'NO REPORTADOS',
         puntos: pdv.puntos || 0,
         asesor_nombre: pdv.asesor_nombre || '',
-        asesor_email: pdv.asesor_email || ''
+        asesor_email: pdv.asesor_email || '',
+        cumplimiento: pdv.cumplimiento || null,
+        fecha_registro: pdv.fecha_registro || null
       })) : [];
 
+      // 🔍 LOG 3: Verificar estados de los PDVs
+      const estadosCount = cleanPdvs.reduce((acc, pdv) => {
+        acc[pdv.estado] = (acc[pdv.estado] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('📈 [PRECIOS OT] Distribución de estados:', estadosCount);
+
       // Usar los datos del API (ya filtrados por el backend según permisos del usuario)
+      // NOTA: Ahora totalReportados viene como totalAceptados del backend
       const cleanData = {
         pdvs: cleanPdvs,
-        totalAsignados: data.totalAsignados || 0,           // Del API
-        totalReportados: data.totalReportados || 0,         // Del API  
-        puntosPrecios: data.puntosPrecios || 0,            // Del API
-        porcentaje: data.porcentaje || 0                   // Del API
+        totalAsignados: data.totalAsignados || 0,           // Total de PDVs
+        totalConCobertura: data.totalConCobertura || 0,     // META (con cobertura)
+        totalReportados: data.totalAceptados || 0,          // REAL (registros aceptados)
+        puntosPrecios: data.puntosPrecios || 0,            // Puntos calculados
+        porcentaje: data.porcentaje || 0                   // Porcentaje de cumplimiento
       };
+
+      // 🔍 LOG 4: Verificar datos finales procesados
+      console.log('🎯 [PRECIOS OT] Datos finales procesados:', cleanData);
 
       setPrecios(cleanData);
       setLoading(false);

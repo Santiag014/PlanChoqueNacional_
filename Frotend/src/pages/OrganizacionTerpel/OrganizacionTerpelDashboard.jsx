@@ -174,8 +174,24 @@ export default function OrganizacionTerpelDashboard() {
   const visitasMeta = visitas.meta_visitas;
   const visitasReal = visitas.real_visitas;
 
-    const preciosTotal = preciosPdvsFiltrados.length;
-    const preciosReportados = preciosPdvsFiltrados.filter(p => p.estado === 'REPORTADOS').length;
+    // 🔍 PRECIOS: Calcular basado en los PDVs FILTRADOS (no datos globales)
+    // META = Total de PDVs filtrados con cobertura (todos los que están en la tabla)
+    // REAL = Solo los que tienen estado 'ACEPTADO' (cumplimiento >= 85)
+    const preciosMeta = preciosPdvsFiltrados.length; // Todos los PDVs filtrados
+    const preciosReal = preciosPdvsFiltrados.filter(p => p.estado === 'ACEPTADO').length; // Solo aceptados
+    const preciosPorcentaje = preciosMeta > 0 ? Math.round((preciosReal / preciosMeta) * 100) : 0;
+    
+    console.log('🎯 [DASHBOARD OT] Datos de Precios FILTRADOS:', {
+      totalFiltrados: preciosPdvsFiltrados.length,
+      aceptados: preciosReal,
+      meta: preciosMeta,
+      real: preciosReal,
+      porcentaje: preciosPorcentaje,
+      estadosDetalle: preciosPdvsFiltrados.reduce((acc, p) => {
+        acc[p.estado] = (acc[p.estado] || 0) + 1;
+        return acc;
+      }, {})
+    });
     
     return [
       {
@@ -212,9 +228,9 @@ export default function OrganizacionTerpelDashboard() {
         id: 'precios',
         titulo: 'Precios',
         icon: IconPrecios,
-        meta: preciosTotal,
-        implementado: preciosReportados,
-        porcentaje: preciosTotal > 0 ? Math.round((preciosReportados / preciosTotal) * 100) : 0,
+        meta: preciosMeta,              // META: Total PDVs filtrados
+        implementado: preciosReal,       // REAL: Solo aceptados (cumplimiento >= 85)
+        porcentaje: preciosPorcentaje,   // Porcentaje recalculado
         color: '#0066cc',
         //puntosLabel: `${preciosPdvsFiltrados.reduce((sum, p) => sum + (p.puntos || 0), 0)} puntos obtenidos`
       }
@@ -607,9 +623,9 @@ export default function OrganizacionTerpelDashboard() {
       </div>
       
       {/* Indicador flotante de scroll */}
-      <button className="scroll-indicator" onClick={scrollToBottom} title="Ver más contenido">
+      {/* <button className="scroll-indicator" onClick={scrollToBottom} title="Ver más contenido">
         Más contenido
-      </button>
+      </button> */}
     </DashboardLayout>
   );
 }
@@ -929,30 +945,60 @@ function DetalleMetricaOT({ metricId, cobertura, volumen, volumenCompleto, volum
       case 'precios':
         return (
           <div className="detalle-precios">
-            <h3>Precios por PDV</h3>
+            <h3>Estado de Registros Aceptados</h3>
             <div className="tabla-detalle">
               <table>
                 <thead>
                   <tr>
-                    <th>Código PDV</th>
-                    <th>Nombre</th>
-                    <th>Asesor</th>
-                    <th>Estado</th>
+                    <th>COD</th>
+                    <th>NOMBRE</th>
+                    <th>CUMPLIMIENTO MYSTERY</th>
+                    <th>FECHA VISITA MYSTERY</th>
+                    <th>ESTADO REGISTRO</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {precios.map(pdv => (
-                    <tr key={pdv.id}>
-                      <td>{pdv.codigo}</td>
-                      <td>{pdv.nombre}</td>
-                      <td>{pdv.asesor_nombre}</td>
-                      <td>
-                        <span className={`estado ${pdv.estado.toLowerCase().replace(' ', '-')}`}>
-                          {pdv.estado}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {precios.map((pdv, index) => {
+                    // LÓGICA CORRECTA: Estado basado en cumplimiento de mystery shopper
+                    // El backend ya calcula el estado correctamente basado en cumplimiento >= 85
+                    const estadoRegistro = pdv.estado || 'SIN VISITA';
+                    
+                    // Determinar clase CSS según el estado
+                    let estadoClass = 'no-implementado'; // Por defecto rojo
+                    if (estadoRegistro === 'ACEPTADO') {
+                      estadoClass = 'implementado'; // Verde
+                    } else if (estadoRegistro === 'NO ACEPTADO') {
+                      estadoClass = 'no-implementado'; // Rojo
+                    } else {
+                      estadoClass = 'pendiente'; // Gris para "SIN VISITA"
+                    }
+                    
+                    return (
+                      <tr key={pdv.id || index}>
+                        <td>{pdv.codigo || 'N/A'}</td>
+                        <td>{pdv.nombre || 'N/A'}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          {pdv.cumplimiento !== null && pdv.cumplimiento !== undefined 
+                            ? `${Number(pdv.cumplimiento).toFixed(2)}%` 
+                            : '-'}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {pdv.fecha_registro 
+                            ? new Date(pdv.fecha_registro).toLocaleDateString('es-CO', { 
+                                year: 'numeric', 
+                                month: '2-digit', 
+                                day: '2-digit' 
+                              })
+                            : '-'}
+                        </td>
+                        <td>
+                          <span className={`estado ${estadoClass}`}>
+                            {estadoRegistro}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

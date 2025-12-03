@@ -664,7 +664,7 @@ router.get('/precios', authenticateToken, requireOT, addUserRestrictions, logAcc
   
   try {
 
-    // 1. Obtener todos los PDVs del sistema filtrados por usuario
+    // 1. Obtener todos los PDVs del sistema filtrados por usuario (excluyendo PDV 589)
     const basePdvQuery = `SELECT 
         pv.id, 
         pv.codigo, 
@@ -677,40 +677,94 @@ router.get('/precios', authenticateToken, requireOT, addUserRestrictions, logAcc
         ag.id as agente_id
        FROM puntos_venta pv
        INNER JOIN users u ON u.id = pv.user_id
-       LEFT JOIN agente ag ON ag.id = pv.id_agente`;
+       LEFT JOIN agente ag ON ag.id = pv.id_agente
+       WHERE pv.id != 589`;
     
     const { query: pdvsQuery, params: pdvsParams } = await applyUserFilters(basePdvQuery, req.user.id, 'pv');
     const pdvs = await executeQueryForMultipleUsers(pdvsQuery, pdvsParams);
     
-    // 2. Obtener PDVs con al menos un reporte de precio (kpi_precio = 1) filtrados por usuario  
-    const reportadosQuery = `SELECT DISTINCT rs.pdv_id
+    // 2. Obtener PDVs con COBERTURA (estado_id = 2 AND estado_agente_id = 2) - META
+    const coberturaQuery = `SELECT DISTINCT rs.pdv_id
        FROM registro_servicios rs
        INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
        LEFT JOIN agente ag ON ag.id = pv.id_agente
-       LEFT JOIN registros_mistery_shopper rms ON rms.id_registro_pdv = rs.id 
-       WHERE rs.kpi_precio = 1 AND rms.id IS NOT NULL`;
+       WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2 AND pv.id != 589`;
     
-    const { query: reportadosQueryFinal, params: reportadosParams } = await applyUserFilters(reportadosQuery, req.user.id, 'pv');
-    const reportados = await executeQueryForMultipleUsers(reportadosQueryFinal, reportadosParams);
-    const reportadosSet = new Set(reportados.map(r => r.pdv_id));
+    const { query: coberturaQueryFinal, params: coberturaParams } = await applyUserFilters(coberturaQuery, req.user.id, 'pv');
+    const pdvsConCobertura = await executeQueryForMultipleUsers(coberturaQueryFinal, coberturaParams);
+    const totalConCobertura = pdvsConCobertura.length; // META
+    const coberturaSet = new Set(pdvsConCobertura.map(r => r.pdv_id));
+    
+    // 3. LÓGICA CORRECTA: El REAL son los PDVs con cobertura que ADEMÁS tienen cumplimiento >= 85 en mystery
+    const coberturaAceptadaQuery = `SELECT DISTINCT rs.pdv_id
+       FROM registro_servicios rs
+       INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
+       LEFT JOIN agente ag ON ag.id = pv.id_agente
+       INNER JOIN registros_mystery rm ON rm.id_pdv = rs.pdv_id
+       WHERE rs.estado_id = 2 AND rs.estado_agente_id = 2 
+       AND rm.cumplimiento >= 85 AND pv.id != 589`;
+    
+    const { query: coberturaAceptadaQueryFinal, params: coberturaAceptadaParams } = await applyUserFilters(coberturaAceptadaQuery, req.user.id, 'pv');
+    const pdvsAceptados = await executeQueryForMultipleUsers(coberturaAceptadaQueryFinal, coberturaAceptadaParams);
+    const totalAceptados = pdvsAceptados.length; // REAL = PDVs con cumplimiento >= 85
+    const aceptadosSet = new Set(pdvsAceptados.map(r => r.pdv_id));
 
-  // 3. Cálculo de puntos por precios (matriz máxima: 2.000)
-  const totalAsignados = pdvs.length;
-  const totalReportados = reportadosSet.size;
-  const puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * 2000) : 0;
+    // 🔍 LOG BACKEND: Verificar cálculos
+    console.log('🔍 [PRECIOS OT BACKEND] Cálculos:', {
+      totalAsignados: pdvs.length,
+      totalConCobertura_META: totalConCobertura,
+      totalAceptados_REAL: totalAceptados,
+      diferencia: totalConCobertura - totalAceptados,
+      pdvsConCoberturaIds: Array.from(coberturaSet).slice(0, 5),
+      pdvsAceptadosIds: Array.from(aceptadosSet).slice(0, 5)
+    });
 
-    // 4. Asignar puntos individuales por PDV proporcionalmente (igual que asesor.js)
-    const puntosPorPDVGlobal = totalAsignados > 0 ? Math.floor(2000 / totalAsignados) : 0;
-    const pdvsDetalle = pdvs.map(pdv => {
-      const reportado = reportadosSet.has(pdv.id);
-      let puntos = 0;
-      if (reportado) {
-        puntos = puntosPorPDVGlobal;
+    // 4. Cálculo de puntos por precios (REAL / META) * 2000
+    const totalAsignados = pdvs.length;
+    const puntosPrecios = totalConCobertura > 0 ? Math.round((totalAceptados / totalConCobertura) * 2000) : 0;
+
+    // 5. Obtener información detallada de mystery para complementar la información (opcional)
+    const mysteryDetalleQuery = `SELECT 
+        rm.id_pdv,
+        rm.cumplimiento,
+        rm.fecha_visita
+       FROM registros_mystery rm
+       INNER JOIN puntos_venta pv ON rm.id_pdv = pv.id
+       LEFT JOIN agente ag ON ag.id = pv.id_agente
+       WHERE pv.id != 589`;
+    
+    const { query: mysteryDetalleQueryFinal, params: mysteryDetalleParams } = await applyUserFilters(mysteryDetalleQuery, req.user.id, 'pv');
+    const mysteryDetalle = await executeQueryForMultipleUsers(mysteryDetalleQueryFinal, mysteryDetalleParams);
+    const mysteryMap = new Map();
+    mysteryDetalle.forEach(m => {
+      mysteryMap.set(m.id_pdv, {
+        cumplimiento: m.cumplimiento,
+        fecha_visita: m.fecha_visita
+      });
+    });
+
+    // 6. Asignar puntos individuales por PDV (solo a los que tienen cumplimiento >= 85)
+    const puntosPorPDVGlobal = totalAceptados > 0 ? Math.floor(puntosPrecios / totalAceptados) : 0;
+    
+    // Filtrar solo PDVs con cobertura para mostrar en la tabla
+    const pdvsConCoberturaDetalle = pdvs.filter(pdv => coberturaSet.has(pdv.id));
+    
+    const pdvsDetalle = pdvsConCoberturaDetalle.map(pdv => {
+      const mysteryInfo = mysteryMap.get(pdv.id);
+      const esAceptado = aceptadosSet.has(pdv.id); // Tiene cumplimiento >= 85
+      
+      // Determinar estado basado en cumplimiento de mystery
+      let estado = 'SIN VISITA';
+      if (mysteryInfo) {
+        estado = mysteryInfo.cumplimiento >= 85 ? 'ACEPTADO' : 'NO ACEPTADO';
       }
+      
       return {
         ...pdv,
-        estado: reportado ? 'REPORTADOS' : 'NO REPORTADOS',
-        puntos
+        estado,
+        cumplimiento: mysteryInfo ? mysteryInfo.cumplimiento : null,
+        fecha_registro: mysteryInfo ? mysteryInfo.fecha_visita : null,
+        puntos: esAceptado ? puntosPorPDVGlobal : 0
       };
     });
     
@@ -718,9 +772,16 @@ router.get('/precios', authenticateToken, requireOT, addUserRestrictions, logAcc
       success: true,
       pdvs: pdvsDetalle,
       totalAsignados,
-      totalReportados,
+      totalConCobertura, // META: PDVs con cobertura
+      totalAceptados, // REAL: Registros aceptados (igual a totalConCobertura)
       puntosPrecios,
-      porcentaje: totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * 100) : 0
+      porcentaje: totalConCobertura > 0 ? Math.round((totalAceptados / totalConCobertura) * 100) : 0,
+      // Información adicional para debugging
+      debug: {
+        pdvsConCobertura: totalConCobertura,
+        pdvsTotales: totalAsignados,
+        todosEstanAceptados: true
+      }
     });
     
   } catch (error) {

@@ -1321,60 +1321,74 @@ router.get('/precios', authenticateToken, requireMercadeo, logAccess, async (req
     
     const whereClause = whereConditions.join(' AND ');
     
-    // Primero obtener totales
-    const totalesResult = await executeQueryForMultipleUsers(
-      `SELECT 
-        COUNT(DISTINCT puntos_venta.id) as totalAsignados,
-        COUNT(DISTINCT CASE WHEN registro_servicios.kpi_precio = 1 AND registros_mistery_shopper.id_registro_pdv IS NOT NULL THEN puntos_venta.id END) as totalConPrecios
-       FROM puntos_venta
-       INNER JOIN users ON users.id = puntos_venta.user_id
-       LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id
-       LEFT JOIN registros_mistery_shopper ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
-       WHERE ${whereClause}`, queryParams
+    // Primero obtener totales (NUEVA LÓGICA: basada en cobertura vs mystery aceptado)
+    // 1. Total de PDVs asignados
+    const totalAsignadosResult = await executeQueryForMultipleUsers(
+      `SELECT COUNT(DISTINCT pv.id) as totalAsignados
+       FROM puntos_venta pv
+       INNER JOIN users u ON u.id = pv.user_id
+       WHERE pv.id_agente = ?${asesor_id ? ' AND pv.user_id = ?' : ''}${pdv_id ? ' AND pv.id = ?' : ''}`, queryParams
     );
+    const totalAsignados = totalAsignadosResult[0]?.totalAsignados || 0;
     
-    const totalAsignados = totalesResult[0]?.totalAsignados || 0;
-    const totalConPrecios = totalesResult[0]?.totalConPrecios || 0;
-    const porcentajePrecios = totalAsignados > 0 ? (totalConPrecios / totalAsignados) : 0;
+    // 2. Total de PDVs con COBERTURA (META)
+    const totalConCoberturaResult = await executeQueryForMultipleUsers(
+      `SELECT COUNT(DISTINCT rs.pdv_id) as totalConCobertura
+       FROM registro_servicios rs
+       INNER JOIN puntos_venta pv ON pv.id = rs.pdv_id
+       INNER JOIN users u ON u.id = pv.user_id
+       WHERE pv.id_agente = ?${asesor_id ? ' AND pv.user_id = ?' : ''}${pdv_id ? ' AND pv.id = ?' : ''} AND rs.estado_id = 2 AND rs.estado_agente_id = 2`, queryParams
+    );
+    const totalConCobertura = totalConCoberturaResult[0]?.totalConCobertura || 0;
+    
+    // 3. Total de PDVs con mystery ACEPTADO (cumplimiento >= 85) - REAL
+    const totalAceptadosResult = await executeQueryForMultipleUsers(
+      `SELECT COUNT(DISTINCT rm.id_pdv) as totalAceptados
+       FROM registros_mystery rm
+       INNER JOIN puntos_venta pv ON rm.id_pdv = pv.id
+       INNER JOIN users u ON u.id = pv.user_id
+       WHERE pv.id_agente = ?${asesor_id ? ' AND pv.user_id = ?' : ''}${pdv_id ? ' AND pv.id = ?' : ''} AND rm.cumplimiento >= 85`, queryParams
+    );
+    const totalAceptados = totalAceptadosResult[0]?.totalAceptados || 0;
+    
+    const porcentajePrecios = totalConCobertura > 0 ? (totalAceptados / totalConCobertura) : 0;
   // NUEVA MATRIZ DE PUNTOS MÁXIMOS: Precios = 2000
   const MAX_PUNTOS_PRECIOS = 2000;
 
-  let puntosPorPDV = totalAsignados > 0 ? Math.floor(MAX_PUNTOS_PRECIOS / totalAsignados) : 0;
+  // Puntos por PDV (proporcional a los aceptados y con factor de complejidad)
+  let puntosPorPDV = totalAceptados > 0 ? Math.floor(MAX_PUNTOS_PRECIOS / totalAceptados) : 0;
   // Aplica el factor de complejidad
   puntosPorPDV = Math.round(puntosPorPDV * calcularFactorComplejidad(totalAsignados));
 
   const query = `
     SELECT 
-      puntos_venta.id,
-      puntos_venta.codigo,
-      puntos_venta.descripcion as nombre,
-      users.name as nombre_asesor,
-      users.id as asesor_id,
+      pv.id,
+      pv.codigo,
+      pv.descripcion as nombre,
+      u.name as nombre_asesor,
+      u.id as asesor_id,
       CASE 
-        WHEN COUNT(CASE WHEN registro_servicios.kpi_precio = 1 AND registros_mistery_shopper.id_registro_pdv IS NOT NULL THEN 1 END) > 0 THEN 'REPORTADOS'
-        ELSE 'NO REPORTADOS'
+        WHEN rm.cumplimiento >= 85 THEN 'ACEPTADO'
+        WHEN rm.cumplimiento IS NOT NULL THEN 'NO ACEPTADO'
+        ELSE 'SIN VISITA'
       END as estado,
+      rm.cumplimiento,
+      rm.fecha_visita AS fecha_registro,
       CASE 
-        WHEN COUNT(
-          CASE 
-            WHEN registro_servicios.kpi_precio = 1 AND registros_mistery_shopper.id_registro_pdv IS NOT NULL THEN 1 
-          END
-        ) > 0 THEN ${puntosPorPDV}
+        WHEN rm.cumplimiento >= 85 THEN ${puntosPorPDV}
         ELSE 0
       END AS puntos
-    FROM puntos_venta
-    INNER JOIN users ON users.id = puntos_venta.user_id
-    LEFT JOIN registro_servicios ON registro_servicios.pdv_id = puntos_venta.id
-    LEFT JOIN registros_mistery_shopper 
-        ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
-    WHERE ${whereClause} 
-    GROUP BY puntos_venta.id, puntos_venta.codigo, puntos_venta.descripcion, users.name, users.id
-    ORDER BY puntos_venta.codigo
+    FROM puntos_venta pv
+    INNER JOIN users u ON u.id = pv.user_id
+    LEFT JOIN registros_mystery rm ON rm.id_pdv = pv.id
+    WHERE pv.id_agente = ?${asesor_id ? ' AND pv.user_id = ?' : ''}${pdv_id ? ' AND pv.id = ?' : ''}
+    GROUP BY pv.id, pv.codigo, pv.descripcion, u.name, u.id, rm.cumplimiento
+    ORDER BY pv.codigo
   `;
   const rows = await executeQueryForMultipleUsers(query, queryParams);
 
-  // Calcular puntos totales (IGUAL QUE ASESOR: 2000 puntos máximo)
-  let puntosPrecios = totalAsignados > 0 ? Math.round((totalConPrecios / totalAsignados) * MAX_PUNTOS_PRECIOS) : 0;
+  // Calcular puntos totales (IGUAL QUE ASESOR: (totalAceptados / totalConCobertura) * 2000)
+  let puntosPrecios = totalConCobertura > 0 ? Math.round((totalAceptados / totalConCobertura) * MAX_PUNTOS_PRECIOS) : 0;
   puntosPrecios = Math.round(puntosPrecios * calcularFactorComplejidad(totalAsignados));
 
     res.json({
@@ -1384,17 +1398,18 @@ router.get('/precios', authenticateToken, requireMercadeo, logAccess, async (req
       total: rows.length,
       // Métricas principales para el dashboard
       puntos: puntosPrecios,
-      meta: totalAsignados,
-      real: totalConPrecios,
+      meta: totalConCobertura,
+      real: totalAceptados,
       porcentajeCumplimiento: Math.round(porcentajePrecios * 100),
       // Propiedades adicionales para compatibilidad
       totalAsignados,
-      totalReportados: totalConPrecios,
+      totalReportados: totalAceptados,
       puntosPrecios,
       porcentaje: Math.round(porcentajePrecios * 100),
       estadisticas: {
         totalAsignados,
-        totalConPrecios,
+        totalConCobertura,
+        totalAceptados,
         porcentajePrecios: Math.round(porcentajePrecios * 100),
         puntosTotal: puntosPrecios,
         puntosPorPDV: Number(puntosPorPDV.toFixed(2))
@@ -2204,14 +2219,26 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
       let puntosVisitas = metaVisitas > 0 ? Math.round((totalVisitas / metaVisitas) * MAX_PUNTOS.visitas) : 0;
       puntosVisitas = Math.round(puntosVisitas * calcularFactorComplejidad(totalAsignados));
 
-      // 4. PUNTOS PRECIOS (con factor de complejidad)
-      const reportadosPrecios = await executeQueryForMultipleUsers(
-        `SELECT DISTINCT pdv_id FROM registro_servicios
-         LEFT JOIN registros_mistery_shopper ON registros_mistery_shopper.id_registro_pdv = registro_servicios.id
-         WHERE user_id = ? AND kpi_precio = 1 AND registros_mistery_shopper.id IS NOT NULL`, [asesor.id]
+      // 4. PUNTOS PRECIOS (con factor de complejidad) - NUEVA LÓGICA basada en cobertura vs mystery aceptado
+      // Obtener PDVs con COBERTURA (META)
+      const pdvsConCoberturaPrecios = await executeQueryForMultipleUsers(
+        `SELECT DISTINCT pdv_id
+         FROM registro_servicios
+         WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [asesor.id]
       );
-      const totalReportados = reportadosPrecios.length;
-      let puntosPrecios = totalAsignados > 0 ? Math.round((totalReportados / totalAsignados) * MAX_PUNTOS.precios) : 0;
+      const totalConCobertura = pdvsConCoberturaPrecios.length; // META
+      
+      // Obtener PDVs con mystery ACEPTADO (cumplimiento >= 85) - REAL
+      const mysteryAceptados = await executeQueryForMultipleUsers(
+        `SELECT rm.id_pdv
+         FROM registros_mystery rm
+         INNER JOIN puntos_venta pv ON rm.id_pdv = pv.id
+         WHERE pv.user_id = ? AND rm.cumplimiento >= 85`, [asesor.id]
+      );
+      const totalAceptados = mysteryAceptados.length; // REAL (solo aceptados)
+      
+      // Calcular puntos: (REAL / META) * 2000
+      let puntosPrecios = totalConCobertura > 0 ? Math.round((totalAceptados / totalConCobertura) * MAX_PUNTOS.precios) : 0;
       puntosPrecios = Math.round(puntosPrecios * calcularFactorComplejidad(totalAsignados));
 
       // 5. PUNTOS BONIFICACIÓN (retos_bonificadores por agente)
@@ -2244,7 +2271,7 @@ router.get('/ranking-mi-empresa', authenticateToken, requireMercadeo, logAccess,
         pdvs_implementados: totalImplementados,
         meta_visitas: metaVisitas,
         real_visitas: totalVisitas,
-        pdvs_con_precios: totalReportados,
+        pdvs_con_precios: totalAceptados,
         es_usuario_actual: false
       });
     }

@@ -642,9 +642,9 @@ export default function MercadeoInformeSeguimientoDashboard() {
       </div>
       
       {/* Indicador flotante de scroll */}
-      <button className="scroll-indicator" onClick={scrollToBottom} title="Ver más contenido">
+      {/* <button className="scroll-indicator" onClick={scrollToBottom} title="Ver más contenido">
         Más contenido
-      </button>
+      </button> */}
     </DashboardLayout>
   );
 }
@@ -917,36 +917,57 @@ function DetalleMetricaMercadeo({ metricId, asesorSeleccionado, datosBase, aseso
 
       {metricId === 'precios' && (
         <div className="tabla-container">
-          <h3>Control de Precios{asesorSeleccionado ? ` - ${asesorSeleccionado.nombre}` : ' (Todos los Asesores)'}</h3>
+          <h3>Estado de Aceptacion de Visita de Mystery Shopper{asesorSeleccionado ? ` - ${asesorSeleccionado.nombre}` : ' (Todos los Asesores)'}</h3>
           <table className="detalle-tabla">
             <thead>
               <tr>
-                <th>Código PDV</th>
-                <th>Nombre PDV</th>
-                <th>Estado</th>
-                <th>Puntos</th>
+                <th>COD</th>
+                <th>NOMBRE</th>
+                <th>CUMPLIMIENTO</th>
+                <th>FECHA REGISTRO</th>
+                <th>ESTADO MYSTERY</th>
+                <th>PUNTOS</th>
               </tr>
             </thead>
             <tbody>
               {Array.isArray(datos) && datos.length > 0 ? datos.map((punto, index) => {
-                const pdv = punto._pdv;
-                // const asesor = punto._asesor;
-                const productosIds = punto.productos ? punto.productos.split(',').map(id => parseInt(id.trim())) : [];
-                const nombresProductos = productosIds.map(id => {
-                  const producto = productosTerpel.find(p => p.id === id);
-                  return producto ? producto.nombre : `Producto ${id}`;
-                }).join(', ');
+                // Determinar el estado del mystery basado en cumplimiento
+                let estadoMystery = 'SIN VISITA';
+                let estadoClass = 'no-implementado';
+                if (punto.cumplimiento !== null && punto.cumplimiento !== undefined) {
+                  if (punto.cumplimiento >= 85) {
+                    estadoMystery = 'ACEPTADO';
+                    estadoClass = 'implementado';
+                  } else {
+                    estadoMystery = 'NO ACEPTADO';
+                    estadoClass = 'no-implementado';
+                  }
+                }
                 
                 return (
                   <tr key={index}>
-                    <td>{pdv?.codigo || punto.codigo || 'N/A'}</td>
-                    <td>{pdv?.nombre || punto.nombre || 'N/A'}</td>
+                    <td>{punto.codigo || 'N/A'}</td>
+                    <td>{punto.nombre || 'N/A'}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      {punto.cumplimiento !== null && punto.cumplimiento !== undefined 
+                        ? `${Number(punto.cumplimiento).toFixed(2)}%` 
+                        : '-'}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      {punto.fecha_registro 
+                        ? new Date(punto.fecha_registro).toLocaleDateString('es-CO', { 
+                            year: 'numeric', 
+                            month: '2-digit', 
+                            day: '2-digit' 
+                          })
+                        : '-'}
+                    </td>
                     <td>
-                      <span className={`estado ${punto.estado === 'Precios Reportados' ? 'implementado' : 'no-implementado'}`}>
-                        {punto.estado || 'No Reportado'}
+                      <span className={`estado ${estadoClass}`}>
+                        {estadoMystery}
                       </span>
                     </td>
-                    <td><strong>{punto.puntos || 0}</strong></td>
+                    <td style={{ textAlign: 'center' }}><strong>{punto.puntos || 0}</strong></td>
                   </tr>
                 );
               }) : (
