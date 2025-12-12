@@ -93,13 +93,14 @@ export default function JefeZonaHistorial() {
       [...new Set(visitas.map(visita => visita.codigo_pdv))] : [];
     
     const pdvsImpactados = pdvsUnicos.length;
-    const porcentajeCumplimiento = Math.round((pdvsImpactados / META_PDVS) * 100);
+    const totalVisitas = visitas ? visitas.length : 0;
+    const porcentajeCumplimiento = Math.round((totalVisitas / META_PDVS) * 100);
     
     return {
       totalVisitas: visitasFiltradas.length,
       pdvsImpactados,
       metaPdvs: META_PDVS,
-      porcentajeCumplimiento: Math.min(porcentajeCumplimiento, 100) // Máximo 100%
+      porcentajeCumplimiento: porcentajeCumplimiento 
     };
   };
 
@@ -232,19 +233,19 @@ export default function JefeZonaHistorial() {
             </div>
             <div className="stat-item-mini cumplimiento-stat-mini">
               <span className="stat-number-mini" style={{
-                color: Math.round(([...new Set(visitas.map(v => v.codigo_pdv))].length / 30) * 100) >= 100 ? '#28a745' : 
-                       Math.round(([...new Set(visitas.map(v => v.codigo_pdv))].length / 30) * 100) >= 80 ? '#ffc107' : '#dc3545'
+                color: metricas.porcentajeCumplimiento >= 100 ? '#28a745' : 
+                       metricas.porcentajeCumplimiento >= 80 ? '#ffc107' : '#dc3545'
               }}>
-                {Math.min(Math.round(([...new Set(visitas.map(v => v.codigo_pdv))].length / 30) * 100), 100)}%
+                {metricas.porcentajeCumplimiento}%
               </span>
               <span className="stat-label-mini">% Cumplimiento</span>
               <div className="progress-bar-container-mini">
                 <div 
                   className="progress-bar-mini"
                   style={{
-                    width: `${Math.min(([...new Set(visitas.map(v => v.codigo_pdv))].length / 30) * 100, 100)}%`,
-                    backgroundColor: Math.round(([...new Set(visitas.map(v => v.codigo_pdv))].length / 30) * 100) >= 100 ? '#28a745' : 
-                                   Math.round(([...new Set(visitas.map(v => v.codigo_pdv))].length / 30) * 100) >= 80 ? '#ffc107' : '#dc3545'
+                    width: `${Math.min(metricas.porcentajeCumplimiento, 100)}%`,
+                    backgroundColor: metricas.porcentajeCumplimiento >= 100 ? '#28a745' : 
+                                   metricas.porcentajeCumplimiento >= 80 ? '#ffc107' : '#dc3545'
                   }}
                 ></div>
               </div>

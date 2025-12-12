@@ -704,38 +704,188 @@ const ejecutarCalculosDeBonos = async () => {
   try {
     const now = new Date();
 
-  // --- Lógica para "Campeón por Agente" (Mensual) ---
-  // const firstDayOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  // if (now > firstDayOfCurrentMonth && now.getDate() > 1) {
-  //   const lastDayOfPreviousMonth = new Date(firstDayOfCurrentMonth.getTime() - 1);
-  //   const firstDayOfPreviousMonth = new Date(lastDayOfPreviousMonth.getFullYear(), lastDayOfPreviousMonth.getMonth(), 1);
-  //   const startDate = firstDayOfPreviousMonth.toISOString().slice(0, 10);
-  //   const endDate = lastDayOfPreviousMonth.toISOString().slice(0, 10);
-  //   const monthName = lastDayOfPreviousMonth.toLocaleString('es-CO', { month: 'long' });
-  //   const year = lastDayOfPreviousMonth.getFullYear();
-  //   const bonusDescription = `Campeón por Agente - ${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${year}`;
-  //   const detalle = 'Más galones vendidos en tu zona, 1.000 pts extra.';
-  //   const bonoMensualYaAsignado = await executeQueryFast(`SELECT id FROM retos_bonificadores WHERE descripcion = ? LIMIT 1`, [bonusDescription]);
-  //   if (bonoMensualYaAsignado.length === 0) {
-  //     console.log(`Iniciando cálculo de bono: '${bonusDescription}'...`);
-  //     const agentes = await executeQueryForMultipleUsers('SELECT DISTINCT agente_id FROM users WHERE agente_id IS NOT NULL AND rol_id = 1');
-  //     if (agentes.length > 0) {
-  //       for (const agente of agentes) {
-  //         const rankingAgente = await executeQueryForMultipleUsers(
-  //           `SELECT u.id as asesor_id, COALESCE(SUM(rp.conversion_galonaje), 0) as total_volumen FROM users u LEFT JOIN registro_servicios rs ON u.id = rs.user_id AND rs.fecha_registro BETWEEN ? AND ? AND rs.estado_id = 2 AND rs.estado_agente_id = 2 LEFT JOIN registro_productos rp ON rs.id = rp.registro_id WHERE u.agente_id = ? AND u.rol_id = 1 GROUP BY u.id ORDER BY total_volumen DESC LIMIT 1;`,
-  //           [startDate, endDate, agente.agente_id]
-  //         );
-  //         if (rankingAgente.length > 0 && rankingAgente[0].total_volumen > 0) {
-  //           const ganador = rankingAgente[0];
-  //           await executeQueryForMultipleUsers(`INSERT INTO retos_bonificadores (id_asesor, puntos, descripcion, detalle, created) VALUES (?, 1000, ?, ?, NOW())`, [ganador.asesor_id, bonusDescription, detalle]);
-  //           console.log(`Bono '${bonusDescription}' asignado a asesor ${ganador.asesor_id} para agente ${agente.agente_id}.`);
-  //         }
+  // ---------------------------------------------------------------
+  // --- Lógica para "Primeros en Actuar" (Antes del 2025-09-06) ---
+  // ---------------------------------------------------------------
+
+  // const fechaCortePrimerosActuar = new Date('2025-09-06T23:59:59');
+  // if (now > fechaCortePrimerosActuar) {
+  //   const bonusDescriptionPrimerosActuar = 'Primeros en Actuar';
+  //   const bonoPrimerosYaAsignado = await executeQueryFast(`SELECT id FROM retos_bonificadores WHERE descripcion = ? LIMIT 1`, [bonusDescriptionPrimerosActuar]);
+
+  //   if (bonoPrimerosYaAsignado.length === 0) {
+  //     console.log(`Iniciando cálculo de bono: '${bonusDescriptionPrimerosActuar}'...`);
+      
+  //     // Obtener todos los asesores
+  //     const asesores = await executeQueryForMultipleUsers('SELECT id, name FROM users WHERE rol_id = 1');
+      
+  //     const asesoresConCobertura = [];
+      
+  //     for (const asesor of asesores) {
+  //       const asesor_id = asesor.id;
+        
+  //       // Obtener total de PDVs asignados
+  //       const pdvsAsignadosResult = await executeQueryFast(
+  //         `SELECT COUNT(id) as total FROM puntos_venta WHERE user_id = ?`, [asesor_id]
+  //       );
+  //       const totalAsignados = pdvsAsignadosResult[0]?.total || 0;
+        
+  //       if (totalAsignados === 0) continue; // Saltar asesor sin PDVs
+        
+  //       // Obtener PDVs implementados antes del 2025-09-06
+  //       const pdvsImplementadosResult = await executeQueryFast(
+  //         `SELECT DISTINCT pdv_id, MIN(fecha_registro) as primera_fecha
+  //          FROM registro_servicios 
+  //          WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2 AND fecha_registro <= ?
+  //          GROUP BY pdv_id`, 
+  //         [asesor_id, '2025-09-06']
+  //       );
+  //       const totalImplementados = pdvsImplementadosResult.length;
+        
+  //       // Verificar si alcanzó 100% de cobertura
+  //       if (totalImplementados >= totalAsignados) {
+  //         // Encontrar la fecha en que completó el 100% (fecha del último PDV que completó la meta)
+  //         const fechasOrdenadas = pdvsImplementadosResult
+  //           .map(r => new Date(r.primera_fecha))
+  //           .sort((a, b) => b - a); // Ordenar descendente
+          
+  //         const fechaCompletado = fechasOrdenadas[0]; // La fecha más reciente cuando completó el 100%
+          
+  //         asesoresConCobertura.push({
+  //           asesor_id,
+  //           asesor_nombre: asesor.name,
+  //           totalAsignados,
+  //           totalImplementados,
+  //           fechaCompletado
+  //         });
   //       }
   //     }
+      
+  //     // Ordenar por fecha de completado (los primeros en lograrlo)
+  //     asesoresConCobertura.sort((a, b) => a.fechaCompletado - b.fechaCompletado);
+      
+  //     // Tomar solo los primeros 10
+  //     const primeros10 = asesoresConCobertura.slice(0, 10);
+      
+  //     // Asignar el bono de 2000 puntos a cada uno
+  //     for (const asesorData of primeros10) {
+  //       try {
+  //         const query = `INSERT INTO retos_bonificadores (id_asesor, puntos, descripcion, detalle, created) VALUES (?, ?, ?, ?, NOW())`;
+  //         const params = [
+  //           asesorData.asesor_id,
+  //           2000,
+  //           bonusDescriptionPrimerosActuar,
+  //           `Uno de los primeros 10 asesores en lograr 100% de cobertura antes del 06/09/2025 (${asesorData.totalImplementados}/${asesorData.totalAsignados} PDV).`
+  //         ];
+  //         await executeQueryForMultipleUsers(query, params);
+  //         console.log(`Bono '${bonusDescriptionPrimerosActuar}' asignado a asesor ${asesorData.asesor_nombre} (ID: ${asesorData.asesor_id}) - 2000 pts.`);
+  //       } catch (err) {
+  //         console.error('[BONOS] Error al insertar bono "Primeros en Actuar" para asesor:', asesorData.asesor_id, '| Error:', err.message);
+  //       }
+  //     }
+      
+  //     console.log(`[BONOS] Asignación de bonos "Primeros en Actuar" finalizada. Total asignados: ${primeros10.length} de ${asesoresConCobertura.length} elegibles.`);
   //   }
   // }
 
+  // -------------------------------------------------- 
+  // --- Lógica para "Campeón por Agente" (Mensual) ---
+  // --------------------------------------------------
+  // Calcula TODOS los meses desde Agosto 2025 hasta Diciembre 2025 (termina el 15)
+  
+  // const fechaInicioCampana = new Date('2025-08-01'); // Inicio de la campaña
+  // const fechaFinCampana = new Date('2025-12-15T23:59:59'); // Fin de la campaña
+  // const firstDayOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  
+  // // Solo ejecutar si estamos en un mes posterior a agosto
+  // if (now > fechaInicioCampana) {
+  //   console.log('[BONOS] Iniciando cálculo de bonos "Campeón por Agente" para todos los meses...');
+  //   
+  //   // Iterar desde Agosto 2025 hasta Diciembre 2025
+  //   let mesActual = new Date(fechaInicioCampana);
+  //   let mesesProcesados = 0;
+  //   let bonosAsignados = 0;
+  //   
+  //   while (mesActual <= new Date('2025-12-01')) { // Hasta diciembre inclusive
+  //     // Calcular primer y último día del mes
+  //     const primerDiaMes = new Date(mesActual.getFullYear(), mesActual.getMonth(), 1);
+  //     let ultimoDiaMes = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 0);
+  //     
+  //     // EXCEPCIÓN: Diciembre solo va hasta el 15
+  //     const esDiciembre = mesActual.getMonth() === 11 && mesActual.getFullYear() === 2025;
+  //     if (esDiciembre) {
+  //       ultimoDiaMes = new Date('2025-12-15');
+  //       // Solo calcular diciembre si ya pasó el 15 de diciembre
+  //       if (now <= fechaFinCampana) {
+  //         console.log('[BONOS] ⊗ Diciembre aún no termina (campaña hasta 15/12), omitiendo...');
+  //         break; // Salir del bucle, no calcular diciembre todavía
+  //       }
+  //     }
+  //     
+  //     const startDate = primerDiaMes.toISOString().slice(0, 10);
+  //     const endDate = ultimoDiaMes.toISOString().slice(0, 10);
+  //     const monthName = ultimoDiaMes.toLocaleString('es-CO', { month: 'long' });
+  //     const year = ultimoDiaMes.getFullYear();
+  //     const bonusDescription = `Campeón por Agente - ${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${year}`;
+  //     const detalle = 'Más galones vendidos en tu zona, 1.000 pts extra.';
+  //     
+  //     // Verificar si ya existe este bono mensual
+  //     const bonoMensualYaAsignado = await executeQueryFast(
+  //       `SELECT id FROM retos_bonificadores WHERE descripcion = ? LIMIT 1`, 
+  //       [bonusDescription]
+  //     );
+  //     
+  //     if (bonoMensualYaAsignado.length === 0) {
+  //       console.log(`[BONOS] Calculando bono: '${bonusDescription}'...`);
+  //       const agentes = await executeQueryForMultipleUsers(
+  //         'SELECT DISTINCT agente_id FROM users WHERE agente_id IS NOT NULL AND rol_id = 1'
+  //       );
+  //       
+  //       if (agentes.length > 0) {
+  //         for (const agente of agentes) {
+  //           const rankingAgente = await executeQueryForMultipleUsers(
+  //             `SELECT u.id as asesor_id, u.name as asesor_nombre, COALESCE(SUM(rp.conversion_galonaje), 0) as total_volumen 
+  //              FROM users u 
+  //              LEFT JOIN registro_servicios rs ON u.id = rs.user_id 
+  //                AND rs.fecha_registro BETWEEN ? AND ? 
+  //                AND rs.estado_id = 2 
+  //                AND rs.estado_agente_id = 2 
+  //              LEFT JOIN registro_productos rp ON rs.id = rp.registro_id 
+  //              WHERE u.agente_id = ? AND u.rol_id = 1 
+  //              GROUP BY u.id, u.name 
+  //              ORDER BY total_volumen DESC 
+  //              LIMIT 1`,
+  //             [startDate, endDate, agente.agente_id]
+  //           );
+  //           
+  //           if (rankingAgente.length > 0 && rankingAgente[0].total_volumen > 0) {
+  //             const ganador = rankingAgente[0];
+  //             await executeQueryForMultipleUsers(
+  //               `INSERT INTO retos_bonificadores (id_asesor, puntos, descripcion, detalle, created) 
+  //                VALUES (?, 1000, ?, ?, NOW())`, 
+  //               [ganador.asesor_id, bonusDescription, detalle]
+  //             );
+  //             console.log(`[BONOS] ✓ Bono '${bonusDescription}' asignado a ${ganador.asesor_nombre} (ID: ${ganador.asesor_id}) - Agente ${agente.agente_id} - ${ganador.total_volumen} galones`);
+  //             bonosAsignados++;
+  //           }
+  //         }
+  //       }
+  //       mesesProcesados++;
+  //     } else {
+  //       console.log(`[BONOS] ⊗ Bono '${bonusDescription}' ya existe, omitiendo...`);
+  //     }
+  //     
+  //     // Avanzar al siguiente mes
+  //     mesActual = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 1);
+  //   }
+  //   
+  //   console.log(`[BONOS] Proceso completado: ${mesesProcesados} meses procesados, ${bonosAsignados} bonos asignados.`);
+  // }
+
+  // ---------------------------------------------------------
   // --- Lógica para "Ejecución Perfecta" (Fin de Periodo) ---
+  // ---------------------------------------------------------
+
   // const finDePeriodo = new Date('2025-12-15T23:59:59');
   // if (now > finDePeriodo) {
   //   const bonusDescriptionEp = 'Ejecución Perfecta';
@@ -744,23 +894,23 @@ const ejecutarCalculosDeBonos = async () => {
   //     console.log(`Iniciando cálculo de bono de fin de periodo: '${bonusDescriptionEp}'...`);
   //     const asesores = await executeQueryForMultipleUsers('SELECT id FROM users WHERE rol_id = 1');
   //     for (const asesor of asesores) {
-  //       const asesor_id = asesor.id;
-  //       const pdvsAsignados = await executeQueryFast(`SELECT COUNT(id) as total FROM puntos_venta WHERE user_id = ?`, [asesor_id]);
-  //       const totalAsignados = pdvsAsignados[0]?.total || 0;
-  //       const pdvsImplementados = await executeQueryFast(`SELECT COUNT(DISTINCT pdv_id) as total FROM registro_servicios WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2 AND fecha_registro <= ?`, [asesor_id, '2025-12-20']);
-  //       const totalImplementados = pdvsImplementados[0]?.total || 0;
-  //       const coberturaOk = totalAsignados > 0 && totalImplementados >= totalAsignados;
-  //       const metaFrecuencia = totalAsignados * 10;
-  //       const realFrecuenciaResult = await executeQueryFast(`SELECT COUNT(DISTINCT CONCAT(pdv_id, DATE(fecha_registro))) as total FROM registro_servicios WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [asesor_id]);
-  //       const realFrecuencia = realFrecuenciaResult[0]?.total || 0;
-  //       const frecuenciaOk = metaFrecuencia > 0 && realFrecuencia >= metaFrecuencia;
-  //       if (coberturaOk && frecuenciaOk) {
-  //         await executeQueryForMultipleUsers(`INSERT INTO retos_bonificadores (id_asesor, puntos, descripcion, detalle, created) VALUES (?, 1000, ?, ?, NOW())`, [asesor_id, bonusDescriptionEp, 'Logra 100% en Cobertura y Frecuencia para 1.000 pts extra.']);
-  //         console.log(`Bono '${bonusDescriptionEp}' asignado a asesor ${asesor_id}.`);
-  //       }
+  //     const asesor_id = asesor.id;
+  //     const pdvsAsignados = await executeQueryFast(`SELECT COUNT(id) as total FROM puntos_venta WHERE user_id = ?`, [asesor_id]);
+  //     const totalAsignados = pdvsAsignados[0]?.total || 0;
+  //     const pdvsImplementados = await executeQueryFast(`SELECT COUNT(DISTINCT pdv_id) as total FROM registro_servicios WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2 AND fecha_registro <= ?`, [asesor_id, '2025-12-20']);
+  //     const totalImplementados = pdvsImplementados[0]?.total || 0;
+  //     const coberturaOk = totalAsignados > 0 && totalImplementados >= totalAsignados;
+  //     const metaFrecuencia = totalAsignados * 10;
+  //     const realFrecuenciaResult = await executeQueryFast(`SELECT COUNT(DISTINCT CONCAT(pdv_id, DATE(fecha_registro))) as total FROM registro_servicios WHERE user_id = ? AND estado_id = 2 AND estado_agente_id = 2`, [asesor_id]);
+  //     const realFrecuencia = realFrecuenciaResult[0]?.total || 0;
+  //     const frecuenciaOk = metaFrecuencia > 0 && realFrecuencia >= metaFrecuencia;
+  //     if (coberturaOk && frecuenciaOk) {
+  //       await executeQueryForMultipleUsers(`INSERT INTO retos_bonificadores (id_asesor, puntos, descripcion, detalle, created) VALUES (?, 1000, ?, ?, NOW())`, [asesor_id, bonusDescriptionEp, 'Logra 100% en Cobertura y Frecuencia para 1.000 pts extra.']);
+  //       console.log(`Bono '${bonusDescriptionEp}' asignado a asesor ${asesor_id}.`);
   //     }
-  //     console.log(`Cálculo de bono '${bonusDescriptionEp}' finalizado.`);
   //   }
+  //   console.log(`Cálculo de bono '${bonusDescriptionEp}' finalizado.`);
+  // }
   // }
 
   // --- Lógica para "PDV en segunda y tercera fase de implementación" (Fecha de Corte) ---

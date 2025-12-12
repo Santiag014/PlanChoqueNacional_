@@ -97,13 +97,13 @@ export default function JefeZonaHistorial() {
       [...new Set(visitas.map(visita => visita.codigo_pdv))] : [];
     
     const pdvsImpactados = pdvsUnicos.length;
-    const porcentajeCumplimiento = Math.round((pdvsImpactados / META_PDVS) * 100);
+    const porcentajeCumplimiento = Math.round((visitasFiltradas.length / META_PDVS) * 100);
     
     return {
       totalVisitas: visitasFiltradas.length,
       pdvsImpactados,
       metaPdvs: META_PDVS,
-      porcentajeCumplimiento: Math.min(porcentajeCumplimiento, 100) // Máximo 100%
+      porcentajeCumplimiento: porcentajeCumplimiento
     };
   };
 
